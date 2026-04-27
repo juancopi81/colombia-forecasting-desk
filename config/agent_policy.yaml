@@ -1,0 +1,33 @@
+# Agent policy for Colombia Forecasting Desk
+# Defines constraints and defaults for LLM-assisted steps in the pipeline.
+
+publishing:
+  autonomous_publishing: false
+  require_human_review: true
+
+content:
+  allowed_outputs:
+    - daily_brief
+    - candidate_questions
+    - evidence_pack
+    - forecast_draft
+    - x_post_draft
+  prohibited_outputs:
+    - investment_advice
+    - trading_signals
+    - betting_recommendations
+    - automated_execution
+
+sourcing:
+  paywalled_sources: disallowed
+  login_required_sources: disallowed
+  max_sources_per_evidence_pack: 10
+
+forecasting:
+  min_evidence_items: 2
+  require_resolution_criteria: true
+  require_deadline: true
+  confidence_levels:
+    - low
+    - medium
+    - high

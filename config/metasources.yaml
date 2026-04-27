@@ -1,0 +1,76 @@
+# Metasources for Colombia Forecasting Desk
+# Each entry defines a public source used to detect potentially important signals.
+# Fields:
+#   id: unique identifier
+#   name: human-readable name
+#   url: public URL
+#   role: what kind of signal this source provides
+#   format: how the source is accessed (rss, html, pdf, api)
+#   frequency: how often to check (daily, weekly, on-event)
+#   notes: any caveats or instructions for handling this source
+
+metasources:
+
+  - id: eltiempo_colombia
+    name: El Tiempo — Colombia
+    url: https://www.eltiempo.com/rss/colombia.xml
+    role: media_signal
+    format: rss
+    frequency: daily
+    notes: Major national newspaper. High volume; filter aggressively.
+
+  - id: semana_rss
+    name: Semana — Colombia
+    url: https://www.semana.com/rss/
+    role: media_signal
+    format: rss
+    frequency: daily
+    notes: Leading political and economic news magazine.
+
+  - id: banrep_comunicados
+    name: Banco de la República — Comunicados
+    url: https://www.banrep.gov.co/es/comunicados-de-prensa
+    role: official_signal
+    format: html
+    frequency: daily
+    notes: Central bank press releases. High value for monetary policy signals.
+
+  - id: dane_noticias
+    name: DANE — Noticias y publicaciones
+    url: https://www.dane.gov.co/index.php/servicios-al-ciudadano/sala-de-prensa
+    role: official_signal
+    format: html
+    frequency: weekly
+    notes: National statistics agency. Key for economic data releases.
+
+  - id: congreso_agenda
+    name: Congreso de Colombia — Agenda legislativa
+    url: https://www.congreso.gov.co/
+    role: agenda_signal
+    format: html
+    frequency: daily
+    notes: Monitor for upcoming debates, votes, and committee sessions.
+
+  - id: registraduria
+    name: Registraduría Nacional del Estado Civil
+    url: https://www.registraduria.gov.co/
+    role: official_signal
+    format: html
+    frequency: on_event
+    notes: Electoral authority. Most relevant during election cycles.
+
+  - id: presidencia_noticias
+    name: Presidencia de Colombia — Noticias
+    url: https://www.youtube.com/@presidenciacolombia
+    role: official_signal
+    format: html
+    frequency: daily
+    notes: Executive branch announcements and press releases.
+
+  - id: centro_nacional_consultoria
+    name: Centro Nacional de Consultoría — Encuestas
+    url: https://www.cnc.com.co/
+    role: polling_signal
+    format: html
+    frequency: on_event
+    notes: One of the main polling firms in Colombia.

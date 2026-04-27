@@ -277,10 +277,10 @@ Avoid:
 
 - [x] Initialize Python project with `uv`.
 - [x] Add this `PROJECT_SPEC.md`.
-- [ ] Create initial folder structure.
-- [ ] Create initial `config/metasources.yaml`.
-- [ ] Create initial prompt files as placeholders.
-- [ ] Create forecast log placeholder.
+- [x] Create initial folder structure.
+- [x] Create initial `config/metasources.yaml`.
+- [x] Create initial prompt files as placeholders.
+- [x] Create forecast log placeholder.
 
 ### M1 — Metasource Pipeline
 
