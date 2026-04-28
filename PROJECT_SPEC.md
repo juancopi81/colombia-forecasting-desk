@@ -285,14 +285,15 @@ Avoid:
 ### M1 — Metasource Pipeline
 
 Goal: produce a useful daily brief from public metasources.
+Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 
-- [ ] Define 5–10 initial metasources.
-- [ ] Fetch raw items from accessible sources.
-- [ ] Clean and normalize items.
-- [ ] Filter irrelevant or low-quality items.
-- [ ] Deduplicate obvious duplicates.
-- [ ] Cluster related signals.
-- [ ] Generate `runs/YYYY-MM-DD/metasource_brief.md`.
+- [x] Define 5–10 initial metasources.
+- [x] Fetch raw items from accessible sources.
+- [x] Clean and normalize items.
+- [x] Filter irrelevant or low-quality items.
+- [x] Deduplicate obvious duplicates.
+- [x] Cluster related signals.
+- [x] Generate `runs/YYYY-MM-DD/metasource_brief.md`.
 
 ### M2 — Question Discovery
 
