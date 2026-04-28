@@ -49,6 +49,16 @@ def _today_str() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _run_clock(date: str | None = None) -> datetime:
+    if date is None:
+        return datetime.now(timezone.utc)
+    try:
+        parsed = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("--date must use YYYY-MM-DD format") from exc
+    return parsed.replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+
+
 def _write_json(path: Path, payload) -> None:
     path.write_text(
         json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
@@ -56,8 +66,12 @@ def _write_json(path: Path, payload) -> None:
     )
 
 
-def _drop_too_old(items: Iterable[CleanedItem]) -> list[CleanedItem]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
+def _drop_too_old(
+    items: Iterable[CleanedItem],
+    now: datetime | None = None,
+) -> list[CleanedItem]:
+    current = now or datetime.now(timezone.utc)
+    cutoff = current - timedelta(days=MAX_AGE_DAYS)
     kept: list[CleanedItem] = []
     dropped = 0
     for it in items:
@@ -71,13 +85,26 @@ def _drop_too_old(items: Iterable[CleanedItem]) -> list[CleanedItem]:
         except ValueError:
             kept.append(it)
             continue
-        if dt >= cutoff:
+        if cutoff <= dt <= current:
             kept.append(it)
         else:
             dropped += 1
     if dropped:
         logger.info("Dropped %d items older than %d days", dropped, MAX_AGE_DAYS)
     return kept
+
+
+def _rankable_items(items: Iterable[CleanedItem]) -> list[CleanedItem]:
+    rankable = []
+    skipped = 0
+    for it in items:
+        if it.quality_notes or not it.published_at:
+            skipped += 1
+            continue
+        rankable.append(it)
+    if skipped:
+        logger.info("Excluded %d low-quality/undated items from clustering", skipped)
+    return rankable
 
 
 def _drop_empty(items: Iterable[CleanedItem]) -> list[CleanedItem]:
@@ -105,7 +132,8 @@ def run(
 ) -> PipelineResult:
     _setup_logging()
     started_at = _now_iso()
-    run_date = date or _today_str()
+    current = _run_clock(date)
+    run_date = date or current.strftime("%Y-%m-%d")
 
     sources: list[Metasource] = load_metasources(config_path)
     logger.info("Loaded %d enabled sources from %s", len(sources), config_path)
@@ -124,15 +152,16 @@ def run(
         cleaned.append(clean(raw, source))
 
     cleaned = _drop_empty(cleaned)
-    cleaned = _drop_too_old(cleaned)
+    cleaned = _drop_too_old(cleaned, now=current)
     cleaned = dedupe(cleaned)
     logger.info("Retained %d cleaned items after filter+dedupe", len(cleaned))
 
-    clusters = cluster_items(cleaned)
-    ranked = rank(clusters)
+    rankable = _rankable_items(cleaned)
+    clusters = cluster_items(rankable)
+    ranked = rank(clusters, now=current)
     logger.info("Built %d clusters", len(ranked))
 
-    keywords = topic_keywords(cleaned, top_n=5)
+    keywords = topic_keywords(rankable, top_n=5)
 
     finished_at = _now_iso()
     summary = RunSummary(
