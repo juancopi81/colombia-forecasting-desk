@@ -1,76 +1,126 @@
-# Metasources for Colombia Forecasting Desk
-# Each entry defines a public source used to detect potentially important signals.
-# Fields:
-#   id: unique identifier
-#   name: human-readable name
-#   url: public URL
-#   role: what kind of signal this source provides
-#   format: how the source is accessed (rss, html, pdf, api)
-#   frequency: how often to check (daily, weekly, on-event)
-#   notes: any caveats or instructions for handling this source
-
 metasources:
-
   - id: eltiempo_colombia
     name: El Tiempo — Colombia
     url: https://www.eltiempo.com/rss/colombia.xml
-    role: media_signal
-    format: rss
-    frequency: daily
-    notes: Major national newspaper. High volume; filter aggressively.
+    type: news
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: high
+    update_frequency: daily
+    trust_role: media_signal
+    parsing_difficulty: easy
+    enabled: true
+    notes: "High-volume national news source. Filter aggressively."
 
-  - id: semana_rss
-    name: Semana — Colombia
-    url: https://www.semana.com/rss/
-    role: media_signal
-    format: rss
-    frequency: daily
-    notes: Leading political and economic news magazine.
+  - id: banrep_rss
+    name: Banco de la República — RSS
+    url: https://www.banrep.gov.co/es/noticias-rss
+    type: official_updates
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: high
+    update_frequency: daily
+    trust_role: official_signal
+    parsing_difficulty: easy
+    enabled: true
+    notes: "Useful for monetary policy, inflation, financial stability, and official communications."
 
-  - id: banrep_comunicados
-    name: Banco de la República — Comunicados
-    url: https://www.banrep.gov.co/es/comunicados-de-prensa
-    role: official_signal
-    format: html
-    frequency: daily
-    notes: Central bank press releases. High value for monetary policy signals.
+  - id: banrep_junta_comunicados
+    name: Banco de la República — Comunicados Junta Directiva
+    url: https://www.banrep.gov.co/es/comunicados-junta
+    type: official_updates
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: event_driven
+    trust_role: resolution_source
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Primary source for monetary policy decisions."
 
-  - id: dane_noticias
-    name: DANE — Noticias y publicaciones
-    url: https://www.dane.gov.co/index.php/servicios-al-ciudadano/sala-de-prensa
-    role: official_signal
-    format: html
-    frequency: weekly
-    notes: National statistics agency. Key for economic data releases.
+  - id: dane_prensa
+    name: DANE — Sala de prensa
+    url: https://www.dane.gov.co/
+    type: official_updates
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Primary source for macro/statistical releases. May need more specific pages later."
 
-  - id: congreso_agenda
-    name: Congreso de Colombia — Agenda legislativa
-    url: https://www.congreso.gov.co/
-    role: agenda_signal
-    format: html
-    frequency: daily
-    notes: Monitor for upcoming debates, votes, and committee sessions.
+  - id: camara_agenda_consolidada
+    name: Cámara de Representantes — Agenda Consolidada
+    url: https://www.camara.gov.co/agenda-consolidada/
+    type: calendar
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Useful for legislative agenda and reform tracking."
 
-  - id: registraduria
-    name: Registraduría Nacional del Estado Civil
-    url: https://www.registraduria.gov.co/
-    role: official_signal
-    format: html
-    frequency: on_event
-    notes: Electoral authority. Most relevant during election cycles.
+  - id: senado_agenda_legislativa
+    name: Senado — Agenda Legislativa Actual
+    url: https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual
+    type: calendar
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: weekly
+    trust_role: agenda_signal
+    parsing_difficulty: hard
+    enabled: true
+    notes: "Often PDF-based; useful but may be harder to parse."
+
+  - id: registraduria_noticias
+    name: Registraduría — Noticias
+    url: https://www.registraduria.gov.co/-Noticias-.html
+    type: official_updates
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: event_driven
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "High value during election cycles."
 
   - id: presidencia_noticias
-    name: Presidencia de Colombia — Noticias
-    url: https://www.youtube.com/@presidenciacolombia
-    role: official_signal
-    format: html
-    frequency: daily
-    notes: Executive branch announcements and press releases.
+    name: Presidencia — Noticias
+    url: https://www.presidencia.gov.co/prensa/noticias
+    type: official_updates
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: daily
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Executive branch announcements. Read as official signal, not neutral analysis."
 
   - id: centro_nacional_consultoria
-    name: Centro Nacional de Consultoría — Encuestas
+    name: Centro Nacional de Consultoría
     url: https://www.cnc.com.co/
-    role: polling_signal
-    format: html
-    frequency: on_event
-    notes: One of the main polling firms in Colombia.
+    type: polling
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: event_driven
+    trust_role: polling_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Polling signal. Extract methodology carefully when available."
