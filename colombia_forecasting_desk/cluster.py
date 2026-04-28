@@ -20,13 +20,9 @@ def tokenize_title(title: str) -> set[str]:
 
 
 def jaccard(a: set[str], b: set[str]) -> float:
-    if not a and not b:
-        return 0.0
     if not a or not b:
         return 0.0
-    intersection = len(a & b)
-    union = len(a | b)
-    return intersection / union if union else 0.0
+    return len(a & b) / len(a | b)
 
 
 class _UnionFind:

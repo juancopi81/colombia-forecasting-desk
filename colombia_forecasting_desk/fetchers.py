@@ -11,6 +11,7 @@ import feedparser
 import httpx
 from bs4 import BeautifulSoup
 
+from .cleaner import normalize_whitespace
 from .dedupe import canonicalize_url
 from .models import Metasource, RawItem, SourceFailure
 
@@ -96,7 +97,7 @@ def _extract_anchors(html: str, base_url: str) -> list[tuple[str, str]]:
             continue
         if parts.netloc and parts.netloc.lower() != base_host:
             continue
-        text = " ".join(a.get_text(separator=" ", strip=True).split())
+        text = normalize_whitespace(a.get_text(separator=" ", strip=True))
         if len(text) < MIN_ANCHOR_TEXT:
             continue
         if text.lower() in NAV_TEXT:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from colombia_forecasting_desk import pipeline
 from colombia_forecasting_desk.models import Metasource, RawItem
 
@@ -98,9 +100,5 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
 
 
 def test_run_rejects_invalid_date(tmp_path) -> None:
-    try:
+    with pytest.raises(ValueError, match="--date must use YYYY-MM-DD format"):
         pipeline.run(date="2026/04/27", runs_root=tmp_path)
-    except ValueError as exc:
-        assert "--date must use YYYY-MM-DD format" in str(exc)
-    else:
-        raise AssertionError("expected invalid date to fail")

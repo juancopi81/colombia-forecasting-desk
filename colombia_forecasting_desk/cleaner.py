@@ -57,7 +57,6 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
     title = normalize_whitespace(raw.title or "")
     clean_text = normalize_whitespace(strip_html(raw.raw_text or ""))
     if not clean_text and title:
-        # for HTML anchor extraction we often only have a title; mirror it as text.
         clean_text = title
 
     summary = truncate_summary(clean_text)
@@ -83,8 +82,6 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         signal_type=signal_type_for(source),
         country_relevance=source.country_relevance,
         quality_notes=quality_notes,
-        detected_entities=[],
-        detected_topics=[],
         trust_role=source.trust_role,
         priority=source.priority,
     )

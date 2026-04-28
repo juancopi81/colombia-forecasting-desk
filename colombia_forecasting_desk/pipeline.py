@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
@@ -22,7 +22,7 @@ from .models import (
     RunSummary,
     SourceFailure,
 )
-from .ranker import rank
+from .ranker import parse_iso, rank
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,6 @@ class PipelineResult:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _today_str() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def _run_clock(date: str | None = None) -> datetime:
@@ -78,11 +74,8 @@ def _drop_too_old(
         if not it.published_at:
             kept.append(it)
             continue
-        try:
-            dt = datetime.fromisoformat(it.published_at.replace("Z", "+00:00"))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-        except ValueError:
+        dt = parse_iso(it.published_at)
+        if dt is None:
             kept.append(it)
             continue
         if cutoff <= dt <= current:
@@ -108,12 +101,7 @@ def _rankable_items(items: Iterable[CleanedItem]) -> list[CleanedItem]:
 
 
 def _drop_empty(items: Iterable[CleanedItem]) -> list[CleanedItem]:
-    out = []
-    for it in items:
-        if not it.title and not it.clean_text:
-            continue
-        out.append(it)
-    return out
+    return [it for it in items if it.title or it.clean_text]
 
 
 def _setup_logging() -> None:
@@ -177,15 +165,15 @@ def run(
 
     run_dir = Path(runs_root) / run_date
     run_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(run_dir / "raw_items.json", [r.to_dict() for r in raw_items])
-    _write_json(run_dir / "cleaned_items.json", [c.to_dict() for c in cleaned])
-    _write_json(run_dir / "clusters.json", [c.to_dict() for c in ranked])
+    _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
+    _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
+    _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
     _write_json(
-        run_dir / "source_failures.json", [f.to_dict() for f in failures]
+        run_dir / "source_failures.json", [asdict(f) for f in failures]
     )
     brief_text = render_brief(summary, ranked, failures, cleaned, keywords)
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
-    _write_json(run_dir / "run_summary.json", summary.to_dict())
+    _write_json(run_dir / "run_summary.json", asdict(summary))
 
     logger.info("Wrote artifacts to %s", run_dir)
     return PipelineResult(

@@ -18,7 +18,7 @@ def test_struct_time_to_iso_formats() -> None:
     assert _struct_time_to_iso(st) == "2026-04-27T11:00:00Z"
 
 
-def test_extract_anchors_filters_nav_and_short(sample_source) -> None:  # fixture unused
+def test_extract_anchors_filters_nav_and_short() -> None:
     html = """
     <html><body><main>
       <a href="/news/article-one">Junta del Banco mantiene tasa de interés en 9.5%</a>

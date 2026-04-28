@@ -80,8 +80,6 @@ def _cleaned(**overrides) -> CleanedItem:
         signal_type="official_update",
         country_relevance="high",
         quality_notes="",
-        detected_entities=[],
-        detected_topics=[],
         trust_role="official_signal",
         priority="high",
     )
