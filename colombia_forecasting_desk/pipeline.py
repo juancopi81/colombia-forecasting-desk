@@ -21,6 +21,7 @@ from .models import (
     RawItem,
     RunSummary,
     SourceFailure,
+    SourceHealth,
 )
 from .ranker import parse_iso, rank
 
@@ -38,6 +39,7 @@ class PipelineResult:
     cleaned_items: list[CleanedItem]
     clusters: list[Cluster]
     failures: list[SourceFailure]
+    source_health: list[SourceHealth]
     summary: RunSummary
 
 
@@ -100,6 +102,51 @@ def _rankable_items(items: Iterable[CleanedItem]) -> list[CleanedItem]:
     return rankable
 
 
+def build_source_health(
+    sources: list[Metasource],
+    raw_items: list[RawItem],
+    cleaned_items: list[CleanedItem],
+    rankable_items: list[CleanedItem],
+    failures: list[SourceFailure],
+) -> list[SourceHealth]:
+    raw_counts: dict[str, int] = {}
+    cleaned_counts: dict[str, int] = {}
+    dated_counts: dict[str, int] = {}
+    rankable_counts: dict[str, int] = {}
+    failures_by_source: dict[str, list[SourceFailure]] = {}
+
+    for item in raw_items:
+        raw_counts[item.source_id] = raw_counts.get(item.source_id, 0) + 1
+        if item.published_at:
+            dated_counts[item.source_id] = dated_counts.get(item.source_id, 0) + 1
+    for item in cleaned_items:
+        cleaned_counts[item.source_id] = cleaned_counts.get(item.source_id, 0) + 1
+    for item in rankable_items:
+        rankable_counts[item.source_id] = rankable_counts.get(item.source_id, 0) + 1
+    for failure in failures:
+        failures_by_source.setdefault(failure.source_id, []).append(failure)
+
+    health: list[SourceHealth] = []
+    for source in sources:
+        source_failures = failures_by_source.get(source.id, [])
+        health.append(
+            SourceHealth(
+                source_id=source.id,
+                source_name=source.name,
+                url=source.url,
+                raw_count=raw_counts.get(source.id, 0),
+                cleaned_count=cleaned_counts.get(source.id, 0),
+                dated_count=dated_counts.get(source.id, 0),
+                rankable_count=rankable_counts.get(source.id, 0),
+                failure_count=len(source_failures),
+                failures=[
+                    f"{f.error_class}: {f.error_message}" for f in source_failures
+                ],
+            )
+        )
+    return health
+
+
 def _drop_empty(items: Iterable[CleanedItem]) -> list[CleanedItem]:
     return [it for it in items if it.title or it.clean_text]
 
@@ -150,6 +197,9 @@ def run(
     logger.info("Built %d clusters", len(ranked))
 
     keywords = topic_keywords(rankable, top_n=5)
+    source_health = build_source_health(
+        sources, raw_items, cleaned, rankable, failures
+    )
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -171,7 +221,10 @@ def run(
     _write_json(
         run_dir / "source_failures.json", [asdict(f) for f in failures]
     )
-    brief_text = render_brief(summary, ranked, failures, cleaned, keywords)
+    _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+    brief_text = render_brief(
+        summary, ranked, failures, cleaned, keywords, source_health=source_health
+    )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
 
@@ -182,5 +235,6 @@ def run(
         cleaned_items=cleaned,
         clusters=ranked,
         failures=failures,
+        source_health=source_health,
         summary=summary,
     )

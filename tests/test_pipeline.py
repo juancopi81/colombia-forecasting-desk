@@ -96,7 +96,12 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert "undated" not in clustered_ids
     assert "short" in cleaned_ids
     assert "short" not in clustered_ids
+    assert result.source_health[0].source_id == "test_source"
+    assert result.source_health[0].raw_count == 5
+    assert result.source_health[0].dated_count == 4
+    assert result.source_health[0].rankable_count == 1
     assert result.run_dir == tmp_path / "2026-04-27"
+    assert (result.run_dir / "source_health.json").exists()
 
 
 def test_run_rejects_invalid_date(tmp_path) -> None:

@@ -61,6 +61,7 @@ def test_brief_has_all_sections(make_cleaned) -> None:
         "## Top Signals",
         "## Emerging Questions",
         "## Topics to Monitor",
+        "## Source Health",
         "## Noisy / Low-Confidence Items",
         "## Source Failures",
         "## Suggested Next Step",

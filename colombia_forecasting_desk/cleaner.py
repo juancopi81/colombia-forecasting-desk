@@ -42,6 +42,8 @@ def truncate_summary(text: str, max_chars: int = SUMMARY_MAX_CHARS) -> str:
 
 
 def signal_type_for(source: Metasource) -> str:
+    if source.type == "legal":
+        return "court_or_regulatory_movement"
     return _TRUST_ROLE_TO_SIGNAL.get(source.trust_role, "unknown")
 
 

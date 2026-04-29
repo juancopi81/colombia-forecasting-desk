@@ -71,6 +71,8 @@ def load_metasources(path: str | Path) -> list[Metasource]:
                 parsing_difficulty=entry["parsing_difficulty"],
                 enabled=bool(entry["enabled"]),
                 notes=entry.get("notes", ""),
+                max_items=entry.get("max_items"),
+                verify_ssl=bool(entry.get("verify_ssl", True)),
             )
         )
     return sources

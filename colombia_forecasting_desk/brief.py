@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import CleanedItem, Cluster, RunSummary, SourceFailure
+from .models import CleanedItem, Cluster, RunSummary, SourceFailure, SourceHealth
 
 TOP_SIGNALS_LIMIT = 10
 LOW_QUALITY_LIMIT = 10
@@ -87,12 +87,29 @@ def _render_low_quality(items: list[CleanedItem]) -> str:
     return "\n".join(lines)
 
 
+def _render_source_health(source_health: list[SourceHealth]) -> str:
+    if not source_health:
+        return "_No source health report generated._"
+    lines = [
+        "| Source | Raw | Dated | Rankable | Failures |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    for health in source_health:
+        lines.append(
+            f"| `{health.source_id}` | {health.raw_count} | "
+            f"{health.dated_count} | {health.rankable_count} | "
+            f"{health.failure_count} |"
+        )
+    return "\n".join(lines)
+
+
 def render_brief(
     run_summary: RunSummary,
     ranked_clusters: list[Cluster],
     failures: list[SourceFailure],
     cleaned_items: list[CleanedItem],
     topic_keywords: list[str],
+    source_health: list[SourceHealth] | None = None,
 ) -> str:
     top = ranked_clusters[:TOP_SIGNALS_LIMIT]
     top_blocks = [
@@ -121,6 +138,8 @@ def render_brief(
         "- _(populated in M2)_\n\n"
         "## Topics to Monitor\n\n"
         f"{keywords_section}\n\n"
+        "## Source Health\n\n"
+        f"{_render_source_health(source_health or [])}\n\n"
         "## Noisy / Low-Confidence Items\n\n"
         f"{_render_low_quality(cleaned_items)}\n\n"
         "## Source Failures\n\n"

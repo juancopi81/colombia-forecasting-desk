@@ -65,6 +65,7 @@ runs/YYYY-MM-DD/raw_items.json
 runs/YYYY-MM-DD/cleaned_items.json
 runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/metasource_brief.md
+runs/YYYY-MM-DD/source_health.json
 ```
 
 Optional output:
@@ -202,6 +203,36 @@ legal_reputational_risk
 ```
 
 The score does not need to be perfect. It only needs to help prioritize what the next agent should inspect.
+
+M1.1 adds two safeguards so a single high-volume media feed does not dominate
+the brief:
+
+- sources may define `max_items` in `config/metasources.yaml`
+- the top-ranked clusters are lightly diversified by source when alternatives exist
+
+The target source mix before M2 is rankable output from multiple distinct
+sources, including at least two official sources and at least one
+legal/regulatory or agenda source.
+
+## Source Health
+
+Each run writes:
+
+```text
+runs/YYYY-MM-DD/source_health.json
+```
+
+The smoke/report command is:
+
+```bash
+uv run python scripts/scan_metasources.py --source-report
+```
+
+The report shows, per source:
+
+```text
+source_id | raw | dated | rankable | failures
+```
 
 ## Daily Brief Structure
 
