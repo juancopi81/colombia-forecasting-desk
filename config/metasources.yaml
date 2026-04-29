@@ -11,6 +11,7 @@ metasources:
     trust_role: media_signal
     parsing_difficulty: easy
     enabled: true
+    max_items: 15
     notes: "High-volume national news source. Filter aggressively."
 
   - id: banrep_rss
@@ -18,14 +19,14 @@ metasources:
     url: https://www.banrep.gov.co/es/noticias-rss
     type: official_updates
     country_relevance: high
-    access_status: rss_public
-    fetch_method: rss
+    access_status: html_public
+    fetch_method: html
     priority: high
     update_frequency: daily
     trust_role: official_signal
-    parsing_difficulty: easy
+    parsing_difficulty: medium
     enabled: true
-    notes: "Useful for monetary policy, inflation, financial stability, and official communications."
+    notes: "BanRep labels this RSS, but the live endpoint behaves like an HTML listing; parse as dated HTML to avoid RSS parse failures."
 
   - id: banrep_junta_comunicados
     name: Banco de la República — Comunicados Junta Directiva
@@ -41,19 +42,34 @@ metasources:
     enabled: true
     notes: "Primary source for monetary policy decisions."
 
-  - id: dane_prensa
-    name: DANE — Sala de prensa
-    url: https://www.dane.gov.co/
+  - id: dane_rss
+    name: DANE — RSS Noticias
+    url: http://www.dane.gov.co/index.php?option=com_rss&feed=RSS1.0&no_html=1
+    type: official_updates
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: high
+    update_frequency: daily
+    trust_role: official_signal
+    parsing_difficulty: easy
+    enabled: false
+    notes: "Official DANE subscription page still documents this RSS URL, but the live endpoint returns 404 as of 2026-04-28. Use dane_comunicados_prensa until a working feed is found."
+
+  - id: dane_comunicados_prensa
+    name: DANE — Comunicados de prensa y presentaciones
+    url: https://www.dane.gov.co/index.php/sala-de-prensa/caja-de-herramientas/comunicados-de-prensa-y-presentaciones
     type: official_updates
     country_relevance: high
     access_status: html_public
     fetch_method: html
     priority: high
-    update_frequency: daily
+    update_frequency: weekly
     trust_role: official_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Primary source for macro/statistical releases. May need more specific pages later."
+    max_items: 15
+    notes: "Dated table of DANE press releases and PDF downloads."
 
   - id: camara_agenda_consolidada
     name: Cámara de Representantes — Agenda Consolidada
@@ -97,6 +113,36 @@ metasources:
     enabled: true
     notes: "High value during election cycles."
 
+  - id: funcion_publica_rss
+    name: Función Pública — Noticias RSS
+    url: https://www.funcionpublica.gov.co/noticias-rss/-/asset_publisher/TyvhU7GmBc0f/rss
+    type: official_updates
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: high
+    update_frequency: daily
+    trust_role: official_signal
+    parsing_difficulty: easy
+    enabled: true
+    max_items: 15
+    verify_ssl: false
+    notes: "Atom/RSS endpoint advertised by the noticias-rss page. Useful for decrees, public employment, public administration, government staffing, and civic-awareness signals. TLS verification disabled because the live certificate chain fails in this runtime."
+
+  - id: corte_constitucional_comunicados
+    name: Corte Constitucional — Comunicados
+    url: https://www.corteconstitucional.gov.co/comunicados/
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: event_driven
+    trust_role: resolution_source
+    parsing_difficulty: medium
+    enabled: true
+    notes: "High-impact constitutional rulings. Source-specific parser extracts comunicado links and dates where present."
+
   - id: presidencia_noticias
     name: Presidencia — Noticias
     url: https://www.presidencia.gov.co/prensa/noticias
@@ -124,3 +170,60 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     notes: "Polling signal. Extract methodology carefully when available."
+
+  - id: portafolio_rss
+    name: Portafolio — Economía RSS
+    url: https://www.portafolio.co/rss/economia.xml
+    type: news
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: medium
+    update_frequency: daily
+    trust_role: media_signal
+    parsing_difficulty: easy
+    enabled: true
+    max_items: 10
+    notes: "Business/economy media signal from Portafolio's economy RSS section."
+
+  - id: secop_ii_procesos
+    name: datos.gov.co — SECOP II Procesos de Contratación
+    url: https://www.datos.gov.co/resource/p6dx-8zbt.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: daily
+    trust_role: civic_signal
+    parsing_difficulty: medium
+    enabled: false
+    notes: "Public procurement signal. Enable after API fetcher supports Socrata queries and limits."
+
+  - id: proyectos_ley_datos_gov
+    name: datos.gov.co — Vista Proyectos de Ley
+    url: https://www.datos.gov.co/resource/xs56-s7w6.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: weekly
+    trust_role: agenda_signal
+    parsing_difficulty: medium
+    enabled: false
+    notes: "Legislative project metadata. Useful for question discovery once API sources are supported."
+
+  - id: suin_juriscol_normas
+    name: SUIN-Juriscol — Normas de Colombia
+    url: https://www.suin-juriscol.gov.co/legislacion/normatividad.html
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: event_driven
+    trust_role: legal_signal
+    parsing_difficulty: hard
+    enabled: false
+    notes: "Official normative source. Valuable but likely needs source-specific parser work."

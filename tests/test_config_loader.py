@@ -35,11 +35,16 @@ def _entry(**overrides):
 
 
 def test_loads_enabled_sources(tmp_path: Path) -> None:
-    path = _write_yaml(tmp_path, {"metasources": [_entry()]})
+    path = _write_yaml(
+        tmp_path,
+        {"metasources": [_entry(max_items=12, verify_ssl=False)]},
+    )
     sources = load_metasources(path)
     assert len(sources) == 1
     assert sources[0].id == "s1"
     assert sources[0].url == "https://example.com/feed"
+    assert sources[0].max_items == 12
+    assert sources[0].verify_ssl is False
 
 
 def test_drops_disabled_sources(tmp_path: Path) -> None:

@@ -81,6 +81,7 @@ def _build_cluster(members: list[CleanedItem]) -> Cluster:
         member_urls=[m.url for m in members],
         member_titles=[m.title for m in members],
         member_source_names=[m.source_name for m in members],
+        member_source_ids=[m.source_id for m in members],
         priorities=priorities,
         why_it_matters="",
         possible_questions=[],

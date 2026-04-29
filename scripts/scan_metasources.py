@@ -21,6 +21,18 @@ from colombia_forecasting_desk.pipeline import (  # noqa: E402
 )
 
 
+def _print_source_report(result) -> None:
+    print("")
+    print("Source health:")
+    print("source_id | raw | dated | rankable | failures")
+    print("--- | ---: | ---: | ---: | ---:")
+    for health in result.source_health:
+        print(
+            f"{health.source_id} | {health.raw_count} | {health.dated_count} | "
+            f"{health.rankable_count} | {health.failure_count}"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the M1 metasource pipeline.")
     parser.add_argument(
@@ -38,6 +50,11 @@ def main() -> int:
         help="Root directory for run artifacts.",
         default=str(RUNS_DIR),
     )
+    parser.add_argument(
+        "--source-report",
+        action="store_true",
+        help="Print per-source raw, dated, rankable, and failure counts.",
+    )
     args = parser.parse_args()
 
     try:
@@ -54,6 +71,8 @@ def main() -> int:
         f"clusters={len(result.clusters)} "
         f"failures={len(result.failures)}"
     )
+    if args.source_report:
+        _print_source_report(result)
     return 0
 
 

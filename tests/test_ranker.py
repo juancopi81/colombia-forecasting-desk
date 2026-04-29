@@ -21,6 +21,7 @@ def _cluster(**over) -> Cluster:
         member_urls=["https://e.com/a"],
         member_titles=["t"],
         member_source_names=["src"],
+        member_source_ids=["src"],
         priorities=["medium"],
         why_it_matters="",
         possible_questions=[],
@@ -66,3 +67,37 @@ def test_priority_weight_applied() -> None:
     high = _cluster(cluster_id="c-high-000001", priorities=["high"])
     low = _cluster(cluster_id="c-low-0000001", priorities=["low"])
     assert score_cluster(high) > score_cluster(low)
+
+
+def test_official_source_type_gets_bonus() -> None:
+    official = _cluster(cluster_id="c-official", source_types=["official_updates"])
+    media = _cluster(cluster_id="c-media", source_types=["news"])
+    assert score_cluster(official) > score_cluster(media)
+
+
+def test_rank_diversifies_top_sources() -> None:
+    eltiempo = [
+        _cluster(
+            cluster_id=f"c-eltiempo-{i:02d}",
+            member_source_ids=["eltiempo_colombia"],
+            source_types=["news"],
+            priorities=["high"],
+        )
+        for i in range(7)
+    ]
+    official = [
+        _cluster(
+            cluster_id=f"c-official-{i:02d}",
+            member_source_ids=[f"official_{i}"],
+            source_types=["official_updates"],
+            priorities=["medium"],
+        )
+        for i in range(8)
+    ]
+    ranked = rank(eltiempo + official)
+    top_sources = [
+        source
+        for cluster in ranked[:10]
+        for source in set(cluster.member_source_ids)
+    ]
+    assert top_sources.count("eltiempo_colombia") <= 4

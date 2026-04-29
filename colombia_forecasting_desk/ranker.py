@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from math import floor
 
 from .models import Cluster
 
 _PRIORITY_WEIGHT = {"high": 2, "medium": 1, "low": 0}
+_PRIMARY_SOURCE_TYPES = {"official_updates", "legal", "calendar", "polling", "dataset"}
+DEFAULT_DIVERSIFY_TOP_N = 10
+DEFAULT_MAX_TOP_SOURCE_SHARE = 0.4
 
 
 def _max_priority_weight(priorities: list[str]) -> int:
@@ -39,16 +43,55 @@ def _freshness_bonus(latest: str | None, now: datetime | None = None) -> float:
     return 0.0
 
 
+def _primary_source_bonus(source_types: list[str]) -> float:
+    return 1.5 if set(source_types) & _PRIMARY_SOURCE_TYPES else 0.0
+
+
 def score_cluster(cluster: Cluster, now: datetime | None = None) -> float:
     return (
         2.0 * cluster.source_count
         + 3.0 * _max_priority_weight(cluster.priorities)
         + _freshness_bonus(cluster.latest_published_at, now)
         + 1.0 * len(cluster.signal_types)
+        + _primary_source_bonus(cluster.source_types)
     )
+
+
+def _source_keys(cluster: Cluster) -> set[str]:
+    if cluster.member_source_ids:
+        return set(cluster.member_source_ids)
+    return set(cluster.member_source_names)
+
+
+def _diversify_top(
+    clusters: list[Cluster],
+    top_n: int = DEFAULT_DIVERSIFY_TOP_N,
+    max_source_share: float = DEFAULT_MAX_TOP_SOURCE_SHARE,
+) -> list[Cluster]:
+    if top_n <= 0 or not clusters:
+        return clusters
+
+    max_per_source = max(1, floor(top_n * max_source_share))
+    selected: list[Cluster] = []
+    deferred: list[Cluster] = []
+    source_counts: dict[str, int] = {}
+
+    for cluster in clusters:
+        if len(selected) >= top_n:
+            deferred.append(cluster)
+            continue
+        keys = _source_keys(cluster)
+        if keys and all(source_counts.get(k, 0) >= max_per_source for k in keys):
+            deferred.append(cluster)
+            continue
+        selected.append(cluster)
+        for key in keys:
+            source_counts[key] = source_counts.get(key, 0) + 1
+
+    return selected + deferred
 
 
 def rank(clusters: list[Cluster], now: datetime | None = None) -> list[Cluster]:
     scored = [replace(c, score=round(score_cluster(c, now), 2)) for c in clusters]
     scored.sort(key=lambda c: (-c.score, c.cluster_id))
-    return scored
+    return _diversify_top(scored)

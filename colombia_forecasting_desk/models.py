@@ -19,6 +19,8 @@ class Metasource:
     parsing_difficulty: str
     enabled: bool
     notes: str = ""
+    max_items: int | None = None
+    verify_ssl: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +73,7 @@ class Cluster:
     member_urls: list[str] = field(default_factory=list)
     member_titles: list[str] = field(default_factory=list)
     member_source_names: list[str] = field(default_factory=list)
+    member_source_ids: list[str] = field(default_factory=list)
     priorities: list[str] = field(default_factory=list)
     why_it_matters: str = ""
     possible_questions: list[str] = field(default_factory=list)
@@ -86,6 +89,19 @@ class SourceFailure:
     error_class: str
     error_message: str
     occurred_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceHealth:
+    source_id: str
+    source_name: str
+    url: str
+    raw_count: int
+    cleaned_count: int
+    dated_count: int
+    rankable_count: int
+    failure_count: int
+    failures: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
