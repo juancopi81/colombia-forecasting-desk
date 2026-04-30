@@ -235,4 +235,155 @@ metasources:
     parsing_difficulty: hard
     enabled: false
     onboarding_status: disabled_future
-    notes: "Official normative source. Valuable but likely needs source-specific parser work."
+    notes: "Official normative source. Valuable but likely needs source-specific parser work. Superseded for general discovery by suin_juriscol entry."
+
+  - id: diario_oficial
+    name: Diario Oficial — Imprenta Nacional
+    url: https://svrpubindc.imprenta.gov.co/diario/
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: resolution_source
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Final publication of national norms (laws, decrees, administrative acts). Treat as resolution source for 'is this in force?' questions. Sandbox: 200 OK but generic anchor extractor returns 0 items — likely a JSF/JSP listing that needs source-specific parsing of the diario index."
+
+  - id: gacetas_congreso
+    name: Gacetas del Congreso — Imprenta Nacional
+    url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: hard
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Best source for legislative bills, ponencias, and text changes before final approval. Sandbox: 200 OK but generic extractor returns 0 items — page is a JSF SPA (.xhtml) that likely renders the gaceta list client-side via ViewState postbacks. Needs a JSF-aware extractor."
+
+  - id: suin_juriscol
+    name: SUIN-Juriscol
+    url: https://www.suin-juriscol.gov.co/index.html
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: legal_signal
+    parsing_difficulty: medium
+    enabled: true
+    verify_ssl: false
+    onboarding_status: needs_parser
+    notes: "Legal-discovery layer: laws, decrees, jurisprudence, and novedades normativas. TLS verification disabled because the live certificate chain fails in this runtime. Sandbox: 200 OK but the index page is a portal landing — generic extractor finds 0 dated anchors. Try the novedades or normatividad sub-page in M1.4."
+
+  - id: gestor_normativo_fp
+    name: Gestor Normativo — Función Pública
+    url: https://www.funcionpublica.gov.co/eva/gestornormativo/normasfp.php
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: weekly
+    trust_role: legal_signal
+    parsing_difficulty: medium
+    enabled: true
+    verify_ssl: false
+    onboarding_status: needs_parser
+    notes: "Thematic norm/concept browser. Good for administrative law, public employment, and state-structure context. Sandbox: extracts 30 norm references (Ley/Decreto/Circular ...), but none carry a publication date in the listing, so 0 are rankable. Needs a parser that pulls the norm year from the title pattern."
+
+  - id: dian_proyectos_normas
+    name: DIAN — Proyectos de Normas y Agenda Reglamentaria
+    url: https://www.dian.gov.co/normatividad/Paginas/Inicio.aspx
+    type: regulatory
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: regulatory_signal
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Early signal for tax, customs, and exchange-control changes. Sandbox: SharePoint landing page — extractor only gets navigation labels (Portal DIAN, Fiscalización, Transparencia). Needs a parser that targets the actual proyectos-de-normas sub-page or its RSS feed if available."
+
+  - id: minhacienda_proyectos_decreto
+    name: MinHacienda — Proyectos de Decreto
+    url: https://www.minhacienda.gov.co/normativa/proyectos-de-decretos/2026
+    type: regulatory
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: regulatory_signal
+    parsing_difficulty: hard
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. Sandbox: 302 redirect to validate.perfdrive.com (Radware bot manager) then back to a 200 challenge page — bot detector did not catch it because the final response was 200. Needs both a stronger bot-block heuristic and a real-browser fetch path."
+
+  - id: cne_encuestas_2026
+    name: CNE — Encuestas Electorales 2026
+    url: https://www.cne.gov.co/encuestas-2026
+    type: polling
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: polling_signal
+    parsing_difficulty: medium
+    enabled: true
+    verify_ssl: false
+    notes: "Official CNE source for electoral poll filings/fichas. TLS verification disabled because the live certificate chain fails in this runtime. Sandbox: extracts dated poll filings (ANALIZAR Y LOMBANA, ATLAS INTEL, etc.); current 0-rankable is just freshness — fresh fichas will pass the 14-day age filter when they land."
+
+  - id: registraduria_calendario_presidencial_2026
+    name: Registraduría — Calendario Electoral Presidencial 2026
+    url: https://wapp.registraduria.gov.co/electoral/2026/presidente-de-la-republica/fechas-importantes.html
+    type: calendar
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: event_driven
+    trust_role: resolution_source
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Canonical election-calendar page for the 2026 president/vice-president election. Links the official Resolution 2580 fixing the first-round electoral calendar for 2026-2030. Sandbox: 200 OK but generic anchor extractor returns 0 items — calendar is rendered as a date table; needs a row-based parser that emits one item per calendar entry."
+
+  - id: moe_observatorio_politico_electoral
+    name: MOE — Observatorio Político Electoral de la Democracia
+    url: https://moe.org.co/politico-electoral-de-la-democracia/
+    type: civic
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: civic_signal
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "High-value civic/electoral risk source. Sandbox: 200 OK but generic anchor extractor returns 0 items — page is a navigation hub linking to sub-platforms (mapas y factores de riesgo, violencia política, reformas, etc.). Needs a sub-URL strategy or a different MOE entry point (e.g., the publications/news endpoint)."
+
+  - id: mincit_zonas_francas
+    name: MinCIT — Zonas Francas (Estadísticas)
+    url: https://zf.mincit.gov.co/estadisticas
+    type: regulatory
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: regulatory_signal
+    parsing_difficulty: medium
+    enabled: true
+    notes: "Official MinCIT zonas francas statistics page. Sandbox: extracts the three core PDFs (Zonas Francas aprobadas, Usuarios calificados Vigentes, Plan de internacionalización) with proper Fecha de actualización dates. Source publishes infrequently, so most days the 14-day age filter drops everything; new updates pass through automatically."
