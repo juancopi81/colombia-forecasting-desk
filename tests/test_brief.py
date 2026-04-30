@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from colombia_forecasting_desk.brief import render_brief
-from colombia_forecasting_desk.models import Cluster, RunSummary, SourceFailure
+from colombia_forecasting_desk.models import (
+    Cluster,
+    RunSummary,
+    SourceFailure,
+    SourceHealth,
+)
 
 
 def _cluster() -> Cluster:
@@ -72,6 +77,51 @@ def test_brief_has_all_sections(make_cleaned) -> None:
     assert "503 Service Unavailable" in out
     assert "low_quality:short_text" in out
     assert "(populated in M2)" in out
+
+
+def test_brief_renders_onboarding_and_status_columns(make_cleaned) -> None:
+    summary = RunSummary(
+        run_date="2026-04-27",
+        started_at="2026-04-27T12:00:00Z",
+        finished_at="2026-04-27T12:00:30Z",
+        sources_checked=2,
+        sources_failed=0,
+        raw_items=10,
+        cleaned_items=10,
+        clusters=1,
+    )
+    health = [
+        SourceHealth(
+            source_id="ok_src",
+            source_name="OK",
+            url="https://example.com/ok",
+            raw_count=10,
+            cleaned_count=10,
+            dated_count=10,
+            rankable_count=10,
+            failure_count=0,
+            onboarding_status="working",
+            status="ok",
+        ),
+        SourceHealth(
+            source_id="needs_src",
+            source_name="Needs",
+            url="https://example.com/needs",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=0,
+            onboarding_status="needs_parser",
+            status="no_raw",
+        ),
+    ]
+    out = render_brief(
+        summary, [], [], [make_cleaned()], topic_keywords=[], source_health=health
+    )
+    assert "Onboarding" in out
+    assert "needs_parser" in out
+    assert "no_raw" in out
 
 
 def test_brief_handles_no_clusters_no_failures() -> None:

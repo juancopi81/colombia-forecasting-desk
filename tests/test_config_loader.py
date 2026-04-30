@@ -64,6 +64,52 @@ def test_missing_required_field_raises(tmp_path: Path) -> None:
         load_metasources(path)
 
 
+def test_onboarding_status_defaults_to_working(tmp_path: Path) -> None:
+    path = _write_yaml(tmp_path, {"metasources": [_entry()]})
+    sources = load_metasources(path)
+    assert sources[0].onboarding_status == "working"
+
+
+def test_onboarding_status_skips_blocked_and_manual_only(tmp_path: Path) -> None:
+    path = _write_yaml(
+        tmp_path,
+        {
+            "metasources": [
+                _entry(id="ok"),
+                _entry(id="blocked", onboarding_status="blocked"),
+                _entry(id="manual", onboarding_status="manual_only"),
+                _entry(id="needs", onboarding_status="needs_parser"),
+            ]
+        },
+    )
+    sources = load_metasources(path)
+    assert sorted(s.id for s in sources) == ["needs", "ok"]
+
+
+def test_onboarding_status_invalid_raises(tmp_path: Path) -> None:
+    path = _write_yaml(
+        tmp_path, {"metasources": [_entry(onboarding_status="bogus")]}
+    )
+    with pytest.raises(ConfigError, match="onboarding_status"):
+        load_metasources(path)
+
+
+def test_onboarding_status_disabled_future_with_enabled_false(tmp_path: Path) -> None:
+    path = _write_yaml(
+        tmp_path,
+        {
+            "metasources": [
+                _entry(
+                    id="future",
+                    enabled=False,
+                    onboarding_status="disabled_future",
+                ),
+            ]
+        },
+    )
+    assert load_metasources(path) == []
+
+
 def test_real_config_loads() -> None:
     repo_config = (
         Path(__file__).resolve().parent.parent / "config" / "metasources.yaml"

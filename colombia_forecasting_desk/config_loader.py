@@ -6,7 +6,11 @@ from typing import Any
 
 import yaml
 
-from .models import Metasource
+from .models import (
+    SKIPPED_ONBOARDING_STATUSES,
+    VALID_ONBOARDING_STATUSES,
+    Metasource,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +57,22 @@ def load_metasources(path: str | Path) -> list[Metasource]:
         if not isinstance(entry, dict):
             raise ConfigError(f"metasource at index {i} must be a mapping")
         _validate(entry, i)
+        onboarding_status = entry.get("onboarding_status", "working")
+        if onboarding_status not in VALID_ONBOARDING_STATUSES:
+            raise ConfigError(
+                f"metasource {entry.get('id', '?')} has invalid onboarding_status="
+                f"{onboarding_status!r}; expected one of "
+                f"{sorted(VALID_ONBOARDING_STATUSES)}"
+            )
         if not entry["enabled"]:
             logger.info("Skipping disabled source: %s", entry["id"])
+            continue
+        if onboarding_status in SKIPPED_ONBOARDING_STATUSES:
+            logger.info(
+                "Skipping %s: onboarding_status=%s",
+                entry["id"],
+                onboarding_status,
+            )
             continue
         sources.append(
             Metasource(
@@ -73,6 +91,7 @@ def load_metasources(path: str | Path) -> list[Metasource]:
                 notes=entry.get("notes", ""),
                 max_items=entry.get("max_items"),
                 verify_ssl=bool(entry.get("verify_ssl", True)),
+                onboarding_status=onboarding_status,
             )
         )
     return sources

@@ -20,13 +20,30 @@ from .models import Metasource, RawItem, SourceFailure
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "colombia-forecasting-desk/0.1"
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36 "
+    "colombia-forecasting-desk/0.1"
+)
+DEFAULT_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "es-CO,es;q=0.9,en;q=0.8",
+}
 HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 MAX_RETRIES = 2
 BACKOFF_SECONDS = 1.0
 ANCHORS_PER_SOURCE = 30
 MIN_ANCHOR_TEXT = 10
 DATE_CONTEXT_CHARS = 500
+BOT_BLOCK_MARKERS = (
+    "Radware Bot Manager",
+    "validate.perfdrive.com",
+    "Access denied",
+    "Bot Manager Block",
+)
+SPA_SHELL_MARKERS = ("<app-root></app-root>", "<app-root>")
 
 NAV_TEXT = {
     "inicio", "contacto", "menu", "menú", "buscar", "ver mas", "ver más",
@@ -430,9 +447,35 @@ class RssParseError(Exception):
     pass
 
 
+class BotBlockError(Exception):
+    """Raised when a fetched response looks like a bot manager block page."""
+
+
+class DynamicShellError(Exception):
+    """Raised when a fetched HTML response is just a JS app shell with no content."""
+
+
+def _detect_bot_block(text: str) -> str | None:
+    head = text[:2048]
+    for marker in BOT_BLOCK_MARKERS:
+        if marker.lower() in head.lower():
+            return marker
+    return None
+
+
+def _detect_spa_shell(text: str) -> bool:
+    if any(marker in text for marker in SPA_SHELL_MARKERS):
+        # The shell itself is small; large pages with <app-root> are probably real.
+        return len(text) < 20_000
+    return False
+
+
 def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
     response = _http_get(client, source.url)
+    marker = _detect_bot_block(response.text)
+    if marker:
+        raise BotBlockError(f"bot block detected: {marker}")
     parsed = feedparser.parse(response.content)
     items = _parse_rss_entries(parsed, source, fetched_at)
     if items:
@@ -462,6 +505,14 @@ def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
 def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
     response = _http_get(client, source.url)
+    marker = _detect_bot_block(response.text)
+    if marker:
+        raise BotBlockError(f"bot block detected: {marker}")
+    if _detect_spa_shell(response.text):
+        raise DynamicShellError(
+            "page is a JS app shell with no static content; "
+            "needs a headless renderer or a different URL"
+        )
     if source.id == "dane_comunicados_prensa":
         items = _extract_dane_comunicados(
             response.text, str(response.url), source, fetched_at
@@ -513,7 +564,7 @@ def fetch_all(
         client = httpx.Client(
             timeout=HTTP_TIMEOUT,
             follow_redirects=True,
-            headers={"User-Agent": USER_AGENT},
+            headers=DEFAULT_HEADERS,
         )
 
     try:
@@ -525,7 +576,7 @@ def fetch_all(
                     timeout=HTTP_TIMEOUT,
                     follow_redirects=True,
                     verify=False,
-                    headers={"User-Agent": USER_AGENT},
+                    headers=DEFAULT_HEADERS,
                 )
                 source_owns_client = True
             try:

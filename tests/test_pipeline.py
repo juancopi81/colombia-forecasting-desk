@@ -107,3 +107,65 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
 def test_run_rejects_invalid_date(tmp_path) -> None:
     with pytest.raises(ValueError, match="--date must use YYYY-MM-DD format"):
         pipeline.run(date="2026/04/27", runs_root=tmp_path)
+
+
+def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
+    source = _source()
+    items = [
+        _raw(id="ok", url="https://example.com/ok"),
+    ]
+
+    captured: dict = {}
+
+    def fake_fetch_all(sources):
+        captured["sources"] = sources
+        return items, []
+
+    monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
+    monkeypatch.setattr(pipeline, "fetch_all", fake_fetch_all)
+
+    result = pipeline.run_single_source(
+        source_id="test_source",
+        runs_root=tmp_path,
+        date="2026-04-27",
+    )
+
+    assert [s.id for s in captured["sources"]] == ["test_source"]
+    assert result.run_dir == tmp_path / "sandbox" / "test_source"
+    assert (result.run_dir / "raw_items.json").exists()
+    assert (result.run_dir / "source_health.json").exists()
+    assert result.source_health[0].source_id == "test_source"
+    assert result.source_health[0].rankable_count == 1
+
+
+def test_run_single_source_unknown_id_raises(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(pipeline, "load_metasources", lambda _: [_source()])
+    with pytest.raises(ValueError, match="not found"):
+        pipeline.run_single_source(source_id="missing", runs_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "raw,rankable,failures,expected",
+    [
+        (5, 3, 0, "ok"),
+        (5, 0, 0, "no_rankable"),
+        (0, 0, 0, "no_raw"),
+        (3, 1, 1, "failed"),
+        (0, 0, 1, "failed"),
+    ],
+)
+def test_derive_status(raw, rankable, failures, expected) -> None:
+    assert pipeline._derive_status(raw, rankable, failures) == expected
+
+
+def test_source_health_propagates_onboarding_status(monkeypatch, tmp_path) -> None:
+    source = _source()
+    object.__setattr__(source, "onboarding_status", "needs_parser")
+    monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
+    monkeypatch.setattr(pipeline, "fetch_all", lambda _: ([], []))
+
+    result = pipeline.run(date="2026-04-27", runs_root=tmp_path)
+
+    health = result.source_health[0]
+    assert health.onboarding_status == "needs_parser"
+    assert health.status == "no_raw"
