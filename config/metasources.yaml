@@ -235,4 +235,96 @@ metasources:
     parsing_difficulty: hard
     enabled: false
     onboarding_status: disabled_future
-    notes: "Official normative source. Valuable but likely needs source-specific parser work."
+    notes: "Official normative source. Valuable but likely needs source-specific parser work. Superseded for general discovery by suin_juriscol entry."
+
+  - id: diario_oficial
+    name: Diario Oficial — Imprenta Nacional
+    url: https://svrpubindc.imprenta.gov.co/diario/
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: resolution_source
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Final publication of national norms (laws, decrees, administrative acts). Treat as resolution source for 'is this in force?' questions. Sandbox: 200 OK but generic anchor extractor returns 0 items — likely a JSF/JSP listing that needs source-specific parsing of the diario index."
+
+  - id: gacetas_congreso
+    name: Gacetas del Congreso — Imprenta Nacional
+    url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: hard
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Best source for legislative bills, ponencias, and text changes before final approval. Sandbox: 200 OK but generic extractor returns 0 items — page is a JSF SPA (.xhtml) that likely renders the gaceta list client-side via ViewState postbacks. Needs a JSF-aware extractor."
+
+  - id: suin_juriscol
+    name: SUIN-Juriscol
+    url: https://www.suin-juriscol.gov.co/index.html
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: legal_signal
+    parsing_difficulty: medium
+    enabled: true
+    verify_ssl: false
+    onboarding_status: needs_parser
+    notes: "Legal-discovery layer: laws, decrees, jurisprudence, and novedades normativas. TLS verification disabled because the live certificate chain fails in this runtime. Sandbox: 200 OK but the index page is a portal landing — generic extractor finds 0 dated anchors. Try the novedades or normatividad sub-page in M1.4."
+
+  - id: gestor_normativo_fp
+    name: Gestor Normativo — Función Pública
+    url: https://www.funcionpublica.gov.co/eva/gestornormativo/normasfp.php
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: medium
+    update_frequency: weekly
+    trust_role: legal_signal
+    parsing_difficulty: medium
+    enabled: true
+    verify_ssl: false
+    onboarding_status: needs_parser
+    notes: "Thematic norm/concept browser. Good for administrative law, public employment, and state-structure context. Sandbox: extracts 30 norm references (Ley/Decreto/Circular ...), but none carry a publication date in the listing, so 0 are rankable. Needs a parser that pulls the norm year from the title pattern."
+
+  - id: dian_proyectos_normas
+    name: DIAN — Proyectos de Normas y Agenda Reglamentaria
+    url: https://www.dian.gov.co/normatividad/Paginas/Inicio.aspx
+    type: regulatory
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: regulatory_signal
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Early signal for tax, customs, and exchange-control changes. Sandbox: SharePoint landing page — extractor only gets navigation labels (Portal DIAN, Fiscalización, Transparencia). Needs a parser that targets the actual proyectos-de-normas sub-page or its RSS feed if available."
+
+  - id: minhacienda_proyectos_decreto
+    name: MinHacienda — Proyectos de Decreto
+    url: https://www.minhacienda.gov.co/normativa/proyectos-de-decretos/2026
+    type: regulatory
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: regulatory_signal
+    parsing_difficulty: hard
+    enabled: true
+    onboarding_status: needs_parser
+    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. Sandbox: 302 redirect to validate.perfdrive.com (Radware bot manager) then back to a 200 challenge page — bot detector did not catch it because the final response was 200. Needs both a stronger bot-block heuristic and a real-browser fetch path."
