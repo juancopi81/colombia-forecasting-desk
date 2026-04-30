@@ -13,6 +13,7 @@ _TRUST_ROLE_TO_SIGNAL = {
     "polling_signal": "poll",
     "agenda_signal": "calendar_event",
     "resolution_source": "official_update",
+    "civic_signal": "civic_event",
 }
 
 SHORT_TEXT_THRESHOLD = 40
