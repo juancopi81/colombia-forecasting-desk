@@ -214,6 +214,11 @@ The target source mix before M2 is rankable output from multiple distinct
 sources, including at least two official sources and at least one
 legal/regulatory or agenda source.
 
+M1.2 adds onboarding tooling (status field, sandbox runner, fixture-based
+parser tests) and surfaces parser problems through the source-health table
+instead of letting them fail silently. See
+[ADDING_METASOURCE.md](ADDING_METASOURCE.md) for the workflow.
+
 ## Source Health
 
 Each run writes:

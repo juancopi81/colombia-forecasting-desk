@@ -91,12 +91,13 @@ def _render_source_health(source_health: list[SourceHealth]) -> str:
     if not source_health:
         return "_No source health report generated._"
     lines = [
-        "| Source | Raw | Dated | Rankable | Failures |",
-        "| --- | ---: | ---: | ---: | ---: |",
+        "| Source | Onboarding | Status | Raw | Dated | Rankable | Failures |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: |",
     ]
     for health in source_health:
         lines.append(
-            f"| `{health.source_id}` | {health.raw_count} | "
+            f"| `{health.source_id}` | {health.onboarding_status} | "
+            f"{health.status} | {health.raw_count} | "
             f"{health.dated_count} | {health.rankable_count} | "
             f"{health.failure_count} |"
         )

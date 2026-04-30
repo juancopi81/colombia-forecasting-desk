@@ -2,6 +2,7 @@
 
 Usage:
     uv run python scripts/scan_metasources.py [--date YYYY-MM-DD] [--config PATH]
+    uv run python scripts/scan_metasources.py --source <source_id>
 """
 from __future__ import annotations
 
@@ -18,7 +19,10 @@ from colombia_forecasting_desk.pipeline import (  # noqa: E402
     DEFAULT_CONFIG_PATH,
     RUNS_DIR,
     run,
+    run_single_source,
 )
+
+SANDBOX_TITLE_PREVIEW = 5
 
 
 def _print_source_report(result) -> None:
@@ -31,6 +35,31 @@ def _print_source_report(result) -> None:
             f"{health.source_id} | {health.raw_count} | {health.dated_count} | "
             f"{health.rankable_count} | {health.failure_count}"
         )
+
+
+def _print_sandbox_report(result) -> None:
+    health = result.source_health[0] if result.source_health else None
+    if health is None:
+        print("(no source health record)")
+        return
+    print("")
+    print(f"Sandbox: {health.source_id}")
+    print(
+        f"  raw={health.raw_count} dated={health.dated_count} "
+        f"cleaned={health.cleaned_count} rankable={health.rankable_count} "
+        f"failures={health.failure_count}"
+    )
+    if health.failures:
+        print("  failure messages:")
+        for msg in health.failures:
+            print(f"    - {msg}")
+    preview = result.cleaned_items[:SANDBOX_TITLE_PREVIEW]
+    if preview:
+        print(f"  first {len(preview)} cleaned items:")
+        for item in preview:
+            published = item.published_at or "(no date)"
+            title = item.title or "(no title)"
+            print(f"    - [{published}] {title}")
 
 
 def main() -> int:
@@ -55,10 +84,30 @@ def main() -> int:
         action="store_true",
         help="Print per-source raw, dated, rankable, and failure counts.",
     )
+    parser.add_argument(
+        "--source",
+        help=(
+            "Run only one source (sandbox mode). Writes artifacts to "
+            "runs/sandbox/<source_id>/ and prints a per-source report."
+        ),
+        default=None,
+    )
     args = parser.parse_args()
 
     try:
-        result = run(date=args.date, config_path=args.config, runs_root=args.runs_dir)
+        if args.source:
+            result = run_single_source(
+                source_id=args.source,
+                config_path=args.config,
+                runs_root=args.runs_dir,
+                date=args.date,
+            )
+        else:
+            result = run(
+                date=args.date,
+                config_path=args.config,
+                runs_root=args.runs_dir,
+            )
     except Exception as exc:
         logging.basicConfig(level=logging.ERROR)
         logging.error("Pipeline failed: %s: %s", exc.__class__.__name__, exc)
@@ -71,7 +120,9 @@ def main() -> int:
         f"clusters={len(result.clusters)} "
         f"failures={len(result.failures)}"
     )
-    if args.source_report:
+    if args.source:
+        _print_sandbox_report(result)
+    elif args.source_report:
         _print_source_report(result)
     return 0
 

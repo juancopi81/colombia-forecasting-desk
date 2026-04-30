@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+VALID_ONBOARDING_STATUSES = frozenset(
+    {"working", "needs_parser", "blocked", "disabled_future", "manual_only"}
+)
+SKIPPED_ONBOARDING_STATUSES = frozenset({"blocked", "manual_only"})
+
+
 @dataclass(frozen=True, slots=True)
 class Metasource:
     id: str
@@ -21,6 +27,7 @@ class Metasource:
     notes: str = ""
     max_items: int | None = None
     verify_ssl: bool = True
+    onboarding_status: str = "working"
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +109,8 @@ class SourceHealth:
     rankable_count: int
     failure_count: int
     failures: list[str] = field(default_factory=list)
+    onboarding_status: str = "working"
+    status: str = "ok"
 
 
 @dataclass(frozen=True, slots=True)

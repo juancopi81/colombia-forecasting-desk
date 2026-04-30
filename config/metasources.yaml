@@ -26,7 +26,7 @@ metasources:
     trust_role: official_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "BanRep labels this RSS, but the live endpoint behaves like an HTML listing; parse as dated HTML to avoid RSS parse failures."
+    notes: "BanRep labels this RSS, but the live endpoint behaves like an HTML listing; parse as dated HTML. M1.1 silently received Radware bot-block pages with the simple UA — fixed in M1.2 by browser-like default headers + a bot-block detector. Future-dated blog posts on this page get filtered by the age window."
 
   - id: banrep_junta_comunicados
     name: Banco de la República — Comunicados Junta Directiva
@@ -40,7 +40,7 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    notes: "Primary source for monetary policy decisions."
+    notes: "Primary source for monetary policy decisions. With browser-like headers (M1.2) the page serves dated minutas + Junta Directiva announcements; without them BanRep returns a 1.3KB Radware block page."
 
   - id: dane_rss
     name: DANE — RSS Noticias
@@ -54,6 +54,7 @@ metasources:
     trust_role: official_signal
     parsing_difficulty: easy
     enabled: false
+    onboarding_status: blocked
     notes: "Official DANE subscription page still documents this RSS URL, but the live endpoint returns 404 as of 2026-04-28. Use dane_comunicados_prensa until a working feed is found."
 
   - id: dane_comunicados_prensa
@@ -83,7 +84,8 @@ metasources:
     trust_role: agenda_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Useful for legislative agenda and reform tracking."
+    onboarding_status: needs_parser
+    notes: "Useful for legislative agenda and reform tracking. The /agenda-consolidada/ URL is a navigation hub (links to Excel/PDF agendas on sub-pages) with no inline dates. Needs a sub-URL strategy or a different agenda endpoint."
 
   - id: senado_agenda_legislativa
     name: Senado — Agenda Legislativa Actual
@@ -111,7 +113,8 @@ metasources:
     trust_role: official_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "High value during election cycles."
+    onboarding_status: needs_parser
+    notes: "High value during election cycles. URL is gated by a Cloudflare interactive challenge (returns 403 + 'Just a moment...' page). Browser-like headers don't help; needs a real browser or a JS-bypass strategy."
 
   - id: funcion_publica_rss
     name: Función Pública — Noticias RSS
@@ -141,7 +144,8 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    notes: "High-impact constitutional rulings. Source-specific parser extracts comunicado links and dates where present."
+    onboarding_status: needs_parser
+    notes: "High-impact constitutional rulings. /comunicados/ returns a 1.6KB search-only fragment with no embedded list; the actual data is loaded client-side via /relatoria/comunicados.aspx. Needs a query-string parser or a headless renderer."
 
   - id: presidencia_noticias
     name: Presidencia — Noticias
@@ -155,7 +159,8 @@ metasources:
     trust_role: official_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Executive branch announcements. Read as official signal, not neutral analysis."
+    onboarding_status: needs_parser
+    notes: "Executive branch announcements. Read as official signal, not neutral analysis. Currently returns 0 raw items via generic anchor extractor."
 
   - id: centro_nacional_consultoria
     name: Centro Nacional de Consultoría
@@ -169,7 +174,8 @@ metasources:
     trust_role: polling_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Polling signal. Extract methodology carefully when available."
+    onboarding_status: needs_parser
+    notes: "Polling signal. Extract methodology carefully when available. Currently returns 0 raw items via generic anchor extractor."
 
   - id: portafolio_rss
     name: Portafolio — Economía RSS
@@ -198,6 +204,7 @@ metasources:
     trust_role: civic_signal
     parsing_difficulty: medium
     enabled: false
+    onboarding_status: disabled_future
     notes: "Public procurement signal. Enable after API fetcher supports Socrata queries and limits."
 
   - id: proyectos_ley_datos_gov
@@ -212,6 +219,7 @@ metasources:
     trust_role: agenda_signal
     parsing_difficulty: medium
     enabled: false
+    onboarding_status: disabled_future
     notes: "Legislative project metadata. Useful for question discovery once API sources are supported."
 
   - id: suin_juriscol_normas
@@ -226,4 +234,5 @@ metasources:
     trust_role: legal_signal
     parsing_difficulty: hard
     enabled: false
+    onboarding_status: disabled_future
     notes: "Official normative source. Valuable but likely needs source-specific parser work."
