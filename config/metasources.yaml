@@ -145,7 +145,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     onboarding_status: needs_parser
-    notes: "High-impact constitutional rulings. /comunicados/ returns a 1.6KB search-only fragment with no embedded list; the actual data is loaded client-side via /relatoria/comunicados.aspx. Needs a query-string parser or a headless renderer."
+    notes: "High-impact constitutional rulings. M1.4 investigation: /comunicados/ returns a 1.6KB search-only fragment, and the supposed alternative /relatoria/comunicados.aspx is the same Angular SPA shell (~8KB, <app-root>) with no static data. Both URLs require a headless renderer; postpone until we have one."
 
   - id: presidencia_noticias
     name: Presidencia — Noticias
@@ -249,8 +249,7 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    onboarding_status: needs_parser
-    notes: "Final publication of national norms (laws, decrees, administrative acts). Treat as resolution source for 'is this in force?' questions. Sandbox: 200 OK but generic anchor extractor returns 0 items — likely a JSF/JSP listing that needs source-specific parsing of the diario index."
+    notes: "Final publication of national norms (laws, decrees, administrative acts). M1.4 added a PrimeFaces-table parser that extracts the latest 10 editions per fetch (Número | Tipo | Fecha). The download buttons are JSF postbacks, so per-edition URLs are synthesized as ?edicion=NNN.NNN; rows still dedupe distinctly."
 
   - id: gacetas_congreso
     name: Gacetas del Congreso — Imprenta Nacional
@@ -262,10 +261,9 @@ metasources:
     priority: high
     update_frequency: daily
     trust_role: agenda_signal
-    parsing_difficulty: hard
+    parsing_difficulty: medium
     enabled: true
-    onboarding_status: needs_parser
-    notes: "Best source for legislative bills, ponencias, and text changes before final approval. Sandbox: 200 OK but generic extractor returns 0 items — page is a JSF SPA (.xhtml) that likely renders the gaceta list client-side via ViewState postbacks. Needs a JSF-aware extractor."
+    notes: "Best source for legislative bills, ponencias, and text changes before final approval. M1.4 added the shared Imprenta Nacional PrimeFaces-table parser; extracts the latest 10 gacetas per fetch (Número | Entidad | Fecha). Per-gaceta URLs are synthesized as ?gaceta=NNN."
 
   - id: suin_juriscol
     name: SUIN-Juriscol
@@ -297,7 +295,7 @@ metasources:
     enabled: true
     verify_ssl: false
     onboarding_status: needs_parser
-    notes: "Thematic norm/concept browser. Good for administrative law, public employment, and state-structure context. Sandbox: extracts 30 norm references (Ley/Decreto/Circular ...), but none carry a publication date in the listing, so 0 are rankable. Needs a parser that pulls the norm year from the title pattern."
+    notes: "Thematic norm/concept browser. M1.4 investigation: the page lists ~107 norms with year embedded in the title (Ley 1474 de 2011 ...), parseable via regex, but the listed norms are mostly 1990s-2010s reference standards rather than fresh additions — using the year as published_at would mean almost everything fails the 14-day age window. Worth more value as a context source than a daily-signal source; revisit when we have an evidence-pack flow that reads context layers on demand."
 
   - id: dian_proyectos_normas
     name: DIAN — Proyectos de Normas y Agenda Reglamentaria
@@ -312,7 +310,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     onboarding_status: needs_parser
-    notes: "Early signal for tax, customs, and exchange-control changes. Sandbox: SharePoint landing page — extractor only gets navigation labels (Portal DIAN, Fiscalización, Transparencia). Needs a parser that targets the actual proyectos-de-normas sub-page or its RSS feed if available."
+    notes: "Early signal for tax, customs, and exchange-control changes. M1.4 investigation: the SharePoint landing exposes a single sub-link to /Paginas/ProyectosNormas.aspx, but that sub-page itself is also dynamic (51 anchors, 0 dated items, no static project list). Both pages require a headless browser or a different DIAN endpoint (e.g., the agenda-reglamentaria RSS if one exists)."
 
   - id: minhacienda_proyectos_decreto
     name: MinHacienda — Proyectos de Decreto
@@ -357,7 +355,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     onboarding_status: needs_parser
-    notes: "Canonical election-calendar page for the 2026 president/vice-president election. Links the official Resolution 2580 fixing the first-round electoral calendar for 2026-2030. Sandbox: 200 OK but generic anchor extractor returns 0 items — calendar is rendered as a date table; needs a row-based parser that emits one item per calendar entry."
+    notes: "Canonical election-calendar page for the 2026 president/vice-president election. M1.4 investigation: the page has no <table> elements — the calendar lives in a JS-rendered <div id='timelineContainer'> that is empty in the static HTML. The only static item is a single PDF link (Resolución 2580, dated 2025-03-05, already past). Needs a headless browser to extract the actual calendar dates, or a fetch of the underlying JSON if the timeline JS exposes one."
 
   - id: moe_observatorio_politico_electoral
     name: MOE — Observatorio Político Electoral de la Democracia

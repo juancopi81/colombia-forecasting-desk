@@ -404,6 +404,79 @@ def _extract_dane_comunicados(
     )
 
 
+_DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+
+
+def _extract_imprenta_jsf_table(
+    html: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+    edition_label: str,
+    query_param: str,
+) -> list[RawItem]:
+    """Parse the PrimeFaces datatable used by Imprenta Nacional sites.
+
+    Diario Oficial and Gacetas del Congreso both render their listings as a
+    JSF/PrimeFaces datatable: each data row has Number | Type-or-Entity | Date
+    (DD/MM/YYYY) | … | JSF download button. The download buttons trigger
+    postbacks rather than direct links, so we synthesize a stable query-string
+    URL per edition (e.g. `?edicion=53.475`) so each row dedupes distinctly.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    for tr in soup.find_all("tr"):
+        cells = [
+            normalize_whitespace(td.get_text(separator=" ", strip=True))
+            for td in tr.find_all("td")
+        ]
+        date_match = None
+        date_idx = None
+        for i, cell in enumerate(cells):
+            match = _DATE_DDMMYYYY_RE.match(cell)
+            if match:
+                date_match = match
+                date_idx = i
+                break
+        if date_match is None or date_idx is None or date_idx == 0:
+            continue
+        # Real data rows have date_idx == 2 (Diario) or == 2 (Gacetas), with a
+        # short number in cells[0]. JSF wrapper rows concatenate the whole
+        # datatable into a single first cell — skip those.
+        if date_idx > 3:
+            continue
+        number = cells[0]
+        if not number or len(number) > 20:
+            continue
+        kind = cells[1] if date_idx >= 2 else ""
+        day, month, year = (int(x) for x in date_match.groups())
+        published_at = _date_to_iso(year, month, day)
+        if not published_at:
+            continue
+        title = f"{edition_label} {number}" + (f" — {kind}" if kind else "")
+        synthetic_url = f"{base_url.rstrip('/')}?{query_param}={number}"
+        canon = canonicalize_url(synthetic_url)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        items.append(
+            RawItem(
+                id=_make_id(source.id, synthetic_url, title),
+                source_id=source.id,
+                source_name=source.name,
+                source_type=source.type,
+                url=synthetic_url,
+                title=title,
+                fetched_at=fetched_at,
+                published_at=published_at,
+                raw_text=" | ".join(cells),
+                metadata={"extraction": "imprenta_nacional_jsf_table"},
+            )
+        )
+    return items
+
+
 def _extract_corte_comunicados(
     html: str,
     base_url: str,
@@ -522,6 +595,28 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     if source.id == "corte_constitucional_comunicados":
         items = _extract_corte_comunicados(
             response.text, str(response.url), source, fetched_at
+        )
+        if items:
+            return items
+    if source.id == "diario_oficial":
+        items = _extract_imprenta_jsf_table(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+            edition_label="Diario Oficial",
+            query_param="edicion",
+        )
+        if items:
+            return items
+    if source.id == "gacetas_congreso":
+        items = _extract_imprenta_jsf_table(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+            edition_label="Gaceta del Congreso",
+            query_param="gaceta",
         )
         if items:
             return items
