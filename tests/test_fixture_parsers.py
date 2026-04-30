@@ -22,6 +22,7 @@ from colombia_forecasting_desk.fetchers import (
     _extract_anchors,
     _extract_corte_comunicados,
     _extract_dated_anchors,
+    _extract_imprenta_jsf_table,
 )
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -133,6 +134,63 @@ def test_registraduria_fixture_is_cloudflare_challenge() -> None:
     # because Cloudflare uses generic copy. Acceptable: the live fetcher gets
     # a 403 status code which surfaces as an explicit failure already.
     assert _detect_bot_block(html) is None
+
+
+def test_diario_oficial_jsf_table_yields_dated_editions(sample_source) -> None:
+    """`svrpubindc.imprenta.gov.co/diario/` renders the latest editions in a
+    PrimeFaces datatable. Each data row is `Número | Tipo | DD/MM/YYYY |
+    download-button`. The download button is a JSF postback, so we synthesize
+    `?edicion=NNNNN` URLs so dedupe stays per-edition.
+    """
+    source = replace(
+        sample_source,
+        id="diario_oficial",
+        type="legal",
+        url="https://svrpubindc.imprenta.gov.co/diario/",
+    )
+    html = _load("diario_oficial")
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/diario/",
+        source,
+        "2026-04-29T00:00:00Z",
+        edition_label="Diario Oficial",
+        query_param="edicion",
+    )
+    assert len(items) >= 5
+    assert all(it.published_at for it in items)
+    assert all(it.title.startswith("Diario Oficial ") for it in items)
+    assert all("?edicion=" in it.url for it in items)
+    # Different editions should produce different URLs
+    assert len({it.url for it in items}) == len(items)
+
+
+def test_gacetas_congreso_jsf_table_yields_dated_gacetas(sample_source) -> None:
+    """`svrpubindc.imprenta.gov.co/gacetas/index.xhtml` shares the Imprenta
+    Nacional datatable layout but with five columns (Número | Entidad | Fecha
+    | Documento | Acciones). Same parser handles both.
+    """
+    source = replace(
+        sample_source,
+        id="gacetas_congreso",
+        type="legal",
+        url="https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+    )
+    html = _load("gacetas_congreso")
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-04-29T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+    assert len(items) >= 5
+    assert all(it.published_at for it in items)
+    assert all(it.title.startswith("Gaceta del Congreso ") for it in items)
+    titles = " ".join(it.title for it in items)
+    assert "Senado" in titles or "Cámara" in titles
+    assert all("?gaceta=" in it.url for it in items)
 
 
 def test_detect_bot_block_flags_radware_marker() -> None:
