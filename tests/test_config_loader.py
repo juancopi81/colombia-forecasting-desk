@@ -117,4 +117,4 @@ def test_real_config_loads() -> None:
     sources = load_metasources(repo_config)
     assert len(sources) >= 5
     assert all(s.enabled for s in sources)
-    assert {s.fetch_method for s in sources} <= {"rss", "html"}
+    assert {s.fetch_method for s in sources} <= {"rss", "html", "api"}
