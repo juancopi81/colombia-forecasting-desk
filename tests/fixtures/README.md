@@ -24,3 +24,18 @@ PY
 
 Some fixtures intentionally capture failure modes (bot-block pages, SPA shells)
 so the detector tests have something to assert against. Do not delete them.
+
+## Synthetic fixtures
+
+A small number of fixtures could not be captured live (the runtime that created
+them could not reach the host). These files are built from documented page
+structure and clearly marked with a comment at the top of the file.
+
+| source_id | file | reason |
+| --- | --- | --- |
+| `dane_icoced` | `dane_icoced/2026-05-01.html` | `dane.gov.co` blocked by host allowlist |
+
+Synthetic fixtures still provide useful offline test coverage: the ICOCED
+parser keys off the Excel filename pattern (`anex-ICOCED-{mes}{anio}.xlsx`),
+not on live HTML structure, so the test exercises the real parser logic.
+Replace with a live capture when convenient using the refresh script above.
