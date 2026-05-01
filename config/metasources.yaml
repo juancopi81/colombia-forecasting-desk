@@ -446,3 +446,19 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     notes: "Official MinCIT zonas francas statistics page. Sandbox: extracts the three core PDFs (Zonas Francas aprobadas, Usuarios calificados Vigentes, Plan de internacionalización) with proper Fecha de actualización dates. Source publishes infrequently, so most days the 14-day age filter drops everything; new updates pass through automatically."
+
+  - id: dane_icoced
+    name: DANE — Índice de Costos de la Construcción de Edificaciones (ICOCED)
+    url: https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-costos-de-la-construccion-de-edificaciones-icoced/indice-de-costos-de-la-construccion-de-edificaciones-icoced-historicos
+    type: economic_indicator
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: monthly
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: needs_parser
+    max_items: 1
+    notes: "Monthly construction cost index with Excel data annexes. URL pattern: /files/operaciones/ICOCED/anex-ICOCED-{month}{year}.xlsx. Tracks residential/non-residential costs, input-level data (cement, steel, labor). High signal for infrastructure delay/cost overrun forecasts. Latest: March 2026 (0.75% monthly variation)."
