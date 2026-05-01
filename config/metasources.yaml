@@ -459,6 +459,5 @@ metasources:
     trust_role: official_signal
     parsing_difficulty: medium
     enabled: true
-    onboarding_status: needs_parser
     max_items: 1
-    notes: "Monthly construction cost index with Excel data annexes. URL pattern: /files/operaciones/ICOCED/anex-ICOCED-{month}{year}.xlsx. Tracks residential/non-residential costs, input-level data (cement, steel, labor). High signal for infrastructure delay/cost overrun forecasts. Latest: March 2026 (0.75% monthly variation)."
+    notes: "Monthly construction cost index. The historicos page lists per-month Excel annexes named anex-ICOCED-{mes}{anio}.xlsx; _extract_dane_icoced parses the date out of the filename and returns annexes newest-first, so max_items=1 yields the latest. Follow-up: the parser currently surfaces 'a new annex was published' as a calendar-style signal — it does not download the .xlsx or extract the headline numbers (monthly variation, residential vs non-residential, input-level costs). Adding openpyxl-based content extraction is the obvious next step once we know which fields the brief actually uses."

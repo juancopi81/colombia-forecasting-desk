@@ -405,6 +405,85 @@ def _extract_dane_comunicados(
     )
 
 
+_MONTH_ABBR_ES = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "sep": 9, "set": 9, "oct": 10, "nov": 11, "dic": 12,
+}
+_MONTH_NAME_ES = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+    7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre",
+    12: "diciembre",
+}
+_ICOCED_FILENAME_RE = re.compile(
+    r"/anex-ICOCED-([a-z]{3})(\d{4})\.xlsx", re.IGNORECASE
+)
+
+
+def _extract_dane_icoced(
+    html: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    """Extract monthly Excel annexes from the DANE ICOCED historicos page.
+
+    Each annex follows /files/operaciones/ICOCED/anex-ICOCED-{mes}{anio}.xlsx
+    where {mes} is the 3-letter Spanish month (ene/feb/.../dic) and {anio}
+    is a 4-digit year. We parse the date from the filename rather than the
+    surrounding page text — the filename is the canonical, machine-stable
+    publication marker, while the surrounding HTML drifts over time.
+
+    Items are returned newest-first so that source.max_items=1 in
+    metasources.yaml picks the latest annex deterministically.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        match = _ICOCED_FILENAME_RE.search(href)
+        if not match:
+            continue
+        month = _MONTH_ABBR_ES.get(match.group(1).lower())
+        if month is None:
+            continue
+        try:
+            year = int(match.group(2))
+        except ValueError:
+            continue
+        published_at = _date_to_iso(year, month, 1)
+        if not published_at:
+            continue
+        resolved = urljoin(base_url, href)
+        canon = canonicalize_url(resolved)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        title = f"DANE ICOCED — Anexo {_MONTH_NAME_ES[month]} {year}"
+        anchor_text = normalize_whitespace(a.get_text(separator=" ", strip=True))
+        items.append(
+            RawItem(
+                id=_make_id(source.id, resolved, title),
+                source_id=source.id,
+                source_name=source.name,
+                source_type=source.type,
+                url=resolved,
+                title=title,
+                fetched_at=fetched_at,
+                published_at=published_at,
+                raw_text=anchor_text or title,
+                metadata={
+                    "extraction": "dane_icoced_filename",
+                    "annex_filename": href.rsplit("/", 1)[-1],
+                },
+            )
+        )
+    items.sort(key=lambda it: it.published_at or "", reverse=True)
+    return items
+
+
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 
 
@@ -767,6 +846,12 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
         )
     if source.id == "dane_comunicados_prensa":
         items = _extract_dane_comunicados(
+            response.text, str(response.url), source, fetched_at
+        )
+        if items:
+            return items
+    if source.id == "dane_icoced":
+        items = _extract_dane_icoced(
             response.text, str(response.url), source, fetched_at
         )
         if items:
