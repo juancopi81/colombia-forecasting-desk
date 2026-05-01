@@ -203,9 +203,70 @@ metasources:
     update_frequency: daily
     trust_role: civic_signal
     parsing_difficulty: medium
+    enabled: true
+    max_items: 30
+    notes: "Public procurement signal — newly published procurement procedures (RFPs, tenders). M1.5 enabled via Socrata adapter (date=fecha_de_publicacion_del). URLs synthesized as ?id=<id_del_proceso> since the dataset's urlproceso field often points at a generic SECOP login. Refresh cadence note: the datos.gov.co mirror typically lags ~1–3 weeks behind the live SECOP platform, so on quiet days source-health may show no_raw — that is the dataset, not our parser."
+
+  - id: secop_ii_contratos
+    name: datos.gov.co — SECOP II Contratos Electrónicos
+    url: https://www.datos.gov.co/resource/jbjy-vk9h.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: daily
+    trust_role: civic_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 30
+    notes: "Signed/awarded contracts on SECOP II — major financial commitments by public entities. M1.5 added via Socrata adapter (date=fecha_de_firma). This is the freshest SECOP view in the M1.5 sweep — sandbox saw fecha_de_firma values within hours of fetch."
+
+  - id: secop_i_procesos
+    name: datos.gov.co — SECOP I Procesos de Compra Pública
+    url: https://www.datos.gov.co/resource/f789-7hwg.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: daily
+    trust_role: civic_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 30
+    notes: "Legacy SECOP I procurement procedures — many territorial entities still publish here. M1.5 added via Socrata adapter (date=fecha_de_cargue_en_el_secop). Sandbox: 30 raw → 30 cleaned with cargue dates within 2 days of fetch."
+
+  - id: secop_ii_adiciones
+    name: datos.gov.co — SECOP II Adiciones de Contrato
+    url: https://www.datos.gov.co/resource/cb9c-h8sn.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: weekly
+    trust_role: civic_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 30
+    notes: "Contract amendments/extensions on SECOP II — cost overruns and term extensions are a meaningful political/civic signal. M1.5 added via Socrata adapter (date=fecharegistro). Same 1–3 week ETL lag as secop_ii_procesos; expect intermittent no_raw days."
+
+  - id: secop_multas_sanciones
+    name: datos.gov.co — Multas y Sanciones SECOP I
+    url: https://www.datos.gov.co/resource/4n4q-k399.json
+    type: dataset
+    country_relevance: high
+    access_status: api_public
+    fetch_method: api
+    priority: medium
+    update_frequency: weekly
+    trust_role: civic_signal
+    parsing_difficulty: medium
     enabled: false
     onboarding_status: disabled_future
-    notes: "Public procurement signal. Enable after API fetcher supports Socrata queries and limits."
+    max_items: 30
+    notes: "Resolutions imposing fines/sanctions on contractors — would be high-signal for accountability/forecasting. M1.5 wired the Socrata adapter and confirmed the parser works, but the dataset's most-recent fecha_de_publicacion is ~3 months stale (no entries inside any reasonable freshness window during M1.5 sandbox). Disabled to keep source-health clean; flip to enabled once datos.gov.co resumes publishing."
 
   - id: proyectos_ley_datos_gov
     name: datos.gov.co — Vista Proyectos de Ley
@@ -220,7 +281,7 @@ metasources:
     parsing_difficulty: medium
     enabled: false
     onboarding_status: disabled_future
-    notes: "Legislative project metadata. Useful for question discovery once API sources are supported."
+    notes: "Legislative project metadata. Skipped in M1.5: this Socrata view's column names are misaligned with their values (the 'senado' column contains bill text, 'legislatura' contains a URL, etc.) — the dataset is unusable as-is. Revisit if Congreso publishes a clean replacement, or substitute with Gacetas del Congreso parsing."
 
   - id: suin_juriscol_normas
     name: SUIN-Juriscol — Normas de Colombia

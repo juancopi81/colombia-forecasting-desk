@@ -52,7 +52,25 @@ def test_signal_type_mapping_all_roles() -> None:
     assert signal_type_for(_source(trust_role="polling_signal")) == "poll"
     assert signal_type_for(_source(trust_role="agenda_signal")) == "calendar_event"
     assert signal_type_for(_source(trust_role="resolution_source")) == "official_update"
+    assert signal_type_for(_source(trust_role="civic_signal")) == "civic_event"
     assert signal_type_for(_source(trust_role="weird_role")) == "unknown"
+
+
+def test_clean_assigns_civic_event_for_secop_like_source(make_raw) -> None:
+    """Regression test for the M1.5 review finding: SECOP datasets use
+    trust_role=civic_signal, and items must end up classified as
+    `civic_event` rather than the catch-all `unknown` so briefs surface
+    them with a meaningful signal type.
+    """
+    secop_source = _source(
+        id="secop_ii_contratos",
+        type="dataset",
+        trust_role="civic_signal",
+        fetch_method="api",
+        access_status="api_public",
+    )
+    cleaned = clean(make_raw(title="SECOP II Contrato — algo"), secop_source)
+    assert cleaned.signal_type == "civic_event"
 
 
 def test_clean_strips_html_and_sets_signal(make_raw, sample_source) -> None:
