@@ -449,7 +449,7 @@ metasources:
 
   - id: dane_icoced
     name: DANE — Índice de Costos de la Construcción de Edificaciones (ICOCED)
-    url: https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-costos-de-la-construccion-de-edificaciones-icoced/indice-de-costos-de-la-construccion-de-edificaciones-icoced-historicos
+    url: https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-costos-de-la-construccion-de-edificaciones-icoced
     type: economic_indicator
     country_relevance: high
     access_status: html_public
@@ -460,4 +460,4 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     max_items: 1
-    notes: "Monthly construction cost index. The historicos page lists per-month Excel annexes named anex-ICOCED-{mes}{anio}.xlsx; _extract_dane_icoced parses the date out of the filename and returns annexes newest-first, so max_items=1 yields the latest. Follow-up: the parser currently surfaces 'a new annex was published' as a calendar-style signal — it does not download the .xlsx or extract the headline numbers (monthly variation, residential vs non-residential, input-level costs). Adding openpyxl-based content extraction is the obvious next step once we know which fields the brief actually uses."
+    notes: "Monthly construction cost index. The current ICOCED page lists the latest Excel annex plus its DANE release date; _extract_dane_icoced uses the row's release date for published_at and keeps the filename-derived period_start in metadata, so max_items=1 yields the latest publication event. Follow-up: the parser currently surfaces 'a new annex was published' as a calendar-style signal — it does not download the .xlsx or extract the headline numbers (monthly variation, residential vs non-residential, input-level costs). Adding openpyxl-based content extraction is the obvious next step once we know which fields the brief actually uses."

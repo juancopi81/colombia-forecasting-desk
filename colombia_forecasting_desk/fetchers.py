@@ -425,13 +425,13 @@ def _extract_dane_icoced(
     source: Metasource,
     fetched_at: str,
 ) -> list[RawItem]:
-    """Extract monthly Excel annexes from the DANE ICOCED historicos page.
+    """Extract monthly Excel annexes from the DANE ICOCED page.
 
-    Each annex follows /files/operaciones/ICOCED/anex-ICOCED-{mes}{anio}.xlsx
-    where {mes} is the 3-letter Spanish month (ene/feb/.../dic) and {anio}
-    is a 4-digit year. We parse the date from the filename rather than the
-    surrounding page text — the filename is the canonical, machine-stable
-    publication marker, while the surrounding HTML drifts over time.
+    The current ICOCED page includes the latest annex plus a release date in
+    the same table row. The annex filename encodes the data period
+    (/anex-ICOCED-{mes}{anio}.xlsx), so we keep that period in metadata while
+    using the release date for published_at. That keeps the monthly source
+    fresh when DANE publishes a new period after the period month ends.
 
     Items are returned newest-first so that source.max_items=1 in
     metasources.yaml picks the latest annex deterministically.
@@ -453,16 +453,25 @@ def _extract_dane_icoced(
             year = int(match.group(2))
         except ValueError:
             continue
-        published_at = _date_to_iso(year, month, 1)
-        if not published_at:
+        period_start = _date_to_iso(year, month, 1)
+        if not period_start:
             continue
+        row = a.find_parent("tr")
+        published_at = _parse_date_text_to_iso(
+            row.get_text(" ", strip=True) if row else None
+        )
+        if not published_at:
+            published_at = period_start
         resolved = urljoin(base_url, href)
         canon = canonicalize_url(resolved)
         if canon in seen:
             continue
         seen.add(canon)
         title = f"DANE ICOCED — Anexo {_MONTH_NAME_ES[month]} {year}"
-        anchor_text = normalize_whitespace(a.get_text(separator=" ", strip=True))
+        raw_text = (
+            f"{title}. Anexo estadístico mensual publicado por DANE "
+            f"para el periodo {_MONTH_NAME_ES[month]} {year}."
+        )
         items.append(
             RawItem(
                 id=_make_id(source.id, resolved, title),
@@ -473,10 +482,11 @@ def _extract_dane_icoced(
                 title=title,
                 fetched_at=fetched_at,
                 published_at=published_at,
-                raw_text=anchor_text or title,
+                raw_text=raw_text,
                 metadata={
                     "extraction": "dane_icoced_filename",
                     "annex_filename": href.rsplit("/", 1)[-1],
+                    "period_start": period_start,
                 },
             )
         )

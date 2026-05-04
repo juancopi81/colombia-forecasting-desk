@@ -36,6 +36,7 @@ structure and clearly marked with a comment at the top of the file.
 | `dane_icoced` | `dane_icoced/2026-05-01.html` | `dane.gov.co` blocked by host allowlist |
 
 Synthetic fixtures still provide useful offline test coverage: the ICOCED
-parser keys off the Excel filename pattern (`anex-ICOCED-{mes}{anio}.xlsx`),
-not on live HTML structure, so the test exercises the real parser logic.
+parser keys off the Excel filename pattern (`anex-ICOCED-{mes}{anio}.xlsx`) for
+the data period and the same-row date for the release date, so the test
+exercises the real parser logic.
 Replace with a live capture when convenient using the refresh script above.
