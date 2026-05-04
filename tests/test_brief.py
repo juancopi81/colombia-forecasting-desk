@@ -102,6 +102,7 @@ def test_brief_renders_onboarding_and_status_columns(make_cleaned) -> None:
             failure_count=0,
             onboarding_status="working",
             status="ok",
+            content_mode="html_or_api",
         ),
         SourceHealth(
             source_id="needs_src",
@@ -114,12 +115,15 @@ def test_brief_renders_onboarding_and_status_columns(make_cleaned) -> None:
             failure_count=0,
             onboarding_status="needs_parser",
             status="no_raw",
+            content_mode="no_items",
         ),
     ]
     out = render_brief(
         summary, [], [], [make_cleaned()], topic_keywords=[], source_health=health
     )
     assert "Onboarding" in out
+    assert "Content" in out
+    assert "html_or_api" in out
     assert "needs_parser" in out
     assert "no_raw" in out
 

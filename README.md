@@ -20,7 +20,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `metasource_brief.md` — the human-readable daily brief
 - `source_failures.json` — per-source errors (run never crashes on a single source)
-- `source_health.json` — per-source raw, dated, rankable, and failure counts
+- `source_health.json` — per-source raw, dated, rankable, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
 
 ### Optional flags
