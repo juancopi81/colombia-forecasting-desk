@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlsplit
 
 from .brief import render_brief
 from .cleaner import clean
@@ -31,6 +32,9 @@ DEFAULT_CONFIG_PATH = Path("config/metasources.yaml")
 RUNS_DIR = Path("runs")
 SANDBOX_DIR_NAME = "sandbox"
 MAX_AGE_DAYS = 14
+PDF_EXTENSIONS = (".pdf",)
+SPREADSHEET_EXTENSIONS = (".xlsx", ".xls", ".csv", ".ods")
+DOCUMENT_EXTENSIONS = (".doc", ".docx", ".ppt", ".pptx", ".zip")
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,52 @@ def _derive_status(
     return "ok"
 
 
+def _raw_item_content_kind(item: RawItem) -> str:
+    metadata = item.metadata or {}
+    if metadata.get("content_extraction") or metadata.get("parsed_content"):
+        return "parsed_content"
+
+    path = urlsplit(item.url).path.lower()
+    if any(ext in path for ext in SPREADSHEET_EXTENSIONS):
+        return "spreadsheet_link"
+    if any(ext in path for ext in PDF_EXTENSIONS):
+        return "pdf_link"
+    if any(ext in path for ext in DOCUMENT_EXTENSIONS):
+        return "document_link"
+    return "html_or_api"
+
+
+def _derive_content_mode(
+    source_items: list[RawItem], failure_count: int
+) -> tuple[str, int, int]:
+    if not source_items:
+        return ("failed" if failure_count else "no_items", 0, 0)
+
+    kinds = [_raw_item_content_kind(item) for item in source_items]
+    kind_set = set(kinds)
+    document_kinds = {"pdf_link", "spreadsheet_link", "document_link"}
+    document_link_count = sum(1 for kind in kinds if kind in document_kinds)
+    parsed_content_count = sum(1 for kind in kinds if kind == "parsed_content")
+
+    if kind_set == {"parsed_content"}:
+        mode = "parsed_content"
+    elif "parsed_content" in kind_set:
+        mode = "mixed_with_parsed_content"
+    elif kind_set <= document_kinds:
+        if kind_set == {"pdf_link"}:
+            mode = "pdf_links_only"
+        elif kind_set == {"spreadsheet_link"}:
+            mode = "spreadsheet_links_only"
+        else:
+            mode = "document_links_only"
+    elif document_link_count:
+        mode = "mixed_document_and_html_links"
+    else:
+        mode = "html_or_api"
+
+    return mode, document_link_count, parsed_content_count
+
+
 def build_source_health(
     sources: list[Metasource],
     raw_items: list[RawItem],
@@ -127,9 +177,11 @@ def build_source_health(
     dated_counts: dict[str, int] = {}
     rankable_counts: dict[str, int] = {}
     failures_by_source: dict[str, list[SourceFailure]] = {}
+    raw_by_source: dict[str, list[RawItem]] = {}
 
     for item in raw_items:
         raw_counts[item.source_id] = raw_counts.get(item.source_id, 0) + 1
+        raw_by_source.setdefault(item.source_id, []).append(item)
         if item.published_at:
             dated_counts[item.source_id] = dated_counts.get(item.source_id, 0) + 1
     for item in cleaned_items:
@@ -145,6 +197,9 @@ def build_source_health(
         raw_count = raw_counts.get(source.id, 0)
         rankable_count = rankable_counts.get(source.id, 0)
         status = _derive_status(raw_count, rankable_count, len(source_failures))
+        content_mode, document_link_count, parsed_content_count = _derive_content_mode(
+            raw_by_source.get(source.id, []), len(source_failures)
+        )
         health.append(
             SourceHealth(
                 source_id=source.id,
@@ -160,6 +215,9 @@ def build_source_health(
                 ],
                 onboarding_status=source.onboarding_status,
                 status=status,
+                content_mode=content_mode,
+                document_link_count=document_link_count,
+                parsed_content_count=parsed_content_count,
             )
         )
     return health

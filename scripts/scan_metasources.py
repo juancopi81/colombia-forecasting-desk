@@ -28,12 +28,14 @@ SANDBOX_TITLE_PREVIEW = 5
 def _print_source_report(result) -> None:
     print("")
     print("Source health:")
-    print("source_id | raw | dated | rankable | failures")
-    print("--- | ---: | ---: | ---: | ---:")
+    print("source_id | content | raw | dated | rankable | doc_links | parsed | failures")
+    print("--- | --- | ---: | ---: | ---: | ---: | ---: | ---:")
     for health in result.source_health:
         print(
-            f"{health.source_id} | {health.raw_count} | {health.dated_count} | "
-            f"{health.rankable_count} | {health.failure_count}"
+            f"{health.source_id} | {health.content_mode} | {health.raw_count} | "
+            f"{health.dated_count} | {health.rankable_count} | "
+            f"{health.document_link_count} | {health.parsed_content_count} | "
+            f"{health.failure_count}"
         )
 
 
@@ -48,6 +50,11 @@ def _print_sandbox_report(result) -> None:
         f"  raw={health.raw_count} dated={health.dated_count} "
         f"cleaned={health.cleaned_count} rankable={health.rankable_count} "
         f"failures={health.failure_count}"
+    )
+    print(
+        f"  content={health.content_mode} "
+        f"doc_links={health.document_link_count} "
+        f"parsed={health.parsed_content_count}"
     )
     if health.failures:
         print("  failure messages:")

@@ -50,6 +50,7 @@ Wrote runs/sandbox/my_new_source
 
 Sandbox: my_new_source
   raw=12 dated=11 cleaned=11 rankable=11 failures=0
+  content=html_or_api doc_links=0 parsed=0
   first 5 cleaned items:
     - [2026-04-27T11:00:00Z] Title 1...
 ```
@@ -61,6 +62,14 @@ What to look at:
 - **`raw>0` but `rankable=0`** → items are cleaned but lack publication dates,
   or are flagged low-quality. Open `cleaned_items.json` and check the
   `quality_notes` field.
+- **`content=pdf_links_only`, `spreadsheet_links_only`, or
+  `document_links_only`** → the source found dated/rankable links, but the
+  pipeline has not read the document body yet. Treat this as link-level
+  coverage and add a PDF/XLSX parser before relying on the source for evidence.
+- **`doc_links>0` and `parsed=0`** → the source has downstream documents but no
+  document-content parser is active for those items.
+- **`parsed>0`** → at least some raw items came from a parser that read document
+  content and set `metadata.content_extraction` or `metadata.parsed_content`.
 - **`failures>0`** → the fetcher raised. Check `source_failures.json` for
   the message. Common cases: bot-block (Radware/Cloudflare), 403, timeout.
 - **Bot-block detected** → the fetcher will now raise a `BotBlockError`
@@ -123,6 +132,9 @@ invariants (a known title substring, a URL prefix, etc.).
 Ready to flip `enabled: true` (and remove or keep `onboarding_status`) when:
 
 - Sandbox run produces **at least 3 dated, rankable items**.
+- Source health has an honest `content` mode. If it is link-only, document that
+  limitation in `notes` and decide whether link-level coverage is enough for
+  the next milestone.
 - A fixture-based test pins current behavior.
 - The source-health row shows `status: ok`.
 - `notes` describes any quirks worth knowing for the next contributor.
@@ -145,3 +157,24 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
 
 Wire a new extractor in `fetch_html` by source id, and prefer it to fall back
 to `_extract_dated_anchors` when it returns nothing.
+
+## 7. Document parsers
+
+Some sources are only useful after following a PDF, spreadsheet, or attachment
+link. The pipeline now reports this explicitly in `source_health.json`:
+
+| Content mode | Meaning |
+| --- | --- |
+| `html_or_api` | Raw items look like HTML/API records, not downstream documents. |
+| `pdf_links_only` | Every raw item points at a PDF, and no PDF text was parsed. |
+| `spreadsheet_links_only` | Every raw item points at a spreadsheet, and no spreadsheet content was parsed. |
+| `document_links_only` | Raw items point at a mix of PDF/spreadsheet/office document links. |
+| `mixed_document_and_html_links` | The source emits both page/API items and document links. |
+| `parsed_content` | Raw items include parsed document content metadata. |
+| `mixed_with_parsed_content` | Some raw items were document-parsed and some were link-level. |
+| `no_items` / `failed` | No raw items were available to classify. |
+
+For a document parser to count as parsed content, set either
+`metadata.content_extraction` or `metadata.parsed_content` on the emitted
+`RawItem`. Prefer adding one document parser at a time and keeping the original
+attachment URL in `RawItem.url`.

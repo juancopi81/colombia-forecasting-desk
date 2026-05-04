@@ -111,6 +111,9 @@ class SourceHealth:
     failures: list[str] = field(default_factory=list)
     onboarding_status: str = "working"
     status: str = "ok"
+    content_mode: str = "no_items"
+    document_link_count: int = 0
+    parsed_content_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

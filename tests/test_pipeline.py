@@ -100,6 +100,9 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.source_health[0].raw_count == 5
     assert result.source_health[0].dated_count == 4
     assert result.source_health[0].rankable_count == 1
+    assert result.source_health[0].content_mode == "html_or_api"
+    assert result.source_health[0].document_link_count == 0
+    assert result.source_health[0].parsed_content_count == 0
     assert result.run_dir == tmp_path / "2026-04-27"
     assert (result.run_dir / "source_health.json").exists()
 
@@ -156,6 +159,54 @@ def test_run_single_source_unknown_id_raises(monkeypatch, tmp_path) -> None:
 )
 def test_derive_status(raw, rankable, failures, expected) -> None:
     assert pipeline._derive_status(raw, rankable, failures) == expected
+
+
+def test_derive_content_mode_identifies_document_link_only_sources() -> None:
+    source_items = [
+        _raw(
+            id="pdf",
+            url="https://example.com/reports/agenda.pdf",
+            metadata={},
+        ),
+        _raw(
+            id="xlsx",
+            url="https://example.com/data/anexo.xlsx",
+            metadata={},
+        ),
+    ]
+
+    mode, document_links, parsed = pipeline._derive_content_mode(source_items, 0)
+
+    assert mode == "document_links_only"
+    assert document_links == 2
+    assert parsed == 0
+
+
+def test_derive_content_mode_identifies_spreadsheet_link_only_sources() -> None:
+    mode, document_links, parsed = pipeline._derive_content_mode(
+        [_raw(url="https://example.com/data/anexo.xlsx")],
+        0,
+    )
+
+    assert mode == "spreadsheet_links_only"
+    assert document_links == 1
+    assert parsed == 0
+
+
+def test_derive_content_mode_identifies_parsed_document_content() -> None:
+    mode, document_links, parsed = pipeline._derive_content_mode(
+        [
+            _raw(
+                url="https://example.com/reports/agenda.pdf",
+                metadata={"content_extraction": "pdf_text"},
+            )
+        ],
+        0,
+    )
+
+    assert mode == "parsed_content"
+    assert document_links == 0
+    assert parsed == 1
 
 
 def test_source_health_propagates_onboarding_status(monkeypatch, tmp_path) -> None:
