@@ -21,9 +21,11 @@ from colombia_forecasting_desk.fetchers import (
     _detect_spa_shell,
     _extract_anchors,
     _extract_corte_comunicados,
+    _extract_dane_icoced,
     _extract_dated_anchors,
     _extract_imprenta_jsf_table,
 )
+from colombia_forecasting_desk.cleaner import clean
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 
@@ -191,6 +193,45 @@ def test_gacetas_congreso_jsf_table_yields_dated_gacetas(sample_source) -> None:
     titles = " ".join(it.title for it in items)
     assert "Senado" in titles or "Cámara" in titles
     assert all("?gaceta=" in it.url for it in items)
+
+
+def test_dane_icoced_extracts_excel_annexes_from_filename(sample_source) -> None:
+    """ICOCED annex filenames encode the data period
+    (`anex-ICOCED-{mes}{anio}.xlsx`), while the current page row carries the
+    DANE release date. The parser uses the release date for freshness and keeps
+    the period in metadata. Items come back newest-first so `max_items=1` in
+    the YAML picks the latest annex deterministically.
+
+    The 2026-05-01 fixture is synthetic — the runtime that built this branch
+    cannot reach `dane.gov.co`. The structure mirrors the documented Joomla
+    layout; refresh from a live capture when convenient.
+    """
+    source = replace(
+        sample_source,
+        id="dane_icoced",
+        type="economic_indicator",
+        url=(
+            "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+            "precios-y-costos/indice-de-costos-de-la-construccion-de-"
+            "edificaciones-icoced"
+        ),
+    )
+    html = _load("dane_icoced", date="2026-05-01")
+    items = _extract_dane_icoced(
+        html, source.url, source, "2026-05-01T00:00:00Z"
+    )
+    assert len(items) >= 12
+    assert all(it.published_at for it in items)
+    assert all(it.url.endswith(".xlsx") for it in items)
+    assert all("/anex-ICOCED-" in it.url for it in items)
+    # newest-first ordering so max_items=1 picks the latest annex
+    assert items[0].published_at == "2026-04-30T00:00:00Z"
+    assert items[0].title == "DANE ICOCED — Anexo marzo 2026"
+    assert items[0].metadata["period_start"] == "2026-03-01T00:00:00Z"
+    assert clean(items[0], source).quality_notes == ""
+    # the boletin PDF and the unrelated nav link must not be picked up
+    assert not any(it.url.endswith(".pdf") for it in items)
+    assert not any("pagina principal" in it.title.lower() for it in items)
 
 
 def test_detect_bot_block_flags_radware_marker() -> None:
