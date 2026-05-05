@@ -64,6 +64,7 @@ def test_brief_has_all_sections(make_cleaned) -> None:
         "# Metasource Brief — 2026-04-27",
         "## Run Summary",
         "## Top Signals",
+        "## Indicator Watch",
         "## Emerging Questions",
         "## Topics to Monitor",
         "## Source Health",

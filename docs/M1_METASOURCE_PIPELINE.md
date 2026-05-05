@@ -32,6 +32,7 @@ metasources.yaml
 → deduplicate obvious duplicates
 → group related items into simple clusters
 → rank clusters
+→ build an indicator watch for durable latest-known stats
 → write a daily metasource brief
 ```
 
@@ -64,6 +65,7 @@ Minimum outputs:
 runs/YYYY-MM-DD/raw_items.json
 runs/YYYY-MM-DD/cleaned_items.json
 runs/YYYY-MM-DD/clusters.json
+runs/YYYY-MM-DD/indicator_watch.json
 runs/YYYY-MM-DD/metasource_brief.md
 runs/YYYY-MM-DD/source_health.json
 ```
@@ -229,6 +231,64 @@ non-residential index/variation metrics instead of only surfacing the annex
 link. This keeps M1 honest about the difference between link-level coverage and
 parsed evidence.
 
+M1.7 adds an Indicator Watch alongside event clusters. Some high-value public
+signals are not daily events; they are latest-known state variables that should
+remain visible after the normal freshness window. The watch starts with twelve
+must-track cards:
+
+- IPC / inflation
+- TRM / USD-COP
+- policy rate + IBR
+- labor market
+- retail sales
+- manufacturing
+- construction bundle
+- SECOP public procurement pulse
+- energy demand / reservoirs / spot price
+- external trade
+- oil and gas production
+- fiscal / tax pulse
+
+Cards can be `observed` when M1 already has structured data, or
+`pending_source` when the indicator is registered but still needs an easy API,
+HTML table, or lightweight parser. This is deliberately not M2 question
+generation; it is a durable evidence surface for humans and later agents.
+
+## Indicator Watch
+
+Each run writes:
+
+```text
+runs/YYYY-MM-DD/indicator_watch.json
+```
+
+Each card contains:
+
+```json
+{
+  "indicator_id": "",
+  "name": "",
+  "category": "",
+  "status": "observed | pending_source",
+  "frequency": "",
+  "period": "",
+  "release_date": "",
+  "headline": "",
+  "values": {},
+  "why_it_matters": "",
+  "correlations": [],
+  "next_step": ""
+}
+```
+
+Current observed cards:
+
+- `construction_bundle` from the parsed DANE ICOCED XLSX annex
+- `secop_procurement` from existing Socrata-backed SECOP cleaned items
+
+The remaining cards are intentionally visible as parser/source backlog so M1
+can prioritize high-value official data before automating M2 question writing.
+
 ## Source Health
 
 Each run writes:
@@ -299,6 +359,27 @@ Links:
 
 ---
 
+## Indicator Watch
+
+### IPC / inflation
+
+Status:
+Category:
+Frequency:
+Period:
+Latest release:
+Source:
+
+Headline:
+
+Values:
+
+Why it matters:
+
+Useful correlations:
+
+M1 next step:
+
 ## Emerging Questions
 
 - ...
@@ -363,6 +444,7 @@ Links:
 - [x] Add source diversity count.
 - [x] Add latest update timestamp.
 - [x] Save `clusters.json`.
+- [x] Save `indicator_watch.json`.
 
 ### Step 6 — Rank clusters
 
@@ -390,6 +472,7 @@ M1 is complete when:
 - [x] `raw_items.json` is generated.
 - [x] `cleaned_items.json` is generated.
 - [x] `clusters.json` is generated.
+- [x] `indicator_watch.json` is generated.
 - [x] `metasource_brief.md` is generated.
 - [x] Source failures are logged but do not crash the full run.
 - [x] The daily brief is useful enough for an LLM or human to decide what to inspect next.

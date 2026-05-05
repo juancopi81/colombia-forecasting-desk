@@ -15,9 +15,11 @@ from .cluster import topic_keywords
 from .config_loader import load_metasources
 from .dedupe import dedupe
 from .fetchers import fetch_all
+from .indicator_watch import build_indicator_watch
 from .models import (
     CleanedItem,
     Cluster,
+    IndicatorObservation,
     Metasource,
     RawItem,
     RunSummary,
@@ -45,6 +47,7 @@ class PipelineResult:
     clusters: list[Cluster]
     failures: list[SourceFailure]
     source_health: list[SourceHealth]
+    indicator_watch: list[IndicatorObservation]
     summary: RunSummary
 
 
@@ -283,6 +286,7 @@ def run_single_source(
     source_health = build_source_health(
         [source], raw_items, cleaned, rankable, failures
     )
+    indicator_watch = build_indicator_watch(raw_items, cleaned)
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -301,6 +305,9 @@ def run_single_source(
     _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
     _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
     _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
+    _write_json(
+        run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
+    )
     _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -313,6 +320,7 @@ def run_single_source(
         clusters=ranked,
         failures=failures,
         source_health=source_health,
+        indicator_watch=indicator_watch,
         summary=summary,
     )
 
@@ -357,6 +365,7 @@ def run(
     source_health = build_source_health(
         sources, raw_items, cleaned, rankable, failures
     )
+    indicator_watch = build_indicator_watch(raw_items, cleaned)
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -376,11 +385,20 @@ def run(
     _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
     _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
     _write_json(
+        run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
+    )
+    _write_json(
         run_dir / "source_failures.json", [asdict(f) for f in failures]
     )
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     brief_text = render_brief(
-        summary, ranked, failures, cleaned, keywords, source_health=source_health
+        summary,
+        ranked,
+        failures,
+        cleaned,
+        keywords,
+        source_health=source_health,
+        indicator_watch=indicator_watch,
     )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -393,5 +411,6 @@ def run(
         clusters=ranked,
         failures=failures,
         source_health=source_health,
+        indicator_watch=indicator_watch,
         summary=summary,
     )
