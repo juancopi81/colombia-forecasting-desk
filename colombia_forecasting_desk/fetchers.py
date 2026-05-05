@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import html
+import io
 import logging
 import re
 import time
+import zipfile
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 from urllib.parse import urljoin, urlsplit
+from xml.etree import ElementTree as ET
 
 import feedparser
 import httpx
@@ -417,6 +420,213 @@ _MONTH_NAME_ES = {
 _ICOCED_FILENAME_RE = re.compile(
     r"/anex-ICOCED-([a-z]{3})(\d{4})\.xlsx", re.IGNORECASE
 )
+_XLSX_MAIN_NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+_XLSX_REL_ID = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+_ICOCED_METRIC_SHEETS = {
+    "total": "Anexo 1",
+    "residential": "Anexo 2.1",
+    "non_residential": "Anexo 2.2",
+}
+
+
+def _xlsx_shared_strings(zf: zipfile.ZipFile) -> list[str]:
+    try:
+        root = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+    except KeyError:
+        return []
+    shared: list[str] = []
+    for si in root.findall("m:si", _XLSX_MAIN_NS):
+        shared.append(
+            "".join(t.text or "" for t in si.findall(".//m:t", _XLSX_MAIN_NS))
+        )
+    return shared
+
+
+def _xlsx_sheet_paths(zf: zipfile.ZipFile) -> dict[str, str]:
+    workbook = ET.fromstring(zf.read("xl/workbook.xml"))
+    rels_root = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+    rels = {rel.attrib["Id"]: rel.attrib["Target"] for rel in rels_root}
+    paths: dict[str, str] = {}
+    for sheet in workbook.findall(".//m:sheet", _XLSX_MAIN_NS):
+        rel_id = sheet.attrib.get(_XLSX_REL_ID)
+        target = rels.get(rel_id or "")
+        if not target:
+            continue
+        paths[sheet.attrib["name"]] = "xl/" + target.lstrip("/")
+    return paths
+
+
+def _xlsx_cell_text(
+    cell: ET.Element,
+    shared_strings: list[str],
+) -> str:
+    cell_type = cell.attrib.get("t")
+    if cell_type == "inlineStr":
+        return normalize_whitespace(
+            "".join(t.text or "" for t in cell.findall(".//m:t", _XLSX_MAIN_NS))
+        )
+
+    value = cell.find("m:v", _XLSX_MAIN_NS)
+    if value is None or value.text is None:
+        return ""
+    if cell_type == "s":
+        try:
+            return shared_strings[int(value.text)]
+        except (ValueError, IndexError):
+            return ""
+    return normalize_whitespace(value.text)
+
+
+def _xlsx_rows(
+    zf: zipfile.ZipFile,
+    sheet_path: str,
+    shared_strings: list[str],
+) -> list[dict[str, str]]:
+    root = ET.fromstring(zf.read(sheet_path))
+    rows: list[dict[str, str]] = []
+    for row in root.findall(".//m:row", _XLSX_MAIN_NS):
+        values: dict[str, str] = {}
+        for cell in row.findall("m:c", _XLSX_MAIN_NS):
+            ref = cell.attrib.get("r", "")
+            match = re.match(r"([A-Z]+)", ref)
+            if not match:
+                continue
+            text = _xlsx_cell_text(cell, shared_strings)
+            if text:
+                values[match.group(1)] = text
+        if values:
+            rows.append(values)
+    return rows
+
+
+def _to_float(text: str | None) -> float | None:
+    if text is None:
+        return None
+    cleaned = text.strip().replace(",", ".")
+    if not cleaned:
+        return None
+    try:
+        return round(float(cleaned), 2)
+    except ValueError:
+        return None
+
+
+def _find_icoced_period_row(
+    rows: list[dict[str, str]],
+    *,
+    year: int,
+    month_name: str,
+) -> dict[str, str] | None:
+    current_year: int | None = None
+    target_month = fold_accents(month_name.lower())
+    for row in rows:
+        year_text = row.get("A")
+        if year_text:
+            try:
+                current_year = int(float(year_text))
+            except ValueError:
+                pass
+        month_text = fold_accents((row.get("B") or "").strip().lower())
+        if current_year == year and month_text == target_month:
+            return row
+    return None
+
+
+def _icoced_metrics_from_row(row: dict[str, str]) -> dict[str, float]:
+    candidates = {
+        "index": _to_float(row.get("C")),
+        "monthly_variation_pct": _to_float(row.get("D")),
+        "year_to_date_variation_pct": _to_float(row.get("E")),
+        "annual_variation_pct": _to_float(row.get("F")),
+    }
+    return {k: v for k, v in candidates.items() if v is not None}
+
+
+def _format_pct(value: float | None) -> str | None:
+    if value is None:
+        return None
+    return f"{value:.2f}".replace(".", ",") + "%"
+
+
+def _format_decimal(value: float) -> str:
+    return f"{value:.2f}".replace(".", ",")
+
+
+def _parse_dane_icoced_xlsx(
+    content: bytes,
+    *,
+    year: int,
+    month: int,
+) -> dict[str, Any] | None:
+    month_name = _MONTH_NAME_ES[month]
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            shared_strings = _xlsx_shared_strings(zf)
+            sheet_paths = _xlsx_sheet_paths(zf)
+            metrics: dict[str, dict[str, float]] = {}
+            for key, sheet_name in _ICOCED_METRIC_SHEETS.items():
+                sheet_path = sheet_paths.get(sheet_name)
+                if not sheet_path:
+                    continue
+                row = _find_icoced_period_row(
+                    _xlsx_rows(zf, sheet_path, shared_strings),
+                    year=year,
+                    month_name=month_name,
+                )
+                if row:
+                    metrics[key] = _icoced_metrics_from_row(row)
+    except (KeyError, ET.ParseError, zipfile.BadZipFile):
+        return None
+
+    total = metrics.get("total")
+    if not total:
+        return None
+
+    monthly = _format_pct(total.get("monthly_variation_pct"))
+    ytd = _format_pct(total.get("year_to_date_variation_pct"))
+    annual = _format_pct(total.get("annual_variation_pct"))
+    index = total.get("index")
+    period_label = f"{month_name} de {year}"
+
+    clauses: list[str] = []
+    if monthly:
+        clauses.append(f"una variación mensual de {monthly}")
+    if ytd:
+        clauses.append(f"año corrido de {ytd}")
+    if annual:
+        clauses.append(f"anual de {annual}")
+
+    if clauses:
+        headline = (
+            f"En {period_label}, el ICOCED total registró "
+            + ", ".join(clauses)
+            + "."
+        )
+    else:
+        headline = f"En {period_label}, el ICOCED total fue publicado."
+    if index is not None:
+        headline += f" El número índice fue {_format_decimal(index)}."
+    residential = metrics.get("residential", {})
+    non_residential = metrics.get("non_residential", {})
+    residential_monthly = _format_pct(residential.get("monthly_variation_pct"))
+    non_residential_monthly = _format_pct(
+        non_residential.get("monthly_variation_pct")
+    )
+    if residential_monthly or non_residential_monthly:
+        comparison_parts = []
+        if residential_monthly:
+            comparison_parts.append(f"residenciales {residential_monthly}")
+        if non_residential_monthly:
+            comparison_parts.append(f"no residenciales {non_residential_monthly}")
+        headline += (
+            " Variación mensual por grupo: " + ", ".join(comparison_parts) + "."
+        )
+
+    return {
+        "headline": headline,
+        "metrics": metrics,
+        "sheets": _ICOCED_METRIC_SHEETS,
+    }
 
 
 def _extract_dane_icoced(
@@ -487,11 +697,100 @@ def _extract_dane_icoced(
                     "extraction": "dane_icoced_filename",
                     "annex_filename": href.rsplit("/", 1)[-1],
                     "period_start": period_start,
+                    "period_year": year,
+                    "period_month": month,
                 },
             )
         )
     items.sort(key=lambda it: it.published_at or "", reverse=True)
     return items
+
+
+def _enrich_dane_icoced_xlsx(
+    items: list[RawItem],
+    client: httpx.Client,
+    *,
+    max_items: int | None = None,
+) -> list[RawItem]:
+    if max_items is not None and max_items >= 0:
+        parse_limit = max_items
+    else:
+        parse_limit = len(items)
+    enriched: list[RawItem] = []
+    for idx, item in enumerate(items):
+        metadata = dict(item.metadata)
+        year = metadata.get("period_year")
+        month = metadata.get("period_month")
+        if (
+            idx >= parse_limit
+            or not isinstance(year, int)
+            or not isinstance(month, int)
+        ):
+            enriched.append(item)
+            continue
+        try:
+            response = _http_get(client, item.url)
+            parsed = _parse_dane_icoced_xlsx(
+                response.content,
+                year=year,
+                month=month,
+            )
+        except Exception as exc:  # noqa: BLE001 - keep source usable as link-level
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            continue
+        if not parsed:
+            metadata["content_extraction_error"] = "unable to parse ICOCED XLSX"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            continue
+        metadata.update(
+            {
+                "content_extraction": "dane_icoced_xlsx",
+                "headline_metrics": parsed["metrics"],
+                "metric_sheets": parsed["sheets"],
+            }
+        )
+        enriched.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=f"{item.title}. {parsed['headline']}",
+                metadata=metadata,
+            )
+        )
+    return enriched
 
 
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
@@ -865,7 +1164,11 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             response.text, str(response.url), source, fetched_at
         )
         if items:
-            return items
+            return _enrich_dane_icoced_xlsx(
+                items,
+                client,
+                max_items=source.max_items,
+            )
     if source.id == "corte_constitucional_comunicados":
         items = _extract_corte_comunicados(
             response.text, str(response.url), source, fetched_at

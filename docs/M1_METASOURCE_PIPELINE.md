@@ -219,6 +219,16 @@ parser tests) and surfaces parser problems through the source-health table
 instead of letting them fail silently. See
 [ADDING_METASOURCE.md](ADDING_METASOURCE.md) for the workflow.
 
+M1.5 adds Socrata API fetchers for public procurement datasets, making SECOP
+signals available through structured datos.gov.co endpoints where the source
+data is fresh enough to rank.
+
+M1.6 adds the first document-content parser. The DANE ICOCED source now follows
+the latest XLSX annex and extracts headline total, residential, and
+non-residential index/variation metrics instead of only surfacing the annex
+link. This keeps M1 honest about the difference between link-level coverage and
+parsed evidence.
+
 ## Source Health
 
 Each run writes:
@@ -236,8 +246,13 @@ uv run python scripts/scan_metasources.py --source-report
 The report shows, per source:
 
 ```text
-source_id | raw | dated | rankable | failures
+source_id | content | raw | dated | rankable | doc_links | parsed | failures
 ```
+
+`content` distinguishes HTML/API records from document links and parsed
+document content. Link-only sources can still be useful as calendar signals,
+but M1.6 treats parsed document content as the stronger evidence contract for
+sources whose useful data lives inside PDFs or spreadsheets.
 
 ## Daily Brief Structure
 

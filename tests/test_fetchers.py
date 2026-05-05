@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import time
+import zipfile
 from dataclasses import replace
 from datetime import datetime, timezone
 
@@ -9,11 +11,13 @@ import httpx
 from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
+    _enrich_dane_icoced_xlsx,
     _extract_anchors,
     _extract_corte_comunicados,
     _extract_dane_comunicados,
     _cap_items,
     _parse_rss_entries,
+    _parse_dane_icoced_xlsx,
     _parse_date_text_to_iso,
     _parse_socrata_date,
     _recover_rss_entries,
@@ -22,6 +26,67 @@ from colombia_forecasting_desk.fetchers import (
     _struct_time_to_iso,
     fetch_api,
 )
+from colombia_forecasting_desk.models import RawItem
+
+
+def _xlsx_cell(ref: str, value: str | float | int) -> str:
+    if isinstance(value, str):
+        return f'<c r="{ref}" t="inlineStr"><is><t>{value}</t></is></c>'
+    return f'<c r="{ref}"><v>{value}</v></c>'
+
+
+def _xlsx_row(row_num: int, values: dict[str, str | float | int]) -> str:
+    cells = "".join(
+        _xlsx_cell(f"{col}{row_num}", value) for col, value in values.items()
+    )
+    return f'<row r="{row_num}">{cells}</row>'
+
+
+def _minimal_icoced_xlsx() -> bytes:
+    workbook = """<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Anexo 1" sheetId="1" r:id="rId1"/>
+    <sheet name="Anexo 2.1" sheetId="2" r:id="rId2"/>
+    <sheet name="Anexo 2.2" sheetId="3" r:id="rId3"/>
+  </sheets>
+</workbook>"""
+    rels = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>
+</Relationships>"""
+
+    def sheet(row_values: dict[str, str | float | int]) -> str:
+        rows = [
+            _xlsx_row(1, {"A": 2026, "B": "Enero"}),
+            _xlsx_row(2, row_values),
+        ]
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            f"<sheetData>{''.join(rows)}</sheetData></worksheet>"
+        )
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as zf:
+        zf.writestr("xl/workbook.xml", workbook)
+        zf.writestr("xl/_rels/workbook.xml.rels", rels)
+        zf.writestr(
+            "xl/worksheets/sheet1.xml",
+            sheet({"B": "Marzo", "C": 135.44, "D": 0.75, "E": 6.47, "F": 6.33}),
+        )
+        zf.writestr(
+            "xl/worksheets/sheet2.xml",
+            sheet({"B": "Marzo", "C": 134.81, "D": 0.77, "E": 6.43, "F": 6.26}),
+        )
+        zf.writestr(
+            "xl/worksheets/sheet3.xml",
+            sheet({"B": "Marzo", "C": 136.63, "D": 0.72, "E": 6.53, "F": 6.47}),
+        )
+    return out.getvalue()
 
 
 def test_struct_time_to_iso_handles_none() -> None:
@@ -99,6 +164,65 @@ def test_extract_dane_comunicados_reads_dated_table(sample_source) -> None:
     assert items[0].title == "Boletín técnico mercado laboral nacional"
     assert items[0].published_at == "2026-04-27T00:00:00Z"
     assert items[0].metadata["extraction"] == "dane_comunicados_table"
+
+
+def test_parse_dane_icoced_xlsx_extracts_headline_metrics() -> None:
+    parsed = _parse_dane_icoced_xlsx(
+        _minimal_icoced_xlsx(),
+        year=2026,
+        month=3,
+    )
+
+    assert parsed is not None
+    assert parsed["metrics"]["total"] == {
+        "index": 135.44,
+        "monthly_variation_pct": 0.75,
+        "year_to_date_variation_pct": 6.47,
+        "annual_variation_pct": 6.33,
+    }
+    assert parsed["metrics"]["residential"]["monthly_variation_pct"] == 0.77
+    assert parsed["metrics"]["non_residential"]["monthly_variation_pct"] == 0.72
+    assert "variación mensual de 0,75%" in parsed["headline"]
+    assert "residenciales 0,77%" in parsed["headline"]
+
+
+class _FakeBinaryResponse:
+    status_code = 200
+
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _FakeBinaryClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        return _FakeBinaryResponse(_minimal_icoced_xlsx())
+
+
+def test_enrich_dane_icoced_xlsx_marks_item_as_parsed_content() -> None:
+    item = RawItem(
+        id="icoced-1",
+        source_id="dane_icoced",
+        source_name="DANE ICOCED",
+        source_type="economic_indicator",
+        url="https://example.com/anex-ICOCED-mar2026.xlsx",
+        title="DANE ICOCED — Anexo marzo 2026",
+        fetched_at="2026-05-04T00:00:00Z",
+        published_at="2026-04-30T00:00:00Z",
+        raw_text="Link-level text",
+        metadata={"period_year": 2026, "period_month": 3},
+    )
+
+    enriched = _enrich_dane_icoced_xlsx([item], _FakeBinaryClient())[0]
+
+    assert enriched.metadata["content_extraction"] == "dane_icoced_xlsx"
+    assert (
+        enriched.metadata["headline_metrics"]["total"]["monthly_variation_pct"]
+        == 0.75
+    )
+    assert "ICOCED total registró una variación mensual de 0,75%" in enriched.raw_text
 
 
 def test_extract_corte_comunicados_reads_dated_links(sample_source) -> None:
