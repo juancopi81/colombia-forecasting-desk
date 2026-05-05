@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from .models import CleanedItem, Cluster, RunSummary, SourceFailure, SourceHealth
+from typing import Any
+
+from .models import (
+    CleanedItem,
+    Cluster,
+    IndicatorObservation,
+    RunSummary,
+    SourceFailure,
+    SourceHealth,
+)
 
 TOP_SIGNALS_LIMIT = 10
 LOW_QUALITY_LIMIT = 10
 ERROR_MSG_TRUNCATE = 200
+INDICATOR_LIMIT = 12
 
 
 def _bullet_or_none(items: list[str], empty_text: str = "_None._") -> str:
@@ -105,6 +115,54 @@ def _render_source_health(source_health: list[SourceHealth]) -> str:
     return "\n".join(lines)
 
 
+def _format_indicator_value(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:.2f}"
+    if isinstance(value, dict):
+        parts = [f"{k}={v}" for k, v in sorted(value.items())]
+        return ", ".join(parts)
+    return str(value)
+
+
+def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
+    if not indicators:
+        return "_No indicator watch generated._"
+
+    blocks: list[str] = []
+    for indicator in indicators[:INDICATOR_LIMIT]:
+        values = (
+            "\n".join(
+                f"- `{key}`: {_format_indicator_value(value)}"
+                for key, value in indicator.values.items()
+            )
+            if indicator.values
+            else "- _Pending structured value._"
+        )
+        correlations = (
+            "\n".join(f"- {item}" for item in indicator.correlations[:2])
+            if indicator.correlations
+            else "- _None defined._"
+        )
+        headline = indicator.headline or "_Not wired yet._"
+        release = indicator.release_date or "n/a"
+        period = indicator.period or "n/a"
+        blocks.append(
+            f"### {indicator.name}\n\n"
+            f"- Status: {indicator.status}\n"
+            f"- Category: {indicator.category}\n"
+            f"- Frequency: {indicator.frequency}\n"
+            f"- Period: {period}\n"
+            f"- Latest release: {release}\n"
+            f"- Source: [{indicator.source_name}]({indicator.source_url})\n\n"
+            f"**Headline:** {headline}\n\n"
+            f"**Values:**\n{values}\n\n"
+            f"**Why it matters:** {indicator.why_it_matters}\n\n"
+            f"**Useful correlations:**\n{correlations}\n\n"
+            f"**M1 next step:** {indicator.next_step}\n"
+        )
+    return "\n\n---\n\n".join(blocks)
+
+
 def render_brief(
     run_summary: RunSummary,
     ranked_clusters: list[Cluster],
@@ -112,6 +170,7 @@ def render_brief(
     cleaned_items: list[CleanedItem],
     topic_keywords: list[str],
     source_health: list[SourceHealth] | None = None,
+    indicator_watch: list[IndicatorObservation] | None = None,
 ) -> str:
     top = ranked_clusters[:TOP_SIGNALS_LIMIT]
     top_blocks = [
@@ -136,6 +195,8 @@ def render_brief(
         f"- Clusters created: {run_summary.clusters}\n\n"
         "## Top Signals\n\n"
         f"{top_section}\n\n"
+        "## Indicator Watch\n\n"
+        f"{_render_indicator_watch(indicator_watch or [])}\n\n"
         "## Emerging Questions\n\n"
         "- _(populated in M2)_\n\n"
         "## Topics to Monitor\n\n"

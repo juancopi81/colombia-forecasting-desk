@@ -127,6 +127,13 @@ def main() -> int:
         f"clusters={len(result.clusters)} "
         f"failures={len(result.failures)}"
     )
+    observed_indicators = [
+        item for item in result.indicator_watch if item.status == "observed"
+    ]
+    print(
+        f"  indicators={len(result.indicator_watch)} "
+        f"observed={len(observed_indicators)}"
+    )
     if args.source:
         _print_sandbox_report(result)
     elif args.source_report:

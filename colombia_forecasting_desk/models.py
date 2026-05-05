@@ -117,6 +117,24 @@ class SourceHealth:
 
 
 @dataclass(frozen=True, slots=True)
+class IndicatorObservation:
+    indicator_id: str
+    name: str
+    category: str
+    status: str
+    frequency: str
+    source_name: str
+    source_url: str
+    period: str = ""
+    release_date: str | None = None
+    headline: str = ""
+    values: dict[str, Any] = field(default_factory=dict)
+    why_it_matters: str = ""
+    correlations: list[str] = field(default_factory=list)
+    next_step: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class RunSummary:
     run_date: str
     started_at: str

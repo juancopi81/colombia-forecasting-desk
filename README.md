@@ -18,6 +18,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `raw_items.json` — every item fetched from each enabled metasource
 - `cleaned_items.json` — items after HTML stripping, normalization, filtering, and dedupe
 - `clusters.json` — clusters of related items, ranked by simple heuristics
+- `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `metasource_brief.md` — the human-readable daily brief
 - `source_failures.json` — per-source errors (run never crashes on a single source)
 - `source_health.json` — per-source raw, dated, rankable, content-mode, document-link, parsed-content, and failure counts
@@ -43,4 +44,4 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.6 — first document-content parser**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.7 — Indicator Watch foundation**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
