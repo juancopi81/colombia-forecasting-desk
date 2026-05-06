@@ -18,6 +18,8 @@ _TRUST_ROLE_TO_SIGNAL = {
 
 SHORT_TEXT_THRESHOLD = 40
 SUMMARY_MAX_CHARS = 280
+UI_ARTIFACT_RE = re.compile(r"\bui-button\b", re.IGNORECASE)
+TRAILING_SEPARATOR_RE = re.compile(r"(?:\s*\|\s*)+$")
 
 
 def strip_html(text: str) -> str:
@@ -30,6 +32,11 @@ def strip_html(text: str) -> str:
 
 def normalize_whitespace(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def strip_ui_artifacts(text: str) -> str:
+    without_controls = UI_ARTIFACT_RE.sub("", text)
+    return normalize_whitespace(TRAILING_SEPARATOR_RE.sub("", without_controls))
 
 
 def truncate_summary(text: str, max_chars: int = SUMMARY_MAX_CHARS) -> str:
@@ -58,7 +65,7 @@ def fold_accents(text: str) -> str:
 
 def clean(raw: RawItem, source: Metasource) -> CleanedItem:
     title = normalize_whitespace(raw.title or "")
-    clean_text = normalize_whitespace(strip_html(raw.raw_text or ""))
+    clean_text = strip_ui_artifacts(strip_html(raw.raw_text or ""))
     if not clean_text and title:
         clean_text = title
 

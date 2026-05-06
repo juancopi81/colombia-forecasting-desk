@@ -53,6 +53,22 @@ def test_clusters_unrelated_stay_separate(make_cleaned) -> None:
     assert len(clusters) == 2
 
 
+def test_cluster_summary_matches_title_member(make_cleaned) -> None:
+    short = make_cleaned(
+        id="a",
+        title="Gaceta Congreso",
+        summary="393 | Senado de la República | 29/04/2026",
+    )
+    long = make_cleaned(
+        id="b",
+        title="Gaceta del Congreso 418 — Senado de la República",
+        summary="418 | Senado de la República | 05/05/2026",
+    )
+    [grouped] = cluster([short, long], threshold=0.0)
+    assert grouped.title == long.title
+    assert grouped.summary == long.summary
+
+
 def test_cluster_ids_stable_across_calls(make_cleaned) -> None:
     items = [
         make_cleaned(id="a", title="Inflación marzo cifras"),

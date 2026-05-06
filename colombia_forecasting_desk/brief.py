@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from .models import (
@@ -15,6 +16,9 @@ TOP_SIGNALS_LIMIT = 10
 LOW_QUALITY_LIMIT = 10
 ERROR_MSG_TRUNCATE = 200
 INDICATOR_LIMIT = 12
+ANALYST_ATTENTION_LIMIT = 8
+SOURCE_ACTION_LIMIT = 8
+MONTHLY_LAG_WARNING_DAYS = 120
 
 
 def _bullet_or_none(items: list[str], empty_text: str = "_None._") -> str:
@@ -115,6 +119,62 @@ def _render_source_health(source_health: list[SourceHealth]) -> str:
     return "\n".join(lines)
 
 
+def _source_health_actions(source_health: list[SourceHealth]) -> list[str]:
+    actions: list[tuple[int, str]] = []
+    for health in source_health:
+        if health.failure_count:
+            actions.append(
+                (
+                    0,
+                    f"`{health.source_id}` is failing "
+                    f"({health.failure_count} failure"
+                    f"{'s' if health.failure_count != 1 else ''}); check access "
+                    "or alternate endpoints.",
+                )
+            )
+            continue
+        if health.document_link_count and health.parsed_content_count == 0:
+            actions.append(
+                (
+                    1,
+                    f"`{health.source_id}` exposes {health.document_link_count} "
+                    "document links but no parsed content; evaluate a lightweight "
+                    "parser or structured substitute.",
+                )
+            )
+            continue
+        if health.onboarding_status == "needs_parser" and health.status in {
+            "no_raw",
+            "no_rankable",
+        }:
+            actions.append(
+                (
+                    2,
+                    f"`{health.source_id}` is marked `needs_parser` with "
+                    f"`{health.status}`; prioritize only if this source is "
+                    "decision-useful.",
+                )
+            )
+            continue
+        if health.onboarding_status == "working" and health.status == "no_rankable":
+            actions.append(
+                (
+                    3,
+                    f"`{health.source_id}` is enabled as working but produced no "
+                    "rankable signal; either improve extraction or downgrade "
+                    "onboarding.",
+                )
+            )
+    return [message for _, message in sorted(actions)[:SOURCE_ACTION_LIMIT]]
+
+
+def _render_source_health_actions(source_health: list[SourceHealth]) -> str:
+    actions = _source_health_actions(source_health)
+    if not actions:
+        return "_No immediate source-health actions._"
+    return "\n".join(f"- {action}" for action in actions)
+
+
 def _format_indicator_value(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.2f}"
@@ -132,12 +192,182 @@ def _format_indicator_value(value: Any) -> str:
     return str(value)
 
 
-def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+
+
+def _period_start(period: str) -> date | None:
+    if not period:
+        return None
+    if len(period) == 10:
+        return _parse_date(period)
+    if len(period) == 7 and period[4] == "-":
+        try:
+            return date(int(period[:4]), int(period[5:7]), 1)
+        except ValueError:
+            return None
+    if "-Q" in period:
+        year_text, quarter_text = period.split("-Q", 1)
+        try:
+            quarter = int(quarter_text)
+            return date(int(year_text), 1 + (quarter - 1) * 3, 1)
+        except ValueError:
+            return None
+    return None
+
+
+def _indicator_by_id(
+    indicators: list[IndicatorObservation], indicator_id: str
+) -> IndicatorObservation | None:
+    for indicator in indicators:
+        if indicator.indicator_id == indicator_id:
+            return indicator
+    return None
+
+
+def _indicator_alerts(
+    indicator: IndicatorObservation,
+    indicators: list[IndicatorObservation],
+    run_date: str,
+) -> list[str]:
+    alerts: list[str] = []
+    if indicator.status == "observed" and indicator.freshness_status not in {
+        "current",
+        "unknown",
+    }:
+        alerts.append(
+            f"`stale_observation`: freshness is `{indicator.freshness_status}`."
+        )
+
+    run_day = _parse_date(run_date)
+    period_day = _period_start(indicator.period)
+    if (
+        run_day
+        and period_day
+        and indicator.frequency.startswith("monthly")
+        and (run_day - period_day).days > MONTHLY_LAG_WARNING_DAYS
+    ):
+        alerts.append(
+            "`observation_lag`: latest observed period is more than four months "
+            "behind the run date."
+        )
+
+    if indicator.indicator_id == "trm_usd_cop":
+        move = indicator.values.get("seven_day_change_pct")
+        if isinstance(move, int | float) and abs(move) >= 2:
+            direction = "depreciation" if move > 0 else "appreciation"
+            alerts.append(
+                f"`material_move`: seven-day USD/COP move is {move:.2f}% "
+                f"({direction})."
+            )
+
+    if indicator.indicator_id == "policy_rate_ibr":
+        spread = indicator.values.get("ibr_policy_spread_pp")
+        if isinstance(spread, int | float) and abs(spread) >= 0.5:
+            alerts.append(
+                f"`liquidity_spread`: IBR-policy spread is {spread:.2f} pp."
+            )
+
+    if indicator.indicator_id == "external_trade":
+        periods = {
+            component.period
+            for component in indicator.components
+            if component.status == "observed" and component.period
+        }
+        if len(periods) > 1:
+            alerts.append(
+                "`mixed_period_components`: exports/imports are observed for "
+                "different periods, so the trade balance should not be forced."
+            )
+
+    if indicator.indicator_id == "fiscal_tax_pulse":
+        ipc = _indicator_by_id(indicators, "ipc_inflation")
+        nominal_tax = indicator.values.get("gross_tax_revenue_annual_variation_pct")
+        annual_ipc = ipc.values.get("annual_variation_pct") if ipc else None
+        if isinstance(nominal_tax, int | float) and isinstance(annual_ipc, int | float):
+            if nominal_tax < annual_ipc:
+                alerts.append(
+                    "`real_terms_warning`: nominal tax collection growth is below "
+                    "annual IPC."
+                )
+
+    if indicator.indicator_id == "manufacturing":
+        retail = _indicator_by_id(indicators, "retail_sales")
+        manufacturing_sales = indicator.values.get("real_sales_annual_variation_pct")
+        retail_sales = (
+            retail.values.get("real_retail_sales_annual_variation_pct")
+            if retail
+            else None
+        )
+        if (
+            isinstance(manufacturing_sales, int | float)
+            and isinstance(retail_sales, int | float)
+            and retail_sales >= 5
+            and manufacturing_sales < 0
+        ):
+            alerts.append(
+                "`cross_indicator_tension`: retail sales are strong while "
+                "manufacturing real sales are negative."
+            )
+
+    return alerts
+
+
+def _all_indicator_alerts(
+    indicators: list[IndicatorObservation], run_date: str
+) -> list[tuple[str, str]]:
+    alerts: list[tuple[str, str]] = []
+    for indicator in indicators:
+        for alert in _indicator_alerts(indicator, indicators, run_date):
+            alerts.append((indicator.name, alert))
+    return alerts
+
+
+def _render_analyst_attention(
+    indicators: list[IndicatorObservation],
+    source_health: list[SourceHealth],
+    run_date: str,
+) -> str:
+    lines = [
+        f"- **{name}:** {alert}"
+        for name, alert in _all_indicator_alerts(indicators, run_date)[
+            :ANALYST_ATTENTION_LIMIT
+        ]
+    ]
+    if not lines:
+        observed = sum(1 for item in indicators if item.status == "observed")
+        lines.append(
+            f"- Indicator Watch has {observed}/{len(indicators)} observed cards; "
+            "no deterministic alert fired."
+        )
+    source_actions = _source_health_actions(source_health)
+    if source_actions:
+        lines.append(f"- **Source health:** {source_actions[0]}")
+    return "\n".join(lines)
+
+
+def _render_indicator_watch(
+    indicators: list[IndicatorObservation], run_date: str
+) -> str:
     if not indicators:
         return "_No indicator watch generated._"
 
     blocks: list[str] = []
     for indicator in indicators[:INDICATOR_LIMIT]:
+        alerts = _indicator_alerts(indicator, indicators, run_date)
+        alert_block = (
+            "\n".join(f"- {alert}" for alert in alerts)
+            if alerts
+            else "- _No deterministic alert._"
+        )
         display_values = {
             key: value for key, value in indicator.values.items() if key != "components"
         }
@@ -178,6 +408,7 @@ def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
             f"- Latest release: {release}\n"
             f"- Source: [{indicator.source_name}]({indicator.source_url})\n\n"
             f"**Headline:** {headline}\n\n"
+            f"**Alerts:**\n{alert_block}\n\n"
             f"**Values:**\n{values}\n\n"
             f"**Components:**\n{components}\n\n"
             f"**Why it matters:** {indicator.why_it_matters}\n\n"
@@ -217,14 +448,18 @@ def render_brief(
         f"- Raw items collected: {run_summary.raw_items}\n"
         f"- Cleaned items retained: {run_summary.cleaned_items}\n"
         f"- Clusters created: {run_summary.clusters}\n\n"
+        "## Analyst Attention\n\n"
+        f"{_render_analyst_attention(indicator_watch or [], source_health or [], run_summary.run_date)}\n\n"
+        "## Indicator Watch\n\n"
+        f"{_render_indicator_watch(indicator_watch or [], run_summary.run_date)}\n\n"
         "## Top Signals\n\n"
         f"{top_section}\n\n"
-        "## Indicator Watch\n\n"
-        f"{_render_indicator_watch(indicator_watch or [])}\n\n"
         "## Emerging Questions\n\n"
         "- _(populated in M2)_\n\n"
         "## Topics to Monitor\n\n"
         f"{keywords_section}\n\n"
+        "## Source Health Actions\n\n"
+        f"{_render_source_health_actions(source_health or [])}\n\n"
         "## Source Health\n\n"
         f"{_render_source_health(source_health or [])}\n\n"
         "## Noisy / Low-Confidence Items\n\n"

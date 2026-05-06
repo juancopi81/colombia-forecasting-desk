@@ -293,6 +293,16 @@ using the standard library. This does not mean every card is fully deepened; it
 means the watch no longer has placeholder cards and can be evaluated for which
 signals deserve second-pass detail.
 
+M1.13 makes the brief more analyst-facing before starting M2. The brief now
+opens with deterministic `Analyst Attention` bullets, renders the Indicator
+Watch before latest event clusters, adds per-card alert lines, and turns Source
+Health into an action queue. The ranker also reduces the advantage of
+single-source local incident news that is merely fresh, while preserving
+strategic terms such as fiscal, electoral, government, BanRep, DANE, Farc, and
+ELN. Legal/listing clusters are kept internally consistent by summarizing the
+same member that supplies the title, and obvious UI artifacts such as
+`ui-button` are stripped during cleaning.
+
 ## Indicator Watch
 
 Each run writes:
@@ -369,6 +379,21 @@ deepening candidates are SECOP sector fields, external-trade product/country
 annexes, DIAN/Minhacienda deficit and debt components, BanRep IBR term
 structure, and energy thermal/non-regulated/scarcity-price details.
 
+M1.13 adds deterministic alert rendering for known high-value conditions:
+
+- `material_move`: a large short-window market move, currently used for TRM.
+- `liquidity_spread`: a large IBR-policy spread.
+- `mixed_period_components`: bundle components should not be combined because
+  they refer to different periods, currently used for external trade.
+- `real_terms_warning`: nominal tax collection growth is below annual IPC.
+- `cross_indicator_tension`: activity indicators disagree in a way worth
+  inspection, for example strong retail sales with negative manufacturing
+  sales.
+- `observation_lag`: a monthly card's latest observed period is more than four
+  months behind the run date.
+- `stale_observation`: the card is observed but no longer fresh by its expected
+  release cadence.
+
 ## Source Health
 
 Each run writes:
@@ -416,6 +441,36 @@ Recommended structure:
 - Cleaned items retained:
 - Clusters created:
 
+## Analyst Attention
+
+- ...
+
+## Indicator Watch
+
+### IPC / inflation
+
+Status:
+Freshness:
+Category:
+Frequency:
+Period:
+Latest release:
+Source:
+
+Headline:
+
+Alerts:
+
+Values:
+
+Components:
+
+Why it matters:
+
+Useful correlations:
+
+M1 next step:
+
 ## Top Signals
 
 ### 1. [Cluster Title]
@@ -439,27 +494,6 @@ Links:
 
 ---
 
-## Indicator Watch
-
-### IPC / inflation
-
-Status:
-Category:
-Frequency:
-Period:
-Latest release:
-Source:
-
-Headline:
-
-Values:
-
-Why it matters:
-
-Useful correlations:
-
-M1 next step:
-
 ## Emerging Questions
 
 - ...
@@ -467,6 +501,14 @@ M1 next step:
 ## Topics to Monitor
 
 - ...
+
+## Source Health Actions
+
+- ...
+
+## Source Health
+
+| Source | Onboarding | Status | Content | Raw | Dated | Rankable | Doc links | Parsed | Failures |
 
 ## Noisy / Low-Confidence Items
 

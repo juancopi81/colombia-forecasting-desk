@@ -82,6 +82,16 @@ def test_clean_strips_html_and_sets_signal(make_raw, sample_source) -> None:
     assert cleaned.country_relevance == "high"
 
 
+def test_clean_removes_known_ui_artifacts(make_raw, sample_source) -> None:
+    raw = make_raw(
+        raw_text="53.480 | Ordinaria | 04/05/2026 | ui-button",
+        title="Diario Oficial 53.480",
+    )
+    cleaned = clean(raw, sample_source)
+    assert "ui-button" not in cleaned.clean_text
+    assert cleaned.summary == "53.480 | Ordinaria | 04/05/2026"
+
+
 def test_clean_flags_short_text(make_raw, sample_source) -> None:
     raw = make_raw(raw_text="x", title="title")
     cleaned = clean(raw, sample_source)

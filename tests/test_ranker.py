@@ -100,4 +100,23 @@ def test_rank_diversifies_top_sources() -> None:
         for cluster in ranked[:10]
         for source in set(cluster.member_source_ids)
     ]
-    assert top_sources.count("eltiempo_colombia") <= 4
+    assert top_sources.count("eltiempo_colombia") <= 3
+
+
+def test_single_source_local_incident_is_downgraded_against_strategic_news() -> None:
+    now = datetime(2026, 5, 6, 12, 0, tzinfo=timezone.utc)
+    local_incident = _cluster(
+        cluster_id="c-local-incident",
+        title="Lluvias causan desbordamiento y afectan viviendas en un municipio",
+        summary="Autoridades atienden la emergencia local.",
+        priorities=["high"],
+        latest_published_at=now.isoformat().replace("+00:00", "Z"),
+    )
+    strategic = _cluster(
+        cluster_id="c-strategic-news",
+        title="Gobierno anuncia reforma fiscal ante presiones de recaudo",
+        summary="La medida afecta el déficit y la política económica nacional.",
+        priorities=["high"],
+        latest_published_at=now.isoformat().replace("+00:00", "Z"),
+    )
+    assert score_cluster(strategic, now) > score_cluster(local_incident, now)

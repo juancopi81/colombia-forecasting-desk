@@ -59,8 +59,9 @@ def _confidence(source_count: int, items_count: int) -> str:
 def _build_cluster(members: list[CleanedItem]) -> Cluster:
     ids = [m.id for m in members]
     cid = _cluster_id(ids)
-    longest_title = max((m.title for m in members), key=lambda t: (len(t), t))
-    summary = members[0].summary
+    title_member = max(members, key=lambda m: (len(m.title), m.title))
+    longest_title = title_member.title
+    summary = title_member.summary
     source_ids = sorted({m.source_id for m in members})
     source_types = sorted({m.source_type for m in members})
     signal_types = sorted({m.signal_type for m in members})
