@@ -285,6 +285,14 @@ is only partially loaded. This gives the watch a daily operating-stress view
 and a monthly hydrocarbon fiscal/external-account view without starting PDF or
 spreadsheet parsing.
 
+M1.12 completes first-pass Indicator Watch wiring for all twelve cards. Policy
+rate + IBR now comes from BanRep's SUAMECA JSON series endpoint. External trade
+now reads DANE's current export/import headline HTML. Fiscal/tax pulse now
+parses DIAN's official monthly tax-collection XLSX inside its published ZIP
+using the standard library. This does not mean every card is fully deepened; it
+means the watch no longer has placeholder cards and can be evaluated for which
+signals deserve second-pass detail.
+
 ## Indicator Watch
 
 Each run writes:
@@ -345,15 +353,21 @@ Current observed cards:
   source, process type, and top entity.
 - `energy_system`: XM public API components for SIN electricity demand, useful
   reservoir volume, and weighted national spot price.
+- `policy_rate_ibr`: BanRep SUAMECA latest policy rate and IBR overnight
+  nominal series, including the IBR-policy spread.
+- `external_trade`: DANE / DIAN headline exports and imports, including sector
+  shares and same-period goods balance when available.
 - `oil_gas_production`: ANH / datos.gov.co consolidated crude and fiscalized
   gas production aggregates, including top departments by volume.
+- `fiscal_tax_pulse`: DIAN monthly gross tax collection by broad bucket from
+  the official XLSX ZIP, including year-over-year change.
 
-The remaining cards are intentionally visible as parser/source backlog so M1
-can prioritize high-value official data before automating M2 question writing.
-The next bundle candidates are external trade and fiscal/tax pulse. The next
-hardening candidates are source health thresholds, regression fixtures from
-live structured endpoints, and explicit alert rules for stale critical
-components.
+All twelve cards now have a first-pass source. The next hardening candidates
+are source health thresholds, regression fixtures from live structured
+endpoints, and explicit alert rules for stale critical components. The next
+deepening candidates are SECOP sector fields, external-trade product/country
+annexes, DIAN/Minhacienda deficit and debt components, BanRep IBR term
+structure, and energy thermal/non-regulated/scarcity-price details.
 
 ## Source Health
 
