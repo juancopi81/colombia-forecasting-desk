@@ -289,7 +289,7 @@ def run_single_source(
     source_health = build_source_health(
         [source], raw_items, cleaned, rankable, failures
     )
-    indicator_watch = build_indicator_watch(raw_items, cleaned)
+    indicator_watch = build_indicator_watch(raw_items, cleaned, now=current)
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -369,7 +369,9 @@ def run(
         sources, raw_items, cleaned, rankable, failures
     )
     structured_indicators = fetch_structured_indicator_observations()
-    indicator_watch = build_indicator_watch(raw_items, cleaned, structured_indicators)
+    indicator_watch = build_indicator_watch(
+        raw_items, cleaned, structured_indicators, now=current
+    )
 
     finished_at = _now_iso()
     summary = RunSummary(

@@ -117,6 +117,21 @@ class SourceHealth:
 
 
 @dataclass(frozen=True, slots=True)
+class IndicatorComponent:
+    component_id: str
+    name: str
+    status: str
+    source_name: str
+    source_url: str
+    period: str = ""
+    release_date: str | None = None
+    headline: str = ""
+    values: dict[str, Any] = field(default_factory=dict)
+    freshness_status: str = "unknown"
+    next_step: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class IndicatorObservation:
     indicator_id: str
     name: str
@@ -129,6 +144,8 @@ class IndicatorObservation:
     release_date: str | None = None
     headline: str = ""
     values: dict[str, Any] = field(default_factory=dict)
+    freshness_status: str = "unknown"
+    components: list[IndicatorComponent] = field(default_factory=list)
     why_it_matters: str = ""
     correlations: list[str] = field(default_factory=list)
     next_step: str = ""
