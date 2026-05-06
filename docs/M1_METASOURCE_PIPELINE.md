@@ -268,6 +268,14 @@ the headline values directly in stable text, so M1 can surface the state
 variables now while leaving category/city/subsector XLSX annex parsing for a
 later deepening pass.
 
+M1.10 hardens the watch before broadening it. Each card now carries a
+`freshness_status` (`current`, `stale`, `pending`, `failed`, or `unknown`), so
+old but valuable state variables remain visible instead of being silently
+dropped. Bundle cards can also expose typed `components`. The construction
+bundle now merges ICOCED costs with DANE headline HTML for cement production
+and shipments, construction licenses, and housing finance; deeper XLSX annexes
+remain optional follow-up work.
+
 ## Indicator Watch
 
 Each run writes:
@@ -289,6 +297,20 @@ Each card contains:
   "release_date": "",
   "headline": "",
   "values": {},
+  "freshness_status": "current | stale | pending | failed | unknown",
+  "components": [
+    {
+      "component_id": "",
+      "name": "",
+      "status": "observed | pending_source | failed",
+      "period": "",
+      "release_date": "",
+      "headline": "",
+      "values": {},
+      "freshness_status": "",
+      "next_step": ""
+    }
+  ],
   "why_it_matters": "",
   "correlations": [],
   "next_step": ""
@@ -308,12 +330,15 @@ Current observed cards:
 - `manufacturing`: DANE EMMET headline real production, real sales, and
   employment annual changes from the current manufacturing page.
 - `construction_bundle`: DANE ICOCED XLSX headline total, residential, and
-  non-residential cost metrics when the source is fetched.
+  non-residential cost metrics plus DANE headline HTML components for cement,
+  construction licenses, and housing finance.
 - `secop_procurement`: existing Socrata procurement adapters aggregated by day,
   source, process type, and top entity.
 
 The remaining cards are intentionally visible as parser/source backlog so M1
 can prioritize high-value official data before automating M2 question writing.
+The next bundle candidates are energy system, external trade, oil/gas
+production, and fiscal/tax pulse.
 
 ## Source Health
 

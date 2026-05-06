@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
 
@@ -9,7 +9,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .cleaner import fold_accents, normalize_whitespace
-from .models import CleanedItem, IndicatorObservation, RawItem
+from .models import CleanedItem, IndicatorComponent, IndicatorObservation, RawItem
 
 
 STRUCTURED_INDICATOR_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
@@ -35,6 +35,18 @@ EMMET_URL = (
 LABOR_MARKET_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
     "mercado-laboral/empleo-y-desempleo"
+)
+CEMENT_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "construccion/estadisticas-de-cemento-gris"
+)
+CONSTRUCTION_LICENSES_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "construccion/licencias-de-construccion"
+)
+HOUSING_FINANCE_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "construccion/financiacion-de-vivienda"
 )
 ANH_PRODUCTION_URL = (
     "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/"
@@ -185,7 +197,7 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         category="construction",
         frequency="monthly",
         source_name="DANE",
-        source_url="https://www.dane.gov.co/index.php/estadisticas-por-tema-2/construccion",
+        source_url=CEMENT_URL,
         why_it_matters=(
             "Costs, licenses, cement, housing finance, and prices reveal "
             "building-cycle stress."
@@ -196,8 +208,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "ICOCED + SECOP infrastructure contracts flags public-works budget pressure",
         ),
         next_step=(
-            "ICOCED is wired; add cement/licenses/housing finance through DANE "
-            "structured pages next."
+            "ICOCED, cement, licenses, and housing finance headline HTML are "
+            "wired; add deeper annex drivers when needed."
         ),
     ),
     IndicatorDefinition(
@@ -331,7 +343,18 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return round(float(str(value).replace(",", ".")), 2)
+        text = str(value).strip().replace(" ", "")
+        if "," in text and "." in text:
+            text = text.replace(".", "").replace(",", ".")
+        elif "," in text:
+            text = text.replace(",", ".")
+        elif text.count(".") > 1:
+            text = text.replace(".", "")
+        elif "." in text:
+            before, after = text.split(".", 1)
+            if len(after) == 3 and 1 <= len(before.lstrip("-")) <= 3:
+                text = before + after
+        return round(float(text), 2)
     except ValueError:
         return None
 
@@ -368,8 +391,8 @@ _MONTH_ABBR_ES = {
     "dic": 12,
 }
 
-_PERCENT = r"(-?\d+(?:[,.]\d+)?)\s*%"
-_NUMBER = r"(-?\d+(?:[,.]\d+)?)"
+_NUMBER = r"(-?[\d.,]+)"
+_PERCENT = rf"{_NUMBER}\s*%"
 _MONTH_NAMES = "|".join(_MONTHS_ES)
 
 
@@ -446,6 +469,192 @@ def _latest_release_date(html: str) -> str:
     return _release_date_from_text(_text_from_html(html))
 
 
+_FRESHNESS_DAYS_BY_FREQUENCY = {
+    "daily": 7,
+    "monthly": 95,
+    "quarterly": 150,
+    "daily/monthly": 95,
+}
+
+
+_BUNDLE_COMPONENTS = {
+    "construction_bundle": (
+        {
+            "component_id": "icoced",
+            "name": "ICOCED costs",
+            "source_name": "DANE",
+            "source_url": (
+                "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+                "precios-y-costos/indice-de-costos-de-la-construccion-de-"
+                "edificaciones-icoced"
+            ),
+            "next_step": "Parsed from the latest XLSX annex.",
+        },
+        {
+            "component_id": "cement",
+            "name": "Cement production and shipments",
+            "source_name": "DANE",
+            "source_url": CEMENT_URL,
+            "next_step": "Headline HTML is wired; add regional/channel annex details later.",
+        },
+        {
+            "component_id": "licenses",
+            "name": "Construction licenses",
+            "source_name": "DANE",
+            "source_url": CONSTRUCTION_LICENSES_URL,
+            "next_step": "Headline HTML is wired; add destination/municipality annex details later.",
+        },
+        {
+            "component_id": "housing_finance",
+            "name": "Housing finance",
+            "source_name": "DANE",
+            "source_url": HOUSING_FINANCE_URL,
+            "next_step": "Headline HTML is wired; add credit type and geography annex details later.",
+        },
+    )
+}
+
+
+def _parse_iso_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _freshness_status(
+    status: str,
+    release_date: str | None,
+    frequency: str,
+    now: datetime,
+) -> str:
+    if status in {"pending_source", "failed"}:
+        return "pending" if status == "pending_source" else "failed"
+    release = _parse_iso_date(release_date)
+    if release is None:
+        return "unknown"
+    threshold_days = _FRESHNESS_DAYS_BY_FREQUENCY.get(frequency, 120)
+    return "stale" if (now - release).days > threshold_days else "current"
+
+
+def _component(
+    *,
+    component_id: str,
+    name: str,
+    status: str,
+    source_name: str,
+    source_url: str,
+    period: str = "",
+    release_date: str | None = None,
+    headline: str = "",
+    values: dict[str, Any] | None = None,
+    freshness_status: str = "unknown",
+    next_step: str = "",
+) -> IndicatorComponent:
+    return IndicatorComponent(
+        component_id=component_id,
+        name=name,
+        status=status,
+        source_name=source_name,
+        source_url=source_url,
+        period=period,
+        release_date=release_date,
+        headline=headline,
+        values={
+            key: value for key, value in (values or {}).items() if value is not None
+        },
+        freshness_status=freshness_status,
+        next_step=next_step,
+    )
+
+
+def _pending_components(indicator_id: str) -> list[IndicatorComponent]:
+    return [
+        _component(
+            component_id=str(component["component_id"]),
+            name=str(component["name"]),
+            status="pending_source",
+            source_name=str(component["source_name"]),
+            source_url=str(component["source_url"]),
+            freshness_status="pending",
+            next_step=str(component["next_step"]),
+        )
+        for component in _BUNDLE_COMPONENTS.get(indicator_id, ())
+    ]
+
+
+def _complete_bundle_components(
+    indicator_id: str,
+    components: list[IndicatorComponent],
+) -> list[IndicatorComponent]:
+    observed_by_id = {component.component_id: component for component in components}
+    completed: list[IndicatorComponent] = []
+    for component in _pending_components(indicator_id):
+        completed.append(observed_by_id.get(component.component_id, component))
+    for component in components:
+        if component.component_id not in {item.component_id for item in completed}:
+            completed.append(component)
+    return completed
+
+
+def _bundle_values(
+    indicator_id: str,
+    components: list[IndicatorComponent],
+) -> dict[str, Any]:
+    observed_components = [
+        component for component in components if component.status == "observed"
+    ]
+    if not observed_components:
+        return {}
+    total_components = len(_BUNDLE_COMPONENTS.get(indicator_id, ()))
+    return {
+        "observed_components": len(observed_components),
+        "total_components": total_components or len(components),
+        "components": {
+            component.component_id: component.values
+            for component in observed_components
+        },
+    }
+
+
+def _apply_freshness(
+    observation: IndicatorObservation,
+    now: datetime,
+) -> IndicatorObservation:
+    component_frequency = (
+        "monthly"
+        if observation.indicator_id == "construction_bundle"
+        else observation.frequency
+    )
+    components = [
+        replace(
+            component,
+            freshness_status=_freshness_status(
+                component.status,
+                component.release_date,
+                component_frequency,
+                now,
+            ),
+        )
+        for component in observation.components
+    ]
+    return replace(
+        observation,
+        freshness_status=_freshness_status(
+            observation.status,
+            observation.release_date,
+            observation.frequency,
+            now,
+        ),
+        components=components,
+    )
+
+
 def _headline_definition(
     definition: IndicatorDefinition,
     *,
@@ -454,6 +663,7 @@ def _headline_definition(
     release_date: str,
     headline: str,
     values: dict[str, Any],
+    components: list[IndicatorComponent] | None = None,
 ) -> IndicatorObservation:
     return IndicatorObservation(
         indicator_id=definition.indicator_id,
@@ -467,6 +677,7 @@ def _headline_definition(
         release_date=release_date,
         headline=headline,
         values={key: value for key, value in values.items() if value is not None},
+        components=components or [],
         why_it_matters=definition.why_it_matters,
         correlations=list(definition.correlations),
         next_step=definition.next_step,
@@ -718,6 +929,251 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
     )
 
 
+def cement_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"en\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+la produccion de "
+        rf"cemento gris a nivel nacional fue de\s+{_NUMBER}\s+miles de "
+        rf"toneladas.*?variacion de\s+{_PERCENT}.*?"
+        rf"se despacharon al mercado nacional\s+{_NUMBER}\s+miles de "
+        rf"toneladas.*?crecimiento del\s+{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    ytd_match = re.search(
+        rf"en el periodo .*? la produccion de cemento gris alcanzo los "
+        rf"{_NUMBER}\s+miles de toneladas.*?aumento de\s+{_PERCENT}.*?"
+        rf"los despachos al mercado nacional acumularon\s+{_NUMBER}\s+miles "
+        rf"de toneladas.*?variacion positiva de\s+{_PERCENT}",
+        text,
+    )
+    month_name, year = match.group(1), match.group(2)
+    period = _month_period(month_name, year)
+    production = _to_float(match.group(3))
+    production_change = _to_float(match.group(4))
+    shipments = _to_float(match.group(5))
+    shipments_change = _to_float(match.group(6))
+    values: dict[str, Any] = {
+        "production_thousand_tons": production,
+        "production_annual_variation_pct": production_change,
+        "domestic_shipments_thousand_tons": shipments,
+        "domestic_shipments_annual_variation_pct": shipments_change,
+    }
+    if ytd_match:
+        values.update(
+            {
+                "year_to_date_production_thousand_tons": _to_float(
+                    ytd_match.group(1)
+                ),
+                "year_to_date_production_variation_pct": _to_float(
+                    ytd_match.group(2)
+                ),
+                "year_to_date_shipments_thousand_tons": _to_float(
+                    ytd_match.group(3)
+                ),
+                "year_to_date_shipments_variation_pct": _to_float(
+                    ytd_match.group(4)
+                ),
+            }
+        )
+    return _component(
+        component_id="cement",
+        name="Cement production and shipments",
+        status="observed",
+        source_name="DANE",
+        source_url=CEMENT_URL,
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=(
+            f"DANE ECG {period}: cement production {production:.1f}k tons "
+            f"({production_change:+.2f}% y/y), domestic shipments "
+            f"{shipments:.1f}k tons ({shipments_change:+.2f}% y/y)."
+        ),
+        values=values,
+        next_step="Add regional and channel-distribution annex detail when needed.",
+    )
+
+
+def construction_licenses_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"en\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\s+se licenciaron "
+        rf"{_NUMBER}\s*m2?\s+para construccion.*?registrada en el mismo mes "
+        rf"de 20\d{{2}}\s+\({_NUMBER}\s*m2?\).*?crecimiento anual de "
+        rf"{_PERCENT}.*?aumento de\s+{_PERCENT}\s+en el area aprobada para "
+        rf"destinos no habitacionales.*?area aprobada para vivienda "
+        rf"(aumento|disminuyo|disminucion|disminuyó)\s+{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    area_match = re.search(
+        rf"se aprobaron\s+{_NUMBER}\s*m2?\s+para vivienda.*?"
+        rf"destinos no habitacionales alcanzo\s+{_NUMBER}\s*m2?",
+        text,
+    )
+    month_name, year = match.group(1), match.group(2)
+    period = _month_period(month_name, year)
+    licensed_area = _to_float(match.group(3))
+    prior_area = _to_float(match.group(4))
+    total_growth = _to_float(match.group(5))
+    non_res_growth = _to_float(match.group(6))
+    housing_growth = _to_float(match.group(8))
+    if housing_growth is not None and match.group(7).startswith("dismin"):
+        housing_growth = -housing_growth
+    values: dict[str, Any] = {
+        "licensed_area_m2": licensed_area,
+        "prior_year_licensed_area_m2": prior_area,
+        "licensed_area_annual_variation_pct": total_growth,
+        "housing_area_annual_variation_pct": housing_growth,
+        "non_residential_area_annual_variation_pct": non_res_growth,
+    }
+    if area_match:
+        values["housing_area_m2"] = _to_float(area_match.group(1))
+        values["non_residential_area_m2"] = _to_float(area_match.group(2))
+    return _component(
+        component_id="licenses",
+        name="Construction licenses",
+        status="observed",
+        source_name="DANE",
+        source_url=CONSTRUCTION_LICENSES_URL,
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=(
+            f"DANE ELIC {period}: licensed area {licensed_area:.0f} m2 "
+            f"({total_growth:+.2f}% y/y); housing {housing_growth:+.2f}% "
+            f"and non-residential {non_res_growth:+.2f}% y/y."
+        ),
+        values=values,
+        next_step="Add destination, municipality, and VIS/non-VIS annex detail when needed.",
+    )
+
+
+def housing_finance_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"durante el\s+(.+?)\s+de\s+(20\d{{2}}),\s+se desembolsaron "
+        rf"\$\s*{_NUMBER}\s+millones de pesos corrientes para compra de "
+        rf"vivienda.*?\$\s*{_NUMBER}\s+millones fueron creditos de vivienda "
+        rf"y\s+\$\s*{_NUMBER}\s+millones fueron leasing habitacional",
+        text,
+    )
+    if not match:
+        return None
+    real_match = re.search(
+        rf"precios constantes.*?sumaron\s+\$\s*{_NUMBER}\s+millones.*?"
+        rf"variacion anual de\s+{_PERCENT}",
+        text,
+    )
+    quarter_text, year = match.group(1), match.group(2)
+    quarter = _quarter_period(quarter_text, year)
+    total = _to_float(match.group(3))
+    credit = _to_float(match.group(4))
+    leasing = _to_float(match.group(5))
+    values: dict[str, Any] = {
+        "purchase_disbursements_cop_millions": total,
+        "housing_credit_disbursements_cop_millions": credit,
+        "leasing_disbursements_cop_millions": leasing,
+    }
+    if real_match:
+        values["real_purchase_disbursements_cop_millions"] = _to_float(
+            real_match.group(1)
+        )
+        values["real_purchase_disbursements_annual_variation_pct"] = _to_float(
+            real_match.group(2)
+        )
+    real_change = values.get("real_purchase_disbursements_annual_variation_pct")
+    change_text = (
+        f", real disbursements {real_change:+.2f}% y/y"
+        if isinstance(real_change, float)
+        else ""
+    )
+    return _component(
+        component_id="housing_finance",
+        name="Housing finance",
+        status="observed",
+        source_name="DANE",
+        source_url=HOUSING_FINANCE_URL,
+        period=quarter,
+        release_date=_latest_release_date(html),
+        headline=(
+            f"DANE FIVI {quarter}: COP {total:.0f} million in purchase "
+            f"disbursements{change_text}."
+        ),
+        values=values,
+        next_step="Add credit-type, tenure, and geography annex detail when needed.",
+    )
+
+
+def _quarter_period(quarter_text: str, year: str) -> str:
+    folded = fold_accents(quarter_text.lower())
+    mapping = {
+        "primer trimestre": "Q1",
+        "i trimestre": "Q1",
+        "segundo trimestre": "Q2",
+        "ii trimestre": "Q2",
+        "tercer trimestre": "Q3",
+        "iii trimestre": "Q3",
+        "cuarto trimestre": "Q4",
+        "iv trimestre": "Q4",
+    }
+    for key, quarter in mapping.items():
+        if key in folded:
+            return f"{year}-{quarter}"
+    return year
+
+
+def construction_bundle_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    component_list = list(components)
+    observed_components = [
+        component for component in component_list if component.status == "observed"
+    ]
+    failed_components = [
+        component for component in component_list if component.status == "failed"
+    ]
+    if not observed_components:
+        if not failed_components:
+            return None
+        definition = _definition_map()["construction_bundle"]
+        return _headline_definition(
+            definition,
+            status="failed",
+            period="",
+            release_date="",
+            headline="Construction bundle components failed to fetch or parse.",
+            values={},
+            components=_complete_bundle_components(
+                "construction_bundle", component_list
+            ),
+        )
+    definition = _definition_map()["construction_bundle"]
+    latest_component = max(
+        observed_components,
+        key=lambda component: component.release_date or "",
+    )
+    values = {
+        component.component_id: component.values for component in observed_components
+    }
+    component_ids = ", ".join(component.component_id for component in observed_components)
+    completed = _complete_bundle_components("construction_bundle", component_list)
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=latest_component.period,
+        release_date=latest_component.release_date or "",
+        headline=f"Construction bundle has observed components: {component_ids}.",
+        values={
+            "observed_components": len(observed_components),
+            "total_components": len(_BUNDLE_COMPONENTS["construction_bundle"]),
+            "components": values,
+        },
+        components=completed,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TrmPoint:
     value: float
@@ -877,6 +1333,19 @@ _DANE_HTML_INDICATORS: tuple[
     ("manufacturing", EMMET_URL, manufacturing_observation_from_html),
 )
 
+_DANE_CONSTRUCTION_COMPONENTS: tuple[
+    tuple[
+        str,
+        str,
+        Callable[[str], IndicatorComponent | None],
+    ],
+    ...,
+] = (
+    ("cement", CEMENT_URL, cement_component_from_html),
+    ("licenses", CONSTRUCTION_LICENSES_URL, construction_licenses_component_from_html),
+    ("housing_finance", HOUSING_FINANCE_URL, housing_finance_component_from_html),
+)
+
 
 def _fetch_dane_html_observation(
     client: httpx.Client,
@@ -902,6 +1371,46 @@ def _fetch_dane_html_observation(
     return observation
 
 
+def _fetch_dane_component(
+    client: httpx.Client,
+    component_id: str,
+    url: str,
+    parser: Callable[[str], IndicatorComponent | None],
+) -> IndicatorComponent:
+    defaults = {
+        str(component["component_id"]): component
+        for component in _BUNDLE_COMPONENTS["construction_bundle"]
+    }
+    default = defaults[component_id]
+    try:
+        response = client.get(url)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        return _component(
+            component_id=component_id,
+            name=str(default["name"]),
+            status="failed",
+            source_name=str(default["source_name"]),
+            source_url=url,
+            headline=f"DANE component fetch failed: {exc.__class__.__name__}: {exc}",
+            freshness_status="failed",
+            next_step=str(default["next_step"]),
+        )
+    component = parser(response.text)
+    if component is None:
+        return _component(
+            component_id=component_id,
+            name=str(default["name"]),
+            status="failed",
+            source_name=str(default["source_name"]),
+            source_url=url,
+            headline="DANE component fetch returned no parseable current-result text.",
+            freshness_status="failed",
+            next_step=str(default["next_step"]),
+        )
+    return component
+
+
 def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
     with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
         observations = [_fetch_trm_observation(client)]
@@ -909,6 +1418,15 @@ def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
             _fetch_dane_html_observation(client, indicator_id, url, parser)
             for indicator_id, url, parser in _DANE_HTML_INDICATORS
         )
+        construction_components = [
+            _fetch_dane_component(client, component_id, url, parser)
+            for component_id, url, parser in _DANE_CONSTRUCTION_COMPONENTS
+        ]
+        construction = construction_bundle_observation_from_components(
+            construction_components
+        )
+        if construction:
+            observations.append(construction)
     return observations
 
 
@@ -940,6 +1458,19 @@ def _icoced_observation(item: RawItem) -> IndicatorObservation | None:
             "monthly_variation_pct"
         )
 
+    component = _component(
+        component_id="icoced",
+        name="ICOCED costs",
+        status="observed",
+        source_name=item.source_name,
+        source_url=item.url,
+        period=_format_period(metadata.get("period_year"), metadata.get("period_month")),
+        release_date=item.published_at,
+        headline=item.raw_text,
+        values=values,
+        next_step="Parsed from the latest XLSX annex.",
+    )
+
     return IndicatorObservation(
         indicator_id=definition.indicator_id,
         name=definition.name,
@@ -952,6 +1483,7 @@ def _icoced_observation(item: RawItem) -> IndicatorObservation | None:
         release_date=item.published_at,
         headline=item.raw_text,
         values={k: v for k, v in values.items() if v is not None},
+        components=_complete_bundle_components("construction_bundle", [component]),
         why_it_matters=definition.why_it_matters,
         correlations=list(definition.correlations),
         next_step=definition.next_step,
@@ -1077,28 +1609,109 @@ def _pending_observation(definition: IndicatorDefinition) -> IndicatorObservatio
     )
 
 
+def _latest_text(left: str | None, right: str | None) -> str | None:
+    if not left:
+        return right
+    if not right:
+        return left
+    return max(left, right)
+
+
+def _merge_observations(
+    left: IndicatorObservation,
+    right: IndicatorObservation,
+) -> IndicatorObservation:
+    if left.indicator_id != right.indicator_id:
+        return right
+    components_by_id: dict[str, IndicatorComponent] = {}
+    for component in [*left.components, *right.components]:
+        existing = components_by_id.get(component.component_id)
+        if existing is None or (
+            existing.status != "observed" and component.status == "observed"
+        ):
+            components_by_id[component.component_id] = component
+    components = _complete_bundle_components(
+        left.indicator_id,
+        list(components_by_id.values()),
+    )
+    latest_release = _latest_text(left.release_date, right.release_date)
+    latest = right if right.release_date == latest_release else left
+    if left.headline and right.headline and left.headline != right.headline:
+        headline = f"{left.headline} {right.headline}"
+    else:
+        headline = latest.headline or left.headline or right.headline
+    status = "observed" if "observed" in {left.status, right.status} else latest.status
+    values = {**left.values, **right.values}
+    if left.indicator_id in _BUNDLE_COMPONENTS:
+        values.update(_bundle_values(left.indicator_id, components))
+        observed_ids = [
+            component.component_id
+            for component in components
+            if component.status == "observed"
+        ]
+        if observed_ids:
+            headline = (
+                "Construction bundle has observed components: "
+                f"{', '.join(observed_ids)}."
+            )
+    return replace(
+        latest,
+        status=status,
+        period=latest.period or left.period or right.period,
+        release_date=latest_release,
+        headline=headline,
+        values=values,
+        components=components,
+    )
+
+
+def _store_observation(
+    observed: dict[str, IndicatorObservation],
+    observation: IndicatorObservation,
+) -> None:
+    existing = observed.get(observation.indicator_id)
+    observed[observation.indicator_id] = (
+        _merge_observations(existing, observation) if existing else observation
+    )
+
+
 def build_indicator_watch(
     raw_items: list[RawItem],
     cleaned_items: list[CleanedItem],
     extra_observations: Iterable[IndicatorObservation] = (),
+    now: datetime | None = None,
 ) -> list[IndicatorObservation]:
     observed: dict[str, IndicatorObservation] = {}
     for observation in extra_observations:
-        observed[observation.indicator_id] = observation
+        _store_observation(observed, observation)
 
     for item in raw_items:
         if item.source_id == "dane_icoced":
             observation = _icoced_observation(item)
             if observation:
-                observed[observation.indicator_id] = observation
+                _store_observation(observed, observation)
 
     secop = _secop_observation(raw_items, cleaned_items)
     if secop:
-        observed[secop.indicator_id] = secop
+        _store_observation(observed, secop)
 
     watch: list[IndicatorObservation] = []
+    current = now or datetime.now(timezone.utc)
     for definition in INDICATOR_DEFINITIONS:
-        watch.append(
-            observed.get(definition.indicator_id) or _pending_observation(definition)
+        observation = observed.get(definition.indicator_id) or _pending_observation(
+            definition
         )
+        if not observation.components:
+            observation = replace(
+                observation,
+                components=_pending_components(observation.indicator_id),
+            )
+        elif observation.indicator_id in _BUNDLE_COMPONENTS:
+            observation = replace(
+                observation,
+                components=_complete_bundle_components(
+                    observation.indicator_id, observation.components
+                ),
+            )
+        watch.append(_apply_freshness(observation, current))
     return watch

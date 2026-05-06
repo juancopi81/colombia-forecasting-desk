@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from colombia_forecasting_desk.indicator_watch import (
     build_indicator_watch,
+    cement_component_from_html,
+    construction_bundle_observation_from_components,
+    construction_licenses_component_from_html,
+    housing_finance_component_from_html,
     ipc_observation_from_html,
     labor_market_observation_from_html,
     manufacturing_observation_from_html,
     retail_sales_observation_from_html,
     trm_observation_from_rows,
 )
+from colombia_forecasting_desk.models import IndicatorObservation
 
 
 def test_indicator_watch_registers_all_core_indicators() -> None:
@@ -29,6 +36,16 @@ def test_indicator_watch_registers_all_core_indicators() -> None:
         "fiscal_tax_pulse",
     }
     assert all(item.status == "pending_source" for item in watch)
+    assert all(item.freshness_status == "pending" for item in watch)
+    construction = next(
+        item for item in watch if item.indicator_id == "construction_bundle"
+    )
+    assert [component.component_id for component in construction.components] == [
+        "icoced",
+        "cement",
+        "licenses",
+        "housing_finance",
+    ]
 
 
 def test_indicator_watch_extracts_icoced_observation(make_raw) -> None:
@@ -59,15 +76,24 @@ def test_indicator_watch_extracts_icoced_observation(make_raw) -> None:
 
     construction = next(
         item
-        for item in build_indicator_watch([raw], [])
+        for item in build_indicator_watch(
+            [raw],
+            [],
+            now=datetime(2026, 5, 6, tzinfo=timezone.utc),
+        )
         if item.indicator_id == "construction_bundle"
     )
 
     assert construction.status == "observed"
     assert construction.period == "2026-03"
     assert construction.release_date == "2026-04-30T00:00:00Z"
+    assert construction.freshness_status == "current"
     assert construction.values["icoced_total_index"] == 135.44
     assert construction.values["icoced_residential_monthly_variation_pct"] == 0.77
+    assert construction.components[0].component_id == "icoced"
+    assert construction.components[0].status == "observed"
+    assert construction.components[1].component_id == "cement"
+    assert construction.components[1].status == "pending_source"
 
 
 def test_indicator_watch_extracts_secop_pulse(make_cleaned, make_raw) -> None:
@@ -282,3 +308,146 @@ def test_labor_market_observation_from_html_extracts_dane_headline() -> None:
     assert observation.values["national_participation_rate_pct"] == 65.0
     assert observation.values["national_occupation_rate_pct"] == 59.3
     assert observation.values["thirteen_cities_unemployment_rate_pct"] == 9.4
+
+
+def test_construction_components_from_html_extract_dane_headlines() -> None:
+    cement = cement_component_from_html(
+        """
+        <main>
+          <p>En marzo de 2026, la producción de cemento gris a nivel nacional
+          fue de 1.246,7 miles de toneladas, lo que representó una variación
+          de 3,8% con relación al mismo mes de 2025. En el mes de análisis se
+          despacharon al mercado nacional 1.149,7 miles de toneladas de cemento
+          gris, lo que significó un crecimiento del 6,0% frente a marzo de
+          2025.</p>
+          <p>En el período enero – marzo 2026 la producción de cemento gris
+          alcanzó los 3.319,0 miles de toneladas, presentando un aumento de
+          2,8% con relación al mismo periodo del año anterior. Los despachos al
+          mercado nacional acumularon 3.125,4 miles de toneladas dando como
+          resultado una variación positiva de 5,7%.</p>
+          <p>Información actualizada el 30 de abril de 2026</p>
+        </main>
+        """
+    )
+    licenses = construction_licenses_component_from_html(
+        """
+        <main>
+          <p>En febrero de 2026 se licenciaron 2.016.426 m² para construcción,
+          cifra superior en 44.476 m² a la registrada en el mismo mes de 2025
+          (1.971.950 m²). Esto se traduce en un crecimiento anual de 2,3% en el
+          área licenciada. El comportamiento del total licenciado se explica
+          por el aumento de 30,7% en el área aprobada para destinos no
+          habitacionales. Por otra parte, el área aprobada para vivienda
+          disminuyó 4,4%.</p>
+          <p>Durante el mes de referencia se aprobaron 1.527.141 m² para
+          vivienda. Por su parte, el área aprobada para destinos no
+          habitacionales alcanzó 489.285 m².</p>
+          <p>Información actualizada el 15 de abril de 2026</p>
+        </main>
+        """
+    )
+    housing = housing_finance_component_from_html(
+        """
+        <main>
+          <p>Durante el cuarto trimestre de 2025, se desembolsaron $8.656.077
+          millones de pesos corrientes para compra de vivienda, de los cuales
+          $7.189.602 millones fueron créditos de vivienda y $1.466.476 millones
+          fueron leasing habitacional.</p>
+          <p>En el cuarto trimestre de 2025, los desembolsos para compra de
+          vivienda a precios constantes sumaron $3.799.272 millones, con una
+          variación anual de 10,3%.</p>
+          <p>Información actualizada 16 de febrero de 2026</p>
+        </main>
+        """
+    )
+
+    assert cement is not None
+    assert cement.period == "2026-03"
+    assert cement.values["production_thousand_tons"] == 1246.7
+    assert cement.values["domestic_shipments_annual_variation_pct"] == 6.0
+    assert licenses is not None
+    assert licenses.period == "2026-02"
+    assert licenses.values["licensed_area_m2"] == 2016426.0
+    assert licenses.values["housing_area_annual_variation_pct"] == -4.4
+    assert licenses.values["non_residential_area_m2"] == 489285.0
+    assert housing is not None
+    assert housing.period == "2025-Q4"
+    assert housing.values["purchase_disbursements_cop_millions"] == 8656077.0
+    assert housing.values["real_purchase_disbursements_annual_variation_pct"] == 10.3
+
+
+def test_construction_bundle_merges_components_with_icoced(make_raw) -> None:
+    cement = cement_component_from_html(
+        """
+        <p>En marzo de 2026, la producción de cemento gris a nivel nacional fue
+        de 1.246,7 miles de toneladas, lo que representó una variación de 3,8%
+        con relación al mismo mes de 2025. En el mes de análisis se despacharon
+        al mercado nacional 1.149,7 miles de toneladas de cemento gris, lo que
+        significó un crecimiento del 6,0% frente a marzo de 2025.</p>
+        <p>Información actualizada el 30 de abril de 2026</p>
+        """
+    )
+    assert cement is not None
+    extra = construction_bundle_observation_from_components([cement])
+    raw = make_raw(
+        source_id="dane_icoced",
+        source_name="DANE ICOCED",
+        url="https://www.dane.gov.co/files/operaciones/ICOCED/anex-ICOCED-mar2026.xlsx",
+        title="DANE ICOCED — Anexo marzo 2026",
+        published_at="2026-04-30T00:00:00Z",
+        metadata={
+            "period_year": 2026,
+            "period_month": 3,
+            "headline_metrics": {"total": {"index": 135.44}},
+        },
+    )
+
+    construction = next(
+        item
+        for item in build_indicator_watch(
+            [raw],
+            [],
+            [extra] if extra else [],
+            now=datetime(2026, 5, 6, tzinfo=timezone.utc),
+        )
+        if item.indicator_id == "construction_bundle"
+    )
+
+    by_id = {component.component_id: component for component in construction.components}
+    assert construction.status == "observed"
+    assert construction.freshness_status == "current"
+    assert construction.values["observed_components"] == 2
+    assert by_id["icoced"].status == "observed"
+    assert by_id["cement"].status == "observed"
+    assert by_id["licenses"].status == "pending_source"
+
+
+def test_indicator_watch_marks_stale_observation_but_keeps_it_visible() -> None:
+    stale = IndicatorObservation(
+        indicator_id="ipc_inflation",
+        name="IPC / inflation",
+        category="prices",
+        status="observed",
+        frequency="monthly",
+        source_name="DANE",
+        source_url="https://www.dane.gov.co/",
+        period="2025-01",
+        release_date="2025-02-10T00:00:00Z",
+        headline="Old IPC value.",
+        values={"annual_variation_pct": 5.0},
+    )
+
+    ipc = next(
+        item
+        for item in build_indicator_watch(
+            [],
+            [],
+            [stale],
+            now=datetime(2026, 5, 6, tzinfo=timezone.utc),
+        )
+        if item.indicator_id == "ipc_inflation"
+    )
+
+    assert ipc.status == "observed"
+    assert ipc.freshness_status == "stale"
+    assert ipc.values["annual_variation_pct"] == 5.0

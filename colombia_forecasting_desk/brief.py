@@ -138,12 +138,15 @@ def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
 
     blocks: list[str] = []
     for indicator in indicators[:INDICATOR_LIMIT]:
+        display_values = {
+            key: value for key, value in indicator.values.items() if key != "components"
+        }
         values = (
             "\n".join(
                 f"- `{key}`: {_format_indicator_value(value)}"
-                for key, value in indicator.values.items()
+                for key, value in display_values.items()
             )
-            if indicator.values
+            if display_values
             else "- _Pending structured value._"
         )
         correlations = (
@@ -151,12 +154,24 @@ def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
             if indicator.correlations
             else "- _None defined._"
         )
+        components = (
+            "\n".join(
+                f"- `{component.component_id}`: {component.status}"
+                f"/{component.freshness_status}; period={component.period or 'n/a'}; "
+                f"release={component.release_date or 'n/a'}"
+                f"{' — ' + component.headline if component.headline else ''}"
+                for component in indicator.components
+            )
+            if indicator.components
+            else "- _No subcomponents._"
+        )
         headline = indicator.headline or "_Not wired yet._"
         release = indicator.release_date or "n/a"
         period = indicator.period or "n/a"
         blocks.append(
             f"### {indicator.name}\n\n"
             f"- Status: {indicator.status}\n"
+            f"- Freshness: {indicator.freshness_status}\n"
             f"- Category: {indicator.category}\n"
             f"- Frequency: {indicator.frequency}\n"
             f"- Period: {period}\n"
@@ -164,6 +179,7 @@ def _render_indicator_watch(indicators: list[IndicatorObservation]) -> str:
             f"- Source: [{indicator.source_name}]({indicator.source_url})\n\n"
             f"**Headline:** {headline}\n\n"
             f"**Values:**\n{values}\n\n"
+            f"**Components:**\n{components}\n\n"
             f"**Why it matters:** {indicator.why_it_matters}\n\n"
             f"**Useful correlations:**\n{correlations}\n\n"
             f"**M1 next step:** {indicator.next_step}\n"
