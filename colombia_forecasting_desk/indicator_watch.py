@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import httpx
+from bs4 import BeautifulSoup
 
+from .cleaner import fold_accents, normalize_whitespace
 from .models import CleanedItem, IndicatorObservation, RawItem
 
 
@@ -28,6 +31,10 @@ EMC_URL = (
 EMMET_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/industria/"
     "encuesta-mensual-manufacturera-con-enfoque-territorial-emmet"
+)
+LABOR_MARKET_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "mercado-laboral/empleo-y-desempleo"
 )
 ANH_PRODUCTION_URL = (
     "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/"
@@ -67,8 +74,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "from regulated-price pressure",
         ),
         next_step=(
-            "Prefer the DANE IPC technical page/XLSX annex or an easier "
-            "structured DANE endpoint if available."
+            "Headline HTML is wired; add category/city annex drivers when the "
+            "watch needs deeper inflation decomposition."
         ),
     ),
     IndicatorDefinition(
@@ -116,7 +123,7 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         category="labor",
         frequency="monthly",
         source_name="DANE",
-        source_url="https://www.dane.gov.co/index.php/indicadores-relevantes",
+        source_url=LABOR_MARKET_URL,
         why_it_matters=(
             "Employment, participation, informality, and youth unemployment "
             "drive household pressure and politics."
@@ -128,8 +135,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "headline employment",
         ),
         next_step=(
-            "Find the easiest DANE structured endpoint for GEIH headline "
-            "indicators before parsing bulletins."
+            "Headline HTML is wired; add informality, youth, and city details "
+            "from GEIH annexes when needed."
         ),
     ),
     IndicatorDefinition(
@@ -148,8 +155,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "vehicle sales + rates gives an early stress signal for durable goods demand",
         ),
         next_step=(
-            "Use DANE EMC headline HTML/table if stable; otherwise parse only "
-            "the latest annex headline rows."
+            "Headline HTML is wired; add vehicle, department, and ecommerce "
+            "annex drivers when needed."
         ),
     ),
     IndicatorDefinition(
@@ -168,8 +175,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "production down + employment stable can indicate margin pressure before layoffs",
         ),
         next_step=(
-            "Prefer the EMMET page headline text or an accessible DANE data "
-            "endpoint over full annex parsing."
+            "Headline HTML is wired; add subsector and territory contribution "
+            "annex drivers when needed."
         ),
     ),
     IndicatorDefinition(
@@ -329,6 +336,388 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
+_MONTHS_ES = {
+    "enero": 1,
+    "febrero": 2,
+    "marzo": 3,
+    "abril": 4,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "agosto": 8,
+    "septiembre": 9,
+    "setiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
+}
+
+_MONTH_ABBR_ES = {
+    "ene": 1,
+    "feb": 2,
+    "mar": 3,
+    "abr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "sep": 9,
+    "set": 9,
+    "oct": 10,
+    "nov": 11,
+    "dic": 12,
+}
+
+_PERCENT = r"(-?\d+(?:[,.]\d+)?)\s*%"
+_NUMBER = r"(-?\d+(?:[,.]\d+)?)"
+_MONTH_NAMES = "|".join(_MONTHS_ES)
+
+
+def _text_from_html(html: str) -> str:
+    return normalize_whitespace(
+        BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+    )
+
+
+def _folded_text_from_html(html: str) -> str:
+    return fold_accents(_text_from_html(html).lower())
+
+
+def _month_period(month_name: str, year: str) -> str:
+    month = _MONTHS_ES.get(fold_accents(month_name.lower()))
+    if month is None:
+        return ""
+    return f"{int(year)}-{month:02d}"
+
+
+def _iso_date(year: int, month: int, day: int) -> str | None:
+    try:
+        return datetime(year, month, day, tzinfo=timezone.utc).strftime(
+            "%Y-%m-%dT00:00:00Z"
+        )
+    except ValueError:
+        return None
+
+
+def _release_date_from_text(text: str) -> str:
+    folded = fold_accents(text.lower())
+    dates: list[datetime] = []
+    for match in re.finditer(r"\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b", folded):
+        try:
+            dates.append(
+                datetime(
+                    int(match.group(3)),
+                    int(match.group(2)),
+                    int(match.group(1)),
+                    tzinfo=timezone.utc,
+                )
+            )
+        except ValueError:
+            continue
+    month_words = "|".join((*_MONTHS_ES, *_MONTH_ABBR_ES))
+    date_patterns = (
+        rf"\b(\d{{1,2}})\s+de\s+({month_words})\s+de\s+(20\d{{2}})\b",
+        rf"\b(\d{{1,2}})[-\s]({month_words})[-\s](20\d{{2}})\b",
+    )
+    for pattern in date_patterns:
+        for match in re.finditer(pattern, folded):
+            month = _MONTHS_ES.get(match.group(2)) or _MONTH_ABBR_ES.get(
+                match.group(2)[:3]
+            )
+            if month is None:
+                continue
+            try:
+                dates.append(
+                    datetime(
+                        int(match.group(3)),
+                        month,
+                        int(match.group(1)),
+                        tzinfo=timezone.utc,
+                    )
+                )
+            except ValueError:
+                continue
+    if not dates:
+        return ""
+    return max(dates).strftime("%Y-%m-%dT00:00:00Z")
+
+
+def _latest_release_date(html: str) -> str:
+    return _release_date_from_text(_text_from_html(html))
+
+
+def _headline_definition(
+    definition: IndicatorDefinition,
+    *,
+    status: str,
+    period: str,
+    release_date: str,
+    headline: str,
+    values: dict[str, Any],
+) -> IndicatorObservation:
+    return IndicatorObservation(
+        indicator_id=definition.indicator_id,
+        name=definition.name,
+        category=definition.category,
+        status=status,
+        frequency=definition.frequency,
+        source_name=definition.source_name,
+        source_url=definition.source_url,
+        period=period,
+        release_date=release_date,
+        headline=headline,
+        values={key: value for key, value in values.items() if value is not None},
+        why_it_matters=definition.why_it_matters,
+        correlations=list(definition.correlations),
+        next_step=definition.next_step,
+    )
+
+
+def ipc_observation_from_html(html: str) -> IndicatorObservation | None:
+    original_text = _text_from_html(html)
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"en\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}).*?"
+        rf"variacion mensual del ipc fue\s+{_PERCENT}.*?"
+        rf"variacion ano corrido fue\s+{_PERCENT}.*?"
+        rf"(?:variacion\s+)?anual\s+{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    month_name, year = match.group(1), match.group(2)
+    monthly = _to_float(match.group(3))
+    year_to_date = _to_float(match.group(4))
+    annual = _to_float(match.group(5))
+    previous_match = re.search(
+        rf"variacion anual del ipc fue\s+{_PERCENT}.*?"
+        rf"periodo del ano anterior.*?cuando fue de\s+\(?{_PERCENT}\)?",
+        text,
+    )
+    divisions_match = re.search(
+        rf"mayores variaciones se presentaron en las divisiones "
+        rf"(.+?)\s+\({_PERCENT}\)\s+y\s+(.+?)\s+\({_PERCENT}\)",
+        original_text,
+        re.IGNORECASE,
+    )
+    definition = _definition_map()["ipc_inflation"]
+    values: dict[str, Any] = {
+        "monthly_variation_pct": monthly,
+        "year_to_date_variation_pct": year_to_date,
+        "annual_variation_pct": annual,
+    }
+    if previous_match:
+        values["annual_previous_year_pct"] = _to_float(previous_match.group(2))
+    if divisions_match:
+        values["largest_monthly_divisions"] = [
+            {
+                "name": normalize_whitespace(divisions_match.group(1)),
+                "monthly_variation_pct": _to_float(divisions_match.group(2)),
+            },
+            {
+                "name": normalize_whitespace(divisions_match.group(3)),
+                "monthly_variation_pct": _to_float(divisions_match.group(4)),
+            },
+        ]
+    period = _month_period(month_name, year)
+    headline = (
+        f"DANE IPC {period}: monthly variation {monthly:.2f}%, "
+        f"year-to-date {year_to_date:.2f}%, annual {annual:.2f}%."
+    )
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=headline,
+        values=values,
+    )
+
+
+def retail_sales_observation_from_html(html: str) -> IndicatorObservation | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"en\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+las ventas reales "
+        rf"del comercio minorista aumentaron\s+{_PERCENT}\s+y el personal "
+        rf"ocupado crecio\s+{_PERCENT}.*?"
+        rf"excluyendo el comercio de combustibles.*?fue de\s+{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    month_name, year = match.group(1), match.group(2)
+    sales = _to_float(match.group(3))
+    employment = _to_float(match.group(4))
+    ex_fuel = _to_float(match.group(5))
+    definition = _definition_map()["retail_sales"]
+    period = _month_period(month_name, year)
+    headline = (
+        f"DANE EMC {period}: real retail sales {sales:+.2f}% y/y, "
+        f"employment {employment:+.2f}% y/y, ex-fuel sales {ex_fuel:+.2f}% y/y."
+    )
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=headline,
+        values={
+            "real_retail_sales_annual_variation_pct": sales,
+            "employment_annual_variation_pct": employment,
+            "real_retail_sales_ex_fuel_annual_variation_pct": ex_fuel,
+        },
+    )
+
+
+def manufacturing_observation_from_html(html: str) -> IndicatorObservation | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"en\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\s+frente a\s+"
+        rf"\1\s+de\s+20\d{{2}},\s+la produccion real de la industria "
+        rf"manufacturera presento una variacion de\s+{_PERCENT},\s+"
+        rf"las ventas reales de\s+{_PERCENT}\s+y el personal ocupado de\s+"
+        rf"{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    month_name, year = match.group(1), match.group(2)
+    production = _to_float(match.group(3))
+    sales = _to_float(match.group(4))
+    employment = _to_float(match.group(5))
+    activity_match = re.search(
+        r"de las 39 actividades industriales representadas.*?un total de "
+        r"(\d+) registraron variaciones positivas.*?(\d+) subsectores "
+        r"(?:presentaron|con) variaciones negativas",
+        text,
+    )
+    contribution_match = re.search(
+        rf"(?:contribuyendo con|sumando)\s+{_NUMBER}\s+puntos porcentuales.*?"
+        rf"(?:con(?: una)? contribucion de|restaron en conjunto)\s+{_NUMBER}"
+        rf"\s+puntos porcentuales",
+        text,
+    )
+    values: dict[str, Any] = {
+        "real_production_annual_variation_pct": production,
+        "real_sales_annual_variation_pct": sales,
+        "employment_annual_variation_pct": employment,
+    }
+    if activity_match:
+        values["activities_total_count"] = 39
+        values["activities_positive_count"] = int(activity_match.group(1))
+        values["activities_negative_count"] = int(activity_match.group(2))
+    if contribution_match:
+        values["positive_contribution_pp"] = _to_float(contribution_match.group(1))
+        negative_contribution = _to_float(contribution_match.group(2))
+        if (
+            negative_contribution is not None
+            and negative_contribution > 0
+            and "restaron en conjunto" in contribution_match.group(0)
+        ):
+            negative_contribution = -negative_contribution
+        values["negative_contribution_pp"] = negative_contribution
+    definition = _definition_map()["manufacturing"]
+    period = _month_period(month_name, year)
+    headline = (
+        f"DANE EMMET {period}: real production {production:+.2f}% y/y, "
+        f"real sales {sales:+.2f}% y/y, employment {employment:+.2f}% y/y."
+    )
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=headline,
+        values=values,
+    )
+
+
+def labor_market_observation_from_html(html: str) -> IndicatorObservation | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"para\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+la tasa de "
+        rf"desocupacion del total nacional fue\s+{_PERCENT}.*?"
+        rf"(disminucion|aumento) de\s+([\d,.]+)\s+puntos porcentuales.*?"
+        rf"mismo mes de\s+20\d{{2}}\s+\({_PERCENT}\).*?"
+        rf"tasa global de participacion se ubico en\s+{_PERCENT}\s+y la "
+        rf"tasa de ocupacion en\s+{_PERCENT}.*?"
+        rf"estas tasas fueron\s+{_PERCENT}\s+y\s+{_PERCENT}",
+        text,
+    )
+    if not match:
+        return None
+    month_name, year = match.group(1), match.group(2)
+    unemployment = _to_float(match.group(3))
+    change = _to_float(match.group(5))
+    if change is not None and match.group(4) == "disminucion":
+        change = -change
+    previous_unemployment = _to_float(match.group(6))
+    participation = _to_float(match.group(7))
+    occupation = _to_float(match.group(8))
+    previous_participation = _to_float(match.group(9))
+    previous_occupation = _to_float(match.group(10))
+    cities_match = re.search(
+        rf"(?:para|en)\s+({_MONTH_NAMES})\s+de\s+20\d{{2}},\s+la tasa de "
+        rf"desocupacion en el total de las 13 ciudades.*?fue\s+{_PERCENT},"
+        rf".*?mismo mes de 20\d{{2}} fue\s+{_PERCENT}.*?"
+        rf"tasa global de participacion se ubico en\s+{_PERCENT}\s+y la "
+        rf"tasa de ocupacion en\s+{_PERCENT}.*?"
+        rf"estas tasas fueron\s+{_PERCENT}\s+y\s+{_PERCENT}",
+        text,
+    )
+    if not cities_match:
+        cities_match = re.search(
+            rf"para las 13 ciudades.*?tasa de desocupacion fue\s+{_PERCENT},.*?"
+            rf"comparacion con\s+{_PERCENT}\s+observado en\s+({_MONTH_NAMES}) "
+            rf"de 20\d{{2}}",
+            text,
+        )
+    values: dict[str, Any] = {
+        "national_unemployment_rate_pct": unemployment,
+        "national_unemployment_annual_change_pp": change,
+        "national_unemployment_previous_year_pct": previous_unemployment,
+        "national_participation_rate_pct": participation,
+        "national_occupation_rate_pct": occupation,
+        "national_participation_previous_year_pct": previous_participation,
+        "national_occupation_previous_year_pct": previous_occupation,
+    }
+    if cities_match:
+        offset = 1 if len(cities_match.groups()) == 7 else 0
+        values["thirteen_cities_unemployment_rate_pct"] = _to_float(
+            cities_match.group(1 + offset)
+        )
+        values["thirteen_cities_unemployment_previous_year_pct"] = _to_float(
+            cities_match.group(2 + offset)
+        )
+        if len(cities_match.groups()) == 7:
+            values["thirteen_cities_participation_rate_pct"] = _to_float(
+                cities_match.group(4)
+            )
+            values["thirteen_cities_occupation_rate_pct"] = _to_float(
+                cities_match.group(5)
+            )
+            values["thirteen_cities_participation_previous_year_pct"] = _to_float(
+                cities_match.group(6)
+            )
+            values["thirteen_cities_occupation_previous_year_pct"] = _to_float(
+                cities_match.group(7)
+            )
+    definition = _definition_map()["labor_market"]
+    period = _month_period(month_name, year)
+    headline = (
+        f"DANE GEIH {period}: national unemployment {unemployment:.2f}%, "
+        f"participation {participation:.2f}%, occupation {occupation:.2f}%."
+    )
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=headline,
+        values=values,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TrmPoint:
     value: float
@@ -441,44 +830,86 @@ def _failed_observation(
     )
 
 
-def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
+def _fetch_trm_observation(client: httpx.Client) -> IndicatorObservation:
     definition = _definition_map()["trm_usd_cop"]
     try:
-        with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
-            response = client.get(
-                TRM_API_URL,
-                params={
-                    "$select": "valor,unidad,vigenciadesde,vigenciahasta",
-                    "$order": "vigenciadesde DESC",
-                    "$limit": str(TRM_ROWS_LIMIT),
-                },
-            )
-            response.raise_for_status()
-            rows = response.json()
+        response = client.get(
+            TRM_API_URL,
+            params={
+                "$select": "valor,unidad,vigenciadesde,vigenciahasta",
+                "$order": "vigenciadesde DESC",
+                "$limit": str(TRM_ROWS_LIMIT),
+            },
+        )
+        response.raise_for_status()
+        rows = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        return [
-            _failed_observation(
-                definition,
-                f"Structured TRM fetch failed: {exc.__class__.__name__}: {exc}",
-            )
-        ]
+        return _failed_observation(
+            definition,
+            f"Structured TRM fetch failed: {exc.__class__.__name__}: {exc}",
+        )
 
     if not isinstance(rows, list):
-        return [
-            _failed_observation(
-                definition,
-                "Structured TRM fetch returned non-list JSON.",
-            )
-        ]
+        return _failed_observation(
+            definition,
+            "Structured TRM fetch returned non-list JSON.",
+        )
     observation = trm_observation_from_rows(rows)
     if observation is None:
-        return [
-            _failed_observation(
-                definition,
-                "Structured TRM fetch returned no parseable rows.",
-            )
-        ]
-    return [observation]
+        return _failed_observation(
+            definition,
+            "Structured TRM fetch returned no parseable rows.",
+        )
+    return observation
+
+
+_DANE_HTML_INDICATORS: tuple[
+    tuple[
+        str,
+        str,
+        Callable[[str], IndicatorObservation | None],
+    ],
+    ...,
+] = (
+    ("ipc_inflation", IPC_URL, ipc_observation_from_html),
+    ("labor_market", LABOR_MARKET_URL, labor_market_observation_from_html),
+    ("retail_sales", EMC_URL, retail_sales_observation_from_html),
+    ("manufacturing", EMMET_URL, manufacturing_observation_from_html),
+)
+
+
+def _fetch_dane_html_observation(
+    client: httpx.Client,
+    indicator_id: str,
+    url: str,
+    parser: Callable[[str], IndicatorObservation | None],
+) -> IndicatorObservation:
+    definition = _definition_map()[indicator_id]
+    try:
+        response = client.get(url)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        return _failed_observation(
+            definition,
+            f"DANE headline fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    observation = parser(response.text)
+    if observation is None:
+        return _failed_observation(
+            definition,
+            "DANE headline fetch returned no parseable current-result text.",
+        )
+    return observation
+
+
+def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
+    with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
+        observations = [_fetch_trm_observation(client)]
+        observations.extend(
+            _fetch_dane_html_observation(client, indicator_id, url, parser)
+            for indicator_id, url, parser in _DANE_HTML_INDICATORS
+        )
+    return observations
 
 
 def _icoced_observation(item: RawItem) -> IndicatorObservation | None:

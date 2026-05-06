@@ -261,6 +261,13 @@ process-type, and top-entity aggregations. IBR/policy rate remains
 `pending_source` because datos.gov.co currently exposes IBR as a link resource
 into BanRep's statistics portal rather than a simple table/API.
 
+M1.9 adds DANE activity indicators without starting another document-parser
+round. The watch now reads the current-result HTML summaries for IPC inflation,
+GEIH labor market, EMC retail sales, and EMMET manufacturing. These pages expose
+the headline values directly in stable text, so M1 can surface the state
+variables now while leaving category/city/subsector XLSX annex parsing for a
+later deepening pass.
+
 ## Indicator Watch
 
 Each run writes:
@@ -290,10 +297,20 @@ Each card contains:
 
 Current observed cards:
 
-- `trm_usd_cop` from the Superfinanciera datos.gov.co TRM dataset
-- `construction_bundle` from the parsed DANE ICOCED XLSX annex
-- `secop_procurement` from existing Socrata-backed SECOP cleaned items,
-  aggregated by day, process type, and top entities
+- `trm_usd_cop`: official datos.gov.co TRM rows with daily, seven-day, and
+  thirty-day moves.
+- `ipc_inflation`: DANE IPC headline monthly, year-to-date, annual, and largest
+  division movements from the current technical page.
+- `labor_market`: DANE GEIH national unemployment, participation, occupation,
+  and prior-year comparisons from the current labor page.
+- `retail_sales`: DANE EMC headline real retail sales, employment, and ex-fuel
+  annual changes from the current commerce page.
+- `manufacturing`: DANE EMMET headline real production, real sales, and
+  employment annual changes from the current manufacturing page.
+- `construction_bundle`: DANE ICOCED XLSX headline total, residential, and
+  non-residential cost metrics when the source is fetched.
+- `secop_procurement`: existing Socrata procurement adapters aggregated by day,
+  source, process type, and top entity.
 
 The remaining cards are intentionally visible as parser/source backlog so M1
 can prioritize high-value official data before automating M2 question writing.
