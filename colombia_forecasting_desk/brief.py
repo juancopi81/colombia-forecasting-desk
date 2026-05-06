@@ -121,6 +121,14 @@ def _format_indicator_value(value: Any) -> str:
     if isinstance(value, dict):
         parts = [f"{k}={v}" for k, v in sorted(value.items())]
         return ", ".join(parts)
+    if isinstance(value, list):
+        if all(isinstance(item, dict) for item in value):
+            rows = []
+            for item in value:
+                parts = [f"{k}={v}" for k, v in sorted(item.items())]
+                rows.append("{" + ", ".join(parts) + "}")
+            return "; ".join(rows)
+        return ", ".join(str(item) for item in value)
     return str(value)
 
 

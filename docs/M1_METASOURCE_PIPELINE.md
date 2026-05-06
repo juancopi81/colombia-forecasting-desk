@@ -254,6 +254,13 @@ Cards can be `observed` when M1 already has structured data, or
 HTML table, or lightweight parser. This is deliberately not M2 question
 generation; it is a durable evidence surface for humans and later agents.
 
+M1.8 starts filling the watch through easy structured sources before adding
+more PDF/XLSX parsers. It adds the official datos.gov.co TRM dataset as a live
+structured fetch and expands the SECOP pulse from a simple count into day,
+process-type, and top-entity aggregations. IBR/policy rate remains
+`pending_source` because datos.gov.co currently exposes IBR as a link resource
+into BanRep's statistics portal rather than a simple table/API.
+
 ## Indicator Watch
 
 Each run writes:
@@ -269,7 +276,7 @@ Each card contains:
   "indicator_id": "",
   "name": "",
   "category": "",
-  "status": "observed | pending_source",
+  "status": "observed | pending_source | failed",
   "frequency": "",
   "period": "",
   "release_date": "",
@@ -283,8 +290,10 @@ Each card contains:
 
 Current observed cards:
 
+- `trm_usd_cop` from the Superfinanciera datos.gov.co TRM dataset
 - `construction_bundle` from the parsed DANE ICOCED XLSX annex
-- `secop_procurement` from existing Socrata-backed SECOP cleaned items
+- `secop_procurement` from existing Socrata-backed SECOP cleaned items,
+  aggregated by day, process type, and top entities
 
 The remaining cards are intentionally visible as parser/source backlog so M1
 can prioritize high-value official data before automating M2 question writing.

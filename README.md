@@ -44,4 +44,4 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.7 — Indicator Watch foundation**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.8 — structured Indicator Watch signals**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
