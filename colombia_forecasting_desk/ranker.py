@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from math import floor
@@ -9,7 +10,51 @@ from .models import Cluster
 _PRIORITY_WEIGHT = {"high": 2, "medium": 1, "low": 0}
 _PRIMARY_SOURCE_TYPES = {"official_updates", "legal", "calendar", "polling", "dataset"}
 DEFAULT_DIVERSIFY_TOP_N = 10
-DEFAULT_MAX_TOP_SOURCE_SHARE = 0.4
+DEFAULT_MAX_TOP_SOURCE_SHARE = 0.3
+
+_STRATEGIC_TERMS = {
+    "anh",
+    "banrep",
+    "candidato",
+    "congreso",
+    "corte",
+    "dane",
+    "deficit",
+    "dian",
+    "eleccion",
+    "electoral",
+    "eln",
+    "farc",
+    "fiscal",
+    "gobierno",
+    "inflacion",
+    "jep",
+    "minhacienda",
+    "ministerio",
+    "petro",
+    "presidente",
+    "reforma",
+    "secop",
+    "tasa",
+    "trm",
+}
+_LOCAL_INCIDENT_TERMS = {
+    "accidente",
+    "aguacero",
+    "asalto",
+    "atraco",
+    "captura",
+    "capturaron",
+    "colapso",
+    "desbordamiento",
+    "homicidio",
+    "inundacion",
+    "lluvia",
+    "microtrafico",
+    "robo",
+    "viviendas",
+}
+_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
 
 def _max_priority_weight(priorities: list[str]) -> int:
@@ -47,6 +92,33 @@ def _primary_source_bonus(source_types: list[str]) -> float:
     return 1.5 if set(source_types) & _PRIMARY_SOURCE_TYPES else 0.0
 
 
+def _text_terms(cluster: Cluster) -> set[str]:
+    text = " ".join([cluster.title, cluster.summary]).lower()
+    folded = (
+        text.replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+    return set(_TOKEN_RE.findall(folded))
+
+
+def _analyst_relevance_adjustment(cluster: Cluster) -> float:
+    terms = _text_terms(cluster)
+    adjustment = 0.0
+    if terms & _STRATEGIC_TERMS:
+        adjustment += 1.5
+    if (
+        cluster.source_count == 1
+        and set(cluster.source_types) == {"news"}
+        and terms & _LOCAL_INCIDENT_TERMS
+        and not terms & _STRATEGIC_TERMS
+    ):
+        adjustment -= 2.5
+    return adjustment
+
+
 def score_cluster(cluster: Cluster, now: datetime | None = None) -> float:
     return (
         2.0 * cluster.source_count
@@ -54,6 +126,7 @@ def score_cluster(cluster: Cluster, now: datetime | None = None) -> float:
         + _freshness_bonus(cluster.latest_published_at, now)
         + 1.0 * len(cluster.signal_types)
         + _primary_source_bonus(cluster.source_types)
+        + _analyst_relevance_adjustment(cluster)
     )
 
 
