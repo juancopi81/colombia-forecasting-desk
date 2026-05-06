@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import zipfile
 from datetime import datetime, timezone
 
 from colombia_forecasting_desk.indicator_watch import (
@@ -10,13 +12,18 @@ from colombia_forecasting_desk.indicator_watch import (
     crude_oil_component_from_anh_rows,
     electricity_demand_component_from_xm_response,
     energy_system_observation_from_components,
+    exports_component_from_html,
+    external_trade_observation_from_components,
+    fiscal_tax_observation_from_dian_xlsx,
     fiscalized_gas_component_from_anh_rows,
     housing_finance_component_from_html,
+    imports_component_from_html,
     ipc_observation_from_html,
     labor_market_observation_from_html,
     latest_complete_anh_period,
     manufacturing_observation_from_html,
     oil_gas_observation_from_components,
+    policy_rate_ibr_observation_from_rows,
     reservoir_component_from_xm_response,
     retail_sales_observation_from_html,
     spot_price_component_from_xm_response,
@@ -66,6 +73,13 @@ def test_indicator_watch_registers_all_core_indicators() -> None:
     assert [component.component_id for component in oil_gas.components] == [
         "oil_production",
         "gas_production",
+    ]
+    external_trade = next(
+        item for item in watch if item.indicator_id == "external_trade"
+    )
+    assert [component.component_id for component in external_trade.components] == [
+        "exports",
+        "imports",
     ]
 
 
@@ -218,6 +232,32 @@ def test_trm_observation_from_rows_computes_changes() -> None:
     assert observation.values["daily_change_cop"] == 15.75
     assert observation.values["seven_day_change_cop"] == 89.57
     assert observation.values["thirty_day_change_pct"] == 3.43
+
+
+def test_policy_rate_ibr_observation_from_banrep_rows() -> None:
+    observation = policy_rate_ibr_observation_from_rows(
+        [
+            {
+                "fecha": "05/05/2026",
+                "valor": 11.25,
+            }
+        ],
+        [
+            {
+                "fecha": "05/05/2026",
+                "valor": 10.505,
+            }
+        ],
+    )
+
+    assert observation is not None
+    assert observation.indicator_id == "policy_rate_ibr"
+    assert observation.status == "observed"
+    assert observation.period == "2026-05-05"
+    assert observation.release_date == "2026-05-05T00:00:00Z"
+    assert observation.values["policy_rate_pct"] == 11.25
+    assert observation.values["ibr_overnight_nominal_pct"] == 10.505
+    assert observation.values["ibr_policy_spread_pp"] == -0.745
 
 
 def test_ipc_observation_from_html_extracts_dane_headline() -> None:
@@ -443,6 +483,61 @@ def test_construction_bundle_merges_components_with_icoced(make_raw) -> None:
     assert by_id["licenses"].status == "pending_source"
 
 
+def test_external_trade_components_from_dane_html_build_bundle() -> None:
+    exports = exports_component_from_html(
+        """
+        <main>
+          <p>Información marzo de 2026</p>
+          <p>De acuerdo con la información de exportaciones procesada por el
+          DANE y la DIAN, en marzo de 2026 las ventas externas del país fueron
+          US$5.315,9 millones FOB y presentaron un crecimiento de 20,9% en
+          relación con marzo de 2025; este resultado se debió principalmente al
+          aumento del 149,2% en las ventas externas del grupo de Otros
+          Sectores.</p>
+          <p>En el mes de referencia, las exportaciones de Combustibles y
+          productos de industrias extractivas participaron con 41,5% del valor
+          FOB total de las exportaciones; así mismo, Agropecuarios, alimentos y
+          bebidas con 24,4%, Manufacturas con 17,9% y Otros sectores con 16,1%.</p>
+          <p>Información actualizada el 5 de mayo de 2026</p>
+        </main>
+        """
+    )
+    imports = imports_component_from_html(
+        """
+        <main>
+          <p>Información marzo 2026</p>
+          <p>De acuerdo con las declaraciones de importación registradas ante
+          la DIAN en marzo de 2026, las importaciones fueron US$5.100,0
+          millones CIF y presentaron un crecimiento de 7,8% con relación al
+          mismo mes de 2025. Este comportamiento obedeció principalmente al
+          aumento de 13,2% en el grupo de Manufacturas.</p>
+          <p>En marzo de 2026, las importaciones de Manufacturas participaron
+          con 75,6% del valor CIF total de las importaciones, seguido por
+          Agropecuarios, alimentos y bebidas con 13,7%, Combustibles y
+          productos de las industrias extractivas con 10,7% y Otros sectores
+          con 0,1%.</p>
+          <p>Información actualizada el 21 de abril de 2026</p>
+        </main>
+        """
+    )
+
+    assert exports is not None
+    assert exports.period == "2026-03"
+    assert exports.values["exports_usd_millions_fob"] == 5315.9
+    assert exports.values["export_group_shares_pct"]["fuels_and_extractives"] == 41.5
+    assert imports is not None
+    assert imports.values["imports_usd_millions_cif"] == 5100.0
+    assert imports.values["import_group_shares_pct"]["manufacturing"] == 75.6
+
+    bundle = external_trade_observation_from_components([exports, imports])
+
+    assert bundle is not None
+    assert bundle.status == "observed"
+    assert bundle.period == "2026-03"
+    assert bundle.values["observed_components"] == 2
+    assert bundle.values["goods_trade_balance_usd_millions"] == 215.9
+
+
 def test_energy_components_from_xm_responses_build_bundle() -> None:
     demand = electricity_demand_component_from_xm_response(
         {
@@ -564,6 +659,92 @@ def test_anh_components_choose_latest_complete_period_and_build_bundle() -> None
     assert bundle.status == "observed"
     assert bundle.values["observed_components"] == 2
     assert bundle.values["components"]["gas_production"]["total_kpc"] == 100000.0
+
+
+def _minimal_xlsx(rows: list[dict[str, str]]) -> bytes:
+    def cell_xml(ref: str, value: str) -> str:
+        if value.replace(".", "", 1).isdigit():
+            return f'<c r="{ref}"><v>{value}</v></c>'
+        return (
+            f'<c r="{ref}" t="inlineStr"><is><t>{value}</t></is></c>'
+        )
+
+    sheet_rows = []
+    for row_number, cells in enumerate(rows, start=1):
+        sheet_rows.append(
+            f'<row r="{row_number}">'
+            + "".join(cell_xml(ref, value) for ref, value in cells.items())
+            + "</row>"
+        )
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        "<sheetData>"
+        + "".join(sheet_rows)
+        + "</sheetData></worksheet>"
+    )
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+    return output.getvalue()
+
+
+def test_fiscal_tax_observation_from_dian_xlsx() -> None:
+    observation = fiscal_tax_observation_from_dian_xlsx(
+        _minimal_xlsx(
+            [
+                {
+                    "B": (
+                        "Actualizado a marzo de 2026 "
+                        "(Fecha de corte: 23 de abril de 2026)."
+                    )
+                },
+                {
+                    "B": "Año",
+                    "C": "Mes",
+                    "D": "A. Internos (1+...+18)",
+                    "E": "1. Renta (1.1.+1.2)",
+                    "H": "2. IVA interno (2.1+2.2)",
+                    "AC": "B. Externos (19+20)",
+                    "AD": "19.Arancel",
+                    "AE": "20. IVA Externo ",
+                    "AG": "Total (A+B+C)",
+                },
+                {
+                    "B": "2025",
+                    "C": "Marzo",
+                    "D": "18890",
+                    "E": "7231",
+                    "H": "8000",
+                    "AC": "3745",
+                    "AD": "613",
+                    "AE": "3132",
+                    "AG": "22653",
+                },
+                {
+                    "B": "2026",
+                    "C": "Marzo",
+                    "D": "19411",
+                    "E": "7725",
+                    "H": "8100",
+                    "AC": "3555",
+                    "AD": "195",
+                    "AE": "3359",
+                    "AG": "22979",
+                },
+            ]
+        )
+    )
+
+    assert observation is not None
+    assert observation.indicator_id == "fiscal_tax_pulse"
+    assert observation.status == "observed"
+    assert observation.period == "2026-03"
+    assert observation.release_date == "2026-04-23T00:00:00Z"
+    assert observation.values["gross_tax_revenue_cop_millions"] == 22979.0
+    assert observation.values["gross_tax_revenue_annual_variation_pct"] == 1.44
+    assert observation.values["income_tax_cop_millions"] == 7725.0
+    assert observation.values["external_tax_revenue_cop_millions"] == 3555.0
 
 
 def test_indicator_watch_marks_stale_observation_but_keeps_it_visible() -> None:

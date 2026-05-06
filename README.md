@@ -44,4 +44,4 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.11 — energy and oil/gas bundle**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.12 — complete Indicator Watch wiring**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).

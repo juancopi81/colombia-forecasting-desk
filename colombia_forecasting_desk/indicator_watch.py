@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from calendar import monthrange
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
+from xml.etree import ElementTree
 
 import httpx
 from bs4 import BeautifulSoup
@@ -14,6 +17,20 @@ from .models import CleanedItem, IndicatorComponent, IndicatorObservation, RawIt
 
 
 STRUCTURED_INDICATOR_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+BANREP_SERIES_API_BASE = (
+    "https://suameca.banrep.gov.co/estadisticas-economicas-back/rest/"
+    "estadisticaEconomicaRestService"
+)
+BANREP_POLICY_RATE_SERIES_ID = 59
+BANREP_IBR_OVERNIGHT_SERIES_ID = 241
+BANREP_POLICY_RATE_SOURCE_URL = (
+    "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/"
+    "59/tasas_interes_politica_monetaria/"
+)
+BANREP_IBR_SOURCE_URL = (
+    "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/"
+    "241/tasas_interes_indicador_bancario_referencia_ibr/"
+)
 TRM_API_URL = "https://www.datos.gov.co/resource/32sa-8pi3.json"
 TRM_SOURCE_URL = (
     "https://www.datos.gov.co/Econom-a-y-Finanzas/"
@@ -49,6 +66,14 @@ HOUSING_FINANCE_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
     "construccion/financiacion-de-vivienda"
 )
+EXPORTS_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "comercio-internacional/exportaciones"
+)
+IMPORTS_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "comercio-internacional/importaciones"
+)
 ANH_PRODUCTION_URL = (
     "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/"
     "sistemas-integrados-operaciones/estad%C3%ADsticas-de-producci%C3%B3n/"
@@ -74,6 +99,13 @@ ANH_GAS_SOURCE_URL = (
 )
 ANH_PERIOD_COUNT_LIMIT = 18
 ANH_COMPLETENESS_RATIO = 0.75
+DIAN_TAX_REVENUE_PAGE_URL = (
+    "https://www.dian.gov.co/dian/cifras/Paginas/EstadisticasRecaudo.aspx"
+)
+DIAN_MONTHLY_TAX_ZIP_URL = (
+    "https://www.dian.gov.co/dian/cifras/EstadisticasRecaudo/"
+    "Estadisticas-de-recaudo-mensual-por-tipo-de-impuesto-2000-2026.zip"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,15 +172,15 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         category="monetary",
         frequency="daily/monthly",
         source_name="Banco de la República",
-        source_url="https://www.banrep.gov.co/es/glosario/ibr",
+        source_url=BANREP_POLICY_RATE_SOURCE_URL,
         why_it_matters="Shows monetary stance and short-term peso liquidity.",
         correlations=(
             "IBR-policy spread can flag liquidity stress or market repricing",
             "policy rate + inflation surprise frames likelihood of cuts or pauses",
         ),
         next_step=(
-            "datos.gov.co exposes IBR as a link resource into BanRep's statistics "
-            "portal, not as a table; find a stable API/export before wiring."
+            "Observed from BanRep SUAMECA policy-rate and IBR series; add "
+            "IBR term structure if liquidity stress needs more depth."
         ),
     ),
     IndicatorDefinition(
@@ -282,7 +314,7 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         category="external",
         frequency="monthly",
         source_name="DANE / DIAN",
-        source_url="https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional",
+        source_url=EXPORTS_URL,
         why_it_matters=(
             "Imports, exports, and trade balance connect domestic demand, FX "
             "pressure, and industrial investment."
@@ -292,8 +324,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "fuel exports + TRM frames external-account and fiscal sensitivity",
         ),
         next_step=(
-            "Find DANE/DIAN structured tables for imports, exports, and trade "
-            "balance before PDF parsing."
+            "DANE headline exports and imports pages are wired; add annex "
+            "country/product drivers when needed."
         ),
     ),
     IndicatorDefinition(
@@ -322,7 +354,7 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         category="fiscal",
         frequency="monthly",
         source_name="DIAN / Minhacienda",
-        source_url="https://www.dian.gov.co/",
+        source_url=DIAN_TAX_REVENUE_PAGE_URL,
         why_it_matters=(
             "Tax collection, deficit, debt, and TES conditions reveal spending "
             "capacity and fiscal stress."
@@ -333,8 +365,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "TES yields + fiscal deficit flags market concern before budget headlines",
         ),
         next_step=(
-            "Look for DIAN/Minhacienda structured releases; keep PDF budget "
-            "documents for later parser work."
+            "DIAN monthly tax-collection XLSX is wired; add deficit, debt, "
+            "and TES components when a broader fiscal-stress card is needed."
         ),
     ),
 )
@@ -365,6 +397,8 @@ def _parse_socrata_date(value: Any) -> datetime | None:
 def _to_float_unrounded(value: Any) -> float | None:
     if value is None:
         return None
+    if isinstance(value, int | float):
+        return float(value)
     try:
         text = str(value).strip().replace(" ", "")
         if "," in text and "." in text:
@@ -584,6 +618,22 @@ _BUNDLE_COMPONENTS = {
             "next_step": "Socrata aggregate is wired; add commercialized gas and demand balance later.",
         },
     ),
+    "external_trade": (
+        {
+            "component_id": "exports",
+            "name": "Goods exports",
+            "source_name": "DANE / DIAN",
+            "source_url": EXPORTS_URL,
+            "next_step": "Headline HTML is wired; add destination/product annex drivers later.",
+        },
+        {
+            "component_id": "imports",
+            "name": "Goods imports",
+            "source_name": "DANE / DIAN",
+            "source_url": IMPORTS_URL,
+            "next_step": "Headline HTML is wired; add origin/CUODE/product annex drivers later.",
+        },
+    ),
 }
 
 
@@ -695,7 +745,7 @@ def _bundle_values(
 
 
 def _component_frequency(indicator_id: str) -> str:
-    if indicator_id in {"construction_bundle", "oil_gas_production"}:
+    if indicator_id in {"construction_bundle", "oil_gas_production", "external_trade"}:
         return "monthly"
     if indicator_id == "energy_system":
         return "daily"
@@ -1182,6 +1232,115 @@ def housing_finance_component_from_html(html: str) -> IndicatorComponent | None:
     )
 
 
+def exports_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"informacion\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}).*?"
+        rf"ventas externas del pais fueron us\$?{_NUMBER}\s+millones fob "
+        rf"y presentaron un crecimiento de\s+{_PERCENT}.*?"
+        rf"aumento del\s+{_PERCENT}\s+en las ventas externas del grupo de "
+        rf"(.+?)\.",
+        text,
+    )
+    if not match:
+        return None
+    shares_match = re.search(
+        rf"combustibles y productos de industrias extractivas participaron "
+        rf"con\s+{_PERCENT}.*?agropecuarios, alimentos y bebidas con\s+"
+        rf"{_PERCENT}.*?manufacturas con\s+{_PERCENT}.*?otros sectores "
+        rf"con\s+{_PERCENT}",
+        text,
+    )
+    period = _month_period(match.group(1), match.group(2))
+    exports = _to_float(match.group(3))
+    growth = _to_float(match.group(4))
+    driver_growth = _to_float(match.group(5))
+    driver_group = normalize_whitespace(match.group(6))
+    values: dict[str, Any] = {
+        "exports_usd_millions_fob": exports,
+        "exports_annual_variation_pct": growth,
+        "main_driver_group": driver_group,
+        "main_driver_annual_variation_pct": driver_growth,
+    }
+    if shares_match:
+        values["export_group_shares_pct"] = {
+            "fuels_and_extractives": _to_float(shares_match.group(1)),
+            "agriculture_food_beverages": _to_float(shares_match.group(2)),
+            "manufacturing": _to_float(shares_match.group(3)),
+            "other_sectors": _to_float(shares_match.group(4)),
+        }
+    return _component(
+        component_id="exports",
+        name="Goods exports",
+        status="observed",
+        source_name="DANE / DIAN",
+        source_url=EXPORTS_URL,
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=(
+            f"DANE exports {period}: US${exports:,.1f}m FOB "
+            f"({growth:+.2f}% y/y); main driver {driver_group} "
+            f"({driver_growth:+.2f}% y/y)."
+        ),
+        values=values,
+        next_step="Add destination and product annex drivers when needed.",
+    )
+
+
+def imports_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"informacion\s+({_MONTH_NAMES})\s+(?:de\s+)?(20\d{{2}}).*?"
+        rf"importaciones fueron us\$?{_NUMBER}\s+millones cif y presentaron "
+        rf"un crecimiento de\s+{_PERCENT}.*?aumento de\s+{_PERCENT}\s+en "
+        rf"el grupo de\s+(.+?)\.",
+        text,
+    )
+    if not match:
+        return None
+    shares_match = re.search(
+        rf"importaciones de manufacturas participaron con\s+{_PERCENT}.*?"
+        rf"agropecuarios, alimentos y bebidas con\s+{_PERCENT}.*?"
+        rf"combustibles y productos de las industrias extractivas con\s+"
+        rf"{_PERCENT}.*?otros sectores con\s+{_PERCENT}",
+        text,
+    )
+    period = _month_period(match.group(1), match.group(2))
+    imports = _to_float(match.group(3))
+    growth = _to_float(match.group(4))
+    driver_growth = _to_float(match.group(5))
+    driver_group = normalize_whitespace(match.group(6))
+    values: dict[str, Any] = {
+        "imports_usd_millions_cif": imports,
+        "imports_annual_variation_pct": growth,
+        "main_driver_group": driver_group,
+        "main_driver_annual_variation_pct": driver_growth,
+    }
+    if shares_match:
+        values["import_group_shares_pct"] = {
+            "manufacturing": _to_float(shares_match.group(1)),
+            "agriculture_food_beverages": _to_float(shares_match.group(2)),
+            "fuels_and_extractives": _to_float(shares_match.group(3)),
+            "other_sectors": _to_float(shares_match.group(4)),
+        }
+    return _component(
+        component_id="imports",
+        name="Goods imports",
+        status="observed",
+        source_name="DANE / DIAN",
+        source_url=IMPORTS_URL,
+        period=period,
+        release_date=_latest_release_date(html),
+        headline=(
+            f"DANE imports {period}: US${imports:,.1f}m CIF "
+            f"({growth:+.2f}% y/y); main driver {driver_group} "
+            f"({driver_growth:+.2f}% y/y)."
+        ),
+        values=values,
+        next_step="Add origin, CUODE, and product annex drivers when needed.",
+    )
+
+
 def _quarter_period(quarter_text: str, year: str) -> str:
     folded = fold_accents(quarter_text.lower())
     mapping = {
@@ -1285,6 +1444,50 @@ def oil_gas_observation_from_components(
     )
 
 
+def external_trade_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    observation = _bundle_observation_from_components(
+        "external_trade",
+        components,
+        failed_headline="External trade components failed to fetch or parse.",
+        observed_headline_prefix="External trade has observed components",
+    )
+    if observation is None or observation.status != "observed":
+        return observation
+    by_id = {
+        component.component_id: component
+        for component in observation.components
+        if component.status == "observed"
+    }
+    exports = by_id.get("exports")
+    imports = by_id.get("imports")
+    if (
+        exports is None
+        or imports is None
+        or exports.period != imports.period
+        or not isinstance(exports.values.get("exports_usd_millions_fob"), float)
+        or not isinstance(imports.values.get("imports_usd_millions_cif"), float)
+    ):
+        return observation
+    trade_balance = round(
+        exports.values["exports_usd_millions_fob"]
+        - imports.values["imports_usd_millions_cif"],
+        2,
+    )
+    values = {
+        **observation.values,
+        "goods_trade_balance_usd_millions": trade_balance,
+    }
+    headline = (
+        f"DANE external trade {exports.period}: exports "
+        f"US${exports.values['exports_usd_millions_fob']:,.1f}m FOB, imports "
+        f"US${imports.values['imports_usd_millions_cif']:,.1f}m CIF, "
+        f"balance {trade_balance:+,.1f}m."
+    )
+    return replace(observation, period=exports.period, headline=headline, values=values)
+
+
 @dataclass(frozen=True, slots=True)
 class TrmPoint:
     value: float
@@ -1375,6 +1578,65 @@ def trm_observation_from_rows(
         why_it_matters=definition.why_it_matters,
         correlations=list(definition.correlations),
         next_step=definition.next_step,
+    )
+
+
+def _parse_dmy_date(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    match = re.search(r"\b(\d{1,2})/(\d{1,2})/(20\d{2})\b", value)
+    if not match:
+        return None
+    try:
+        return datetime(
+            int(match.group(3)),
+            int(match.group(2)),
+            int(match.group(1)),
+            tzinfo=timezone.utc,
+        )
+    except ValueError:
+        return None
+
+
+def policy_rate_ibr_observation_from_rows(
+    policy_rows: Iterable[dict[str, Any]],
+    ibr_rows: Iterable[dict[str, Any]],
+) -> IndicatorObservation | None:
+    policy = next(iter(policy_rows), None)
+    ibr = next(iter(ibr_rows), None)
+    if not isinstance(policy, dict) or not isinstance(ibr, dict):
+        return None
+    policy_rate = _to_float_unrounded(policy.get("valor"))
+    ibr_rate = _to_float_unrounded(ibr.get("valor"))
+    policy_date = _parse_dmy_date(policy.get("fecha"))
+    ibr_date = _parse_dmy_date(ibr.get("fecha"))
+    if (
+        policy_rate is None
+        or ibr_rate is None
+        or policy_date is None
+        or ibr_date is None
+    ):
+        return None
+    latest_date = max(policy_date, ibr_date)
+    period = latest_date.strftime("%Y-%m-%d")
+    spread = round(ibr_rate - policy_rate, 3)
+    definition = _definition_map()["policy_rate_ibr"]
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=period + "T00:00:00Z",
+        headline=(
+            f"BanRep {period}: policy rate {policy_rate:.2f}%, "
+            f"IBR overnight nominal {ibr_rate:.3f}%, spread {spread:+.3f} pp."
+        ),
+        values={
+            "policy_rate_pct": policy_rate,
+            "policy_rate_date": policy_date.strftime("%Y-%m-%d"),
+            "ibr_overnight_nominal_pct": ibr_rate,
+            "ibr_date": ibr_date.strftime("%Y-%m-%d"),
+            "ibr_policy_spread_pp": spread,
+        },
     )
 
 
@@ -1652,6 +1914,169 @@ def _socrata_rows_updated_release_date(metadata: dict[str, Any]) -> str:
     return ""
 
 
+_XLSX_NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+
+
+def _xlsx_column_index(cell_ref: str) -> int:
+    letters = "".join(char for char in cell_ref if char.isalpha())
+    index = 0
+    for char in letters:
+        index = index * 26 + (ord(char.upper()) - ord("A") + 1)
+    return index - 1
+
+
+def _xlsx_shared_strings(workbook: zipfile.ZipFile) -> list[str]:
+    try:
+        root = ElementTree.fromstring(workbook.read("xl/sharedStrings.xml"))
+    except KeyError:
+        return []
+    shared: list[str] = []
+    for item in root.findall("m:si", _XLSX_NS):
+        shared.append(
+            "".join(text.text or "" for text in item.findall(".//m:t", _XLSX_NS))
+        )
+    return shared
+
+
+def _xlsx_first_sheet_rows(xlsx_bytes: bytes) -> list[list[str]]:
+    workbook = zipfile.ZipFile(io.BytesIO(xlsx_bytes))
+    shared = _xlsx_shared_strings(workbook)
+    root = ElementTree.fromstring(workbook.read("xl/worksheets/sheet1.xml"))
+    rows: list[list[str]] = []
+    for row in root.findall(".//m:row", _XLSX_NS):
+        values_by_index: dict[int, str] = {}
+        for cell in row.findall("m:c", _XLSX_NS):
+            value_node = cell.find("m:v", _XLSX_NS)
+            value = ""
+            if value_node is not None and value_node.text is not None:
+                value = value_node.text
+                if cell.get("t") == "s":
+                    value = shared[int(value)]
+            elif cell.get("t") == "inlineStr":
+                value = "".join(
+                    text.text or "" for text in cell.findall(".//m:t", _XLSX_NS)
+                )
+            if value:
+                values_by_index[_xlsx_column_index(str(cell.get("r") or ""))] = value
+        if not values_by_index:
+            rows.append([])
+            continue
+        max_index = max(values_by_index)
+        rows.append([values_by_index.get(index, "") for index in range(max_index + 1)])
+    return rows
+
+
+def _month_number_from_text(value: Any) -> int | None:
+    if not isinstance(value, str):
+        return None
+    folded = fold_accents(value.lower())
+    return _MONTHS_ES.get(folded) or _MONTH_ABBR_ES.get(folded[:3])
+
+
+def _row_value_by_header(
+    row: list[str],
+    headers: list[str],
+    header_text: str,
+) -> float | None:
+    folded_header = fold_accents(header_text.lower())
+    for index, header in enumerate(headers):
+        if folded_header in fold_accents(str(header).lower()):
+            if index < len(row):
+                return _to_float(row[index])
+            return None
+    return None
+
+
+def fiscal_tax_observation_from_dian_xlsx(xlsx_bytes: bytes) -> IndicatorObservation | None:
+    rows = _xlsx_first_sheet_rows(xlsx_bytes)
+    header_index = next(
+        (
+            index
+            for index, row in enumerate(rows)
+            if any(str(value).strip() == "Año" for value in row)
+            and any(str(value).strip() == "Mes" for value in row)
+        ),
+        None,
+    )
+    if header_index is None:
+        return None
+    headers = rows[header_index]
+    data: list[tuple[int, int, list[str]]] = []
+    for row in rows[header_index + 1 :]:
+        if len(row) < 2:
+            continue
+        year = _to_float(row[1])
+        month = _month_number_from_text(row[2]) if len(row) > 2 else None
+        if year is None or month is None:
+            continue
+        data.append((int(year), month, row))
+    if not data:
+        return None
+    year, month, latest_row = max(data, key=lambda item: (item[0], item[1]))
+    previous_row = next(
+        (
+            row
+            for row_year, row_month, row in data
+            if row_year == year - 1 and row_month == month
+        ),
+        None,
+    )
+    total = _row_value_by_header(latest_row, headers, "Total (A+B+C)")
+    internal = _row_value_by_header(latest_row, headers, "A. Internos")
+    external = _row_value_by_header(latest_row, headers, "B. Externos")
+    income_tax = _row_value_by_header(latest_row, headers, "1. Renta")
+    internal_vat = _row_value_by_header(latest_row, headers, "2. IVA interno")
+    tariff = _row_value_by_header(latest_row, headers, "19.Arancel")
+    external_vat = _row_value_by_header(latest_row, headers, "20. IVA Externo")
+    previous_total = (
+        _row_value_by_header(previous_row, headers, "Total (A+B+C)")
+        if previous_row
+        else None
+    )
+    if total is None:
+        return None
+    annual_change = (
+        round(((total - previous_total) / previous_total) * 100, 2)
+        if total is not None and previous_total not in {None, 0}
+        else None
+    )
+    release_text = " ".join(
+        str(value)
+        for row in rows[: header_index + 1] + rows[-4:]
+        for value in row
+        if value
+    )
+    release_date = _release_date_from_text(release_text)
+    period = f"{year}-{month:02d}"
+    definition = _definition_map()["fiscal_tax_pulse"]
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=release_date,
+        headline=(
+            f"DIAN tax collection {period}: COP {total:,.0f} million gross "
+            f"revenue"
+            + (
+                f" ({annual_change:+.2f}% y/y)."
+                if annual_change is not None
+                else "."
+            )
+        ),
+        values={
+            "gross_tax_revenue_cop_millions": total,
+            "gross_tax_revenue_annual_variation_pct": annual_change,
+            "internal_tax_revenue_cop_millions": internal,
+            "external_tax_revenue_cop_millions": external,
+            "income_tax_cop_millions": income_tax,
+            "internal_vat_cop_millions": internal_vat,
+            "tariff_revenue_cop_millions": tariff,
+            "external_vat_cop_millions": external_vat,
+            "previous_year_same_month_cop_millions": previous_total,
+        },
+    )
+
+
 def _failed_observation(
     definition: IndicatorDefinition,
     message: str,
@@ -1704,6 +2129,46 @@ def _fetch_trm_observation(client: httpx.Client) -> IndicatorObservation:
     return observation
 
 
+def _fetch_banrep_series_rows(
+    client: httpx.Client,
+    series_id: int,
+) -> list[dict[str, Any]] | None:
+    response = client.get(
+        f"{BANREP_SERIES_API_BASE}/consultaInformacionSerieXTipoDato",
+        params={"idSerie": str(series_id), "tipoDato": "1", "cantDatos": "5"},
+        headers={"Content-type": "application/json; charset=utf-8"},
+    )
+    response.raise_for_status()
+    rows = response.json()
+    if not isinstance(rows, list):
+        return None
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _fetch_policy_rate_ibr_observation(client: httpx.Client) -> IndicatorObservation:
+    definition = _definition_map()["policy_rate_ibr"]
+    try:
+        policy_rows = _fetch_banrep_series_rows(client, BANREP_POLICY_RATE_SERIES_ID)
+        ibr_rows = _fetch_banrep_series_rows(client, BANREP_IBR_OVERNIGHT_SERIES_ID)
+    except (httpx.HTTPError, ValueError) as exc:
+        return _failed_observation(
+            definition,
+            f"BanRep SUAMECA fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    if policy_rows is None or ibr_rows is None:
+        return _failed_observation(
+            definition,
+            "BanRep SUAMECA fetch returned non-list JSON.",
+        )
+    observation = policy_rate_ibr_observation_from_rows(policy_rows, ibr_rows)
+    if observation is None:
+        return _failed_observation(
+            definition,
+            "BanRep SUAMECA fetch returned no parseable policy/IBR rows.",
+        )
+    return observation
+
+
 _DANE_HTML_INDICATORS: tuple[
     tuple[
         str,
@@ -1729,6 +2194,18 @@ _DANE_CONSTRUCTION_COMPONENTS: tuple[
     ("cement", CEMENT_URL, cement_component_from_html),
     ("licenses", CONSTRUCTION_LICENSES_URL, construction_licenses_component_from_html),
     ("housing_finance", HOUSING_FINANCE_URL, housing_finance_component_from_html),
+)
+
+_DANE_TRADE_COMPONENTS: tuple[
+    tuple[
+        str,
+        str,
+        Callable[[str], IndicatorComponent | None],
+    ],
+    ...,
+] = (
+    ("exports", EXPORTS_URL, exports_component_from_html),
+    ("imports", IMPORTS_URL, imports_component_from_html),
 )
 
 _XM_ENERGY_COMPONENTS: tuple[
@@ -1842,20 +2319,21 @@ def _fetch_dane_component(
     component_id: str,
     url: str,
     parser: Callable[[str], IndicatorComponent | None],
+    indicator_id: str = "construction_bundle",
 ) -> IndicatorComponent:
     try:
         response = client.get(url)
         response.raise_for_status()
     except httpx.HTTPError as exc:
         return _failed_component(
-            "construction_bundle",
+            indicator_id,
             component_id=component_id,
             headline=f"DANE component fetch failed: {exc.__class__.__name__}: {exc}",
         )
     component = parser(response.text)
     if component is None:
         return _failed_component(
-            "construction_bundle",
+            indicator_id,
             component_id=component_id,
             headline="DANE component fetch returned no parseable current-result text.",
         )
@@ -1988,9 +2466,35 @@ def _fetch_anh_component(
     return component
 
 
+def _fetch_dian_tax_observation(client: httpx.Client) -> IndicatorObservation:
+    definition = _definition_map()["fiscal_tax_pulse"]
+    try:
+        response = client.get(DIAN_MONTHLY_TAX_ZIP_URL, follow_redirects=True)
+        response.raise_for_status()
+        archive = zipfile.ZipFile(io.BytesIO(response.content))
+        xlsx_name = next(
+            name for name in archive.namelist() if name.lower().endswith(".xlsx")
+        )
+        observation = fiscal_tax_observation_from_dian_xlsx(archive.read(xlsx_name))
+    except (httpx.HTTPError, ValueError, KeyError, StopIteration, zipfile.BadZipFile) as exc:
+        return _failed_observation(
+            definition,
+            f"DIAN tax collection fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    if observation is None:
+        return _failed_observation(
+            definition,
+            "DIAN tax collection XLSX returned no parseable latest monthly row.",
+        )
+    return observation
+
+
 def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
     with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
-        observations = [_fetch_trm_observation(client)]
+        observations = [
+            _fetch_trm_observation(client),
+            _fetch_policy_rate_ibr_observation(client),
+        ]
         observations.extend(
             _fetch_dane_html_observation(client, indicator_id, url, parser)
             for indicator_id, url, parser in _DANE_HTML_INDICATORS
@@ -2004,6 +2508,13 @@ def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
         )
         if construction:
             observations.append(construction)
+        trade_components = [
+            _fetch_dane_component(client, component_id, url, parser, "external_trade")
+            for component_id, url, parser in _DANE_TRADE_COMPONENTS
+        ]
+        external_trade = external_trade_observation_from_components(trade_components)
+        if external_trade:
+            observations.append(external_trade)
         energy_components = [
             _fetch_xm_component(client, component_id, url, metric_id, parser)
             for component_id, url, metric_id, parser in _XM_ENERGY_COMPONENTS
@@ -2022,6 +2533,7 @@ def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
         oil_gas = oil_gas_observation_from_components(oil_gas_components)
         if oil_gas:
             observations.append(oil_gas)
+        observations.append(_fetch_dian_tax_observation(client))
     return observations
 
 
