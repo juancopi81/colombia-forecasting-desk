@@ -15,7 +15,10 @@ from .cluster import topic_keywords
 from .config_loader import load_metasources
 from .dedupe import dedupe
 from .fetchers import fetch_all
-from .indicator_watch import build_indicator_watch
+from .indicator_watch import (
+    build_indicator_watch,
+    fetch_structured_indicator_observations,
+)
 from .models import (
     CleanedItem,
     Cluster,
@@ -365,7 +368,8 @@ def run(
     source_health = build_source_health(
         sources, raw_items, cleaned, rankable, failures
     )
-    indicator_watch = build_indicator_watch(raw_items, cleaned)
+    structured_indicators = fetch_structured_indicator_observations()
+    indicator_watch = build_indicator_watch(raw_items, cleaned, structured_indicators)
 
     finished_at = _now_iso()
     summary = RunSummary(

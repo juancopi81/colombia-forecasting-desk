@@ -1009,6 +1009,15 @@ def _socrata_row_to_item(
     title = " — ".join(p for p in title_parts if p)
     synthetic_url = f"{source.url}?id={id_value}"
     raw_text = " | ".join(p for p in [title_raw, entity] if p)
+    metadata = {
+        "extraction": "socrata_api",
+        "dataset_url": source.url,
+        "id_value": id_value,
+        "date_field": adapter.date_field,
+        "title_field": adapter.title_field,
+    }
+    if entity:
+        metadata["entity"] = entity
     return RawItem(
         id=_make_id(source.id, synthetic_url, title),
         source_id=source.id,
@@ -1019,11 +1028,7 @@ def _socrata_row_to_item(
         fetched_at=fetched_at,
         published_at=published_at,
         raw_text=raw_text,
-        metadata={
-            "extraction": "socrata_api",
-            "dataset_url": source.url,
-            "id_value": id_value,
-        },
+        metadata=metadata,
     )
 
 
