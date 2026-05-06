@@ -67,6 +67,7 @@ runs/YYYY-MM-DD/cleaned_items.json
 runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/indicator_watch.json
 runs/YYYY-MM-DD/metasource_brief.md
+runs/YYYY-MM-DD/m2_handoff.md
 runs/YYYY-MM-DD/source_health.json
 ```
 
@@ -80,6 +81,12 @@ The main human-readable artifact is:
 
 ```text
 runs/YYYY-MM-DD/metasource_brief.md
+```
+
+The main paste-ready artifact for manual M2 question selection is:
+
+```text
+runs/YYYY-MM-DD/m2_handoff.md
 ```
 
 ## Raw Item Shape
@@ -303,6 +310,20 @@ ELN. Legal/listing clusters are kept internally consistent by summarizing the
 same member that supplies the title, and obvious UI artifacts such as
 `ui-button` are stripped during cleaning.
 
+M1.14 prepares the manual M2 handoff. Each run now writes `m2_handoff.md`, a
+shorter paste-ready artifact with the M2 task contract, indicator-led seed
+questions, forecastable event signals, rejected/noisy signal notes, source
+coverage caveats, and the required M2 output schema. The normal brief also
+renders `M2 Seed Questions`, `Forecastable Signals`, and `Rejected / Noisy Top
+Signals`. The ranker now uses a shared forecastability heuristic that rewards
+official decisions, legal/regulatory/electoral signals, data releases,
+resolution terms, and multi-source corroboration while penalizing
+low-forecastability local, curiosity, and single-source media items. DANE
+press-release PDFs get a standard-library best-effort text excerpt when
+readable, Imprenta/Gaceta rows preserve document titles when the static table
+exposes them, and future calendar items are retained inside the planning
+window instead of being dropped as future-dated news.
+
 ## Indicator Watch
 
 Each run writes:
@@ -471,6 +492,15 @@ Useful correlations:
 
 M1 next step:
 
+## M2 Seed Questions
+
+Indicator-driven question seeds with trigger, likely resolution source,
+deadline/window hint, and missing evidence.
+
+## Forecastable Signals
+
+Event clusters that passed the deterministic forecastability filter.
+
 ## Top Signals
 
 ### 1. [Cluster Title]
@@ -499,6 +529,10 @@ Links:
 - ...
 
 ## Topics to Monitor
+
+- ...
+
+## Rejected / Noisy Top Signals
 
 - ...
 
@@ -578,6 +612,7 @@ Links:
 ### Step 7 — Generate daily brief
 
 - [x] Create `runs/YYYY-MM-DD/metasource_brief.md`.
+- [x] Create `runs/YYYY-MM-DD/m2_handoff.md`.
 - [x] Include run summary.
 - [x] Include top ranked clusters.
 - [x] Include possible forecastable questions.
@@ -596,8 +631,10 @@ M1 is complete when:
 - [x] `clusters.json` is generated.
 - [x] `indicator_watch.json` is generated.
 - [x] `metasource_brief.md` is generated.
+- [x] `m2_handoff.md` is generated.
 - [x] Source failures are logged but do not crash the full run.
 - [x] The daily brief is useful enough for an LLM or human to decide what to inspect next.
+- [x] The M2 handoff is useful enough to paste into an AI for candidate question selection.
 
 ## Suggested First Command
 

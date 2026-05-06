@@ -10,6 +10,11 @@ from .stopwords_es import STOPWORDS_ES
 
 JACCARD_THRESHOLD = 0.4
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+_GENERIC_IMPRENTA_TITLE_RE = re.compile(
+    r"^(?:gaceta del congreso\s+\d+|diario oficial\s+[\d.]+)"
+    r"(?:\s+[-]\s+[^-]+)?$",
+    re.IGNORECASE,
+)
 
 
 def tokenize_title(title: str) -> set[str]:
@@ -23,6 +28,25 @@ def jaccard(a: set[str], b: set[str]) -> float:
     if not a or not b:
         return 0.0
     return len(a & b) / len(a | b)
+
+
+def _is_generic_imprenta_listing(item: CleanedItem) -> bool:
+    if item.source_id not in {"diario_oficial", "gacetas_congreso"}:
+        return False
+    normalized = item.title.lower().replace("—", "-").replace("–", "-")
+    normalized = fold_accents(normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return bool(_GENERIC_IMPRENTA_TITLE_RE.match(normalized))
+
+
+def _can_union_by_title(a: CleanedItem, b: CleanedItem) -> bool:
+    if (
+        _is_generic_imprenta_listing(a)
+        and _is_generic_imprenta_listing(b)
+        and a.title != b.title
+    ):
+        return False
+    return True
 
 
 class _UnionFind:
@@ -103,7 +127,10 @@ def cluster(items: list[CleanedItem], threshold: float = JACCARD_THRESHOLD) -> l
         for j in range(i + 1, n):
             if not token_sets[j]:
                 continue
-            if jaccard(token_sets[i], token_sets[j]) >= threshold:
+            if (
+                _can_union_by_title(items[i], items[j])
+                and jaccard(token_sets[i], token_sets[j]) >= threshold
+            ):
                 uf.union(i, j)
 
     groups: dict[int, list[int]] = {}

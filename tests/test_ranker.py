@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from colombia_forecasting_desk.forecastability import (
+    is_forecastable_candidate,
+    noise_reasons,
+)
 from colombia_forecasting_desk.models import Cluster
 from colombia_forecasting_desk.ranker import rank, score_cluster
 
@@ -120,3 +124,47 @@ def test_single_source_local_incident_is_downgraded_against_strategic_news() -> 
         latest_published_at=now.isoformat().replace("+00:00", "Z"),
     )
     assert score_cluster(strategic, now) > score_cluster(local_incident, now)
+
+
+def test_forecastable_official_decision_beats_human_interest_news() -> None:
+    now = datetime(2026, 5, 6, 12, 0, tzinfo=timezone.utc)
+    official = _cluster(
+        cluster_id="c-banrep-decision",
+        title="La Junta Directiva del Banco de la Republica mantiene la tasa",
+        summary="BanRep mantiene la tasa de politica monetaria.",
+        source_types=["official_updates"],
+        signal_types=["official_update"],
+        priorities=["high"],
+        latest_published_at=now.isoformat().replace("+00:00", "Z"),
+    )
+    curiosity = _cluster(
+        cluster_id="c-curiosity-news",
+        title="Organizacion evalua traslado de hipopotamos de Pablo Escobar",
+        summary="La visita tecnica revisara el control de esta especie.",
+        source_types=["news"],
+        signal_types=["media_narrative"],
+        priorities=["high"],
+        latest_published_at=now.isoformat().replace("+00:00", "Z"),
+    )
+
+    assert score_cluster(official, now) > score_cluster(curiosity, now)
+
+
+def test_opaque_gaceta_index_is_not_forecastable_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-gaceta-opaque",
+        title="Gaceta del Congreso 421 — Senado de la República",
+        summary="421 | Senado de la República | 05/05/2026",
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["gacetas_congreso"],
+        member_source_names=["Gacetas del Congreso — Imprenta Nacional"],
+        member_titles=["Gaceta del Congreso 421 — Senado de la República"],
+        member_urls=["https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=421"],
+        priorities=["high"],
+    )
+
+    assert not is_forecastable_candidate(cluster)
+    assert "official publication index lacks document title or parsed text" in noise_reasons(
+        cluster
+    )

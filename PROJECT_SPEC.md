@@ -118,6 +118,7 @@ colombia-forecasting-desk/
       cleaned_items.json
       clusters.json
       metasource_brief.md
+      m2_handoff.md
       candidate_questions.md
       evidence_packs/
       forecast_drafts/

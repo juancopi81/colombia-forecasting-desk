@@ -20,6 +20,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `metasource_brief.md` — the human-readable daily brief
+- `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
 - `source_failures.json` — per-source errors (run never crashes on a single source)
 - `source_health.json` — per-source raw, dated, rankable, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
@@ -44,4 +45,4 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.13 — brief quality and triage**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.14 — M2-ready handoff**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).

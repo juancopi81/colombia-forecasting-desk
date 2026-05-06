@@ -7,6 +7,7 @@ import logging
 import re
 import time
 import zipfile
+import zlib
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
@@ -48,6 +49,10 @@ BOT_BLOCK_MARKERS = (
     "Bot Manager Block",
 )
 SPA_SHELL_MARKERS = ("<app-root></app-root>", "<app-root>")
+PDF_TEXT_PARSE_LIMIT = 5
+PDF_TEXT_MAX_BYTES = 2_000_000
+PDF_TEXT_EXCERPT_CHARS = 1_200
+PDF_TEXT_MIN_CHARS = 80
 
 NAV_TEXT = {
     "inicio", "contacto", "menu", "menú", "buscar", "ver mas", "ver más",
@@ -793,6 +798,181 @@ def _enrich_dane_icoced_xlsx(
     return enriched
 
 
+_PDF_STREAM_RE = re.compile(rb"stream\r?\n(.*?)\r?\nendstream", re.DOTALL)
+_PDF_LITERAL_RE = re.compile(rb"\((?:\\.|[^\\()])*\)")
+_PDF_TEXT_ALLOWED_PUNCT = set(".,;:!?¿¡()[]{}%$#/+-_=°'\"@&\n\r\t ")
+_PDF_TEXT_ALLOWED_NONASCII = set("áéíóúÁÉÍÓÚñÑüÜ")
+_PDF_COMMON_SPANISH_TERMS = {
+    "con",
+    "de",
+    "del",
+    "el",
+    "en",
+    "la",
+    "las",
+    "los",
+    "para",
+    "por",
+    "que",
+    "una",
+}
+
+
+def _decode_pdf_literal(raw: bytes) -> str:
+    body = raw[1:-1]
+    replacements = {
+        rb"\n": b"\n",
+        rb"\r": b"\r",
+        rb"\t": b"\t",
+        rb"\b": b"\b",
+        rb"\f": b"\f",
+        rb"\(": b"(",
+        rb"\)": b")",
+        rb"\\": b"\\",
+    }
+    for src, dst in replacements.items():
+        body = body.replace(src, dst)
+    return body.decode("latin-1", errors="ignore")
+
+
+def _looks_like_text(text: str) -> bool:
+    normalized = normalize_whitespace(text)
+    if len(normalized) < 8:
+        return False
+    useful = sum(
+        1
+        for ch in normalized
+        if (
+            (ch.isascii() and (ch.isalnum() or ch.isspace()))
+            or ch in _PDF_TEXT_ALLOWED_NONASCII
+            or ch in _PDF_TEXT_ALLOWED_PUNCT
+        )
+    )
+    letters = sum(
+        1
+        for ch in normalized
+        if (ch.isascii() and ch.isalpha()) or ch in _PDF_TEXT_ALLOWED_NONASCII
+    )
+    return useful / len(normalized) >= 0.85 and letters / len(normalized) >= 0.35
+
+
+def _looks_like_pdf_excerpt(text: str) -> bool:
+    if len(text) < PDF_TEXT_MIN_CHARS:
+        return False
+    folded_tokens = set(re.findall(r"\w+", fold_accents(text.lower())))
+    if len(folded_tokens & _PDF_COMMON_SPANISH_TERMS) < 3:
+        return False
+    if text.count("Identity") > 1 or text.count("Segoe UI") > 1:
+        return False
+    if "endstream" in text or text.count("\\") > 2:
+        return False
+    return True
+
+
+def _extract_pdf_text(content: bytes, *, max_chars: int = PDF_TEXT_EXCERPT_CHARS) -> str:
+    """Best-effort PDF text extraction using only the standard library.
+
+    This intentionally handles only common text streams. It is not a full PDF
+    parser, but it gives M1 a useful excerpt when official PDFs expose readable
+    literal strings without adding another production dependency.
+    """
+    chunks: list[bytes] = [content[:PDF_TEXT_MAX_BYTES]]
+    for match in _PDF_STREAM_RE.finditer(content[:PDF_TEXT_MAX_BYTES]):
+        stream = match.group(1).strip(b"\r\n")
+        try:
+            chunks.append(zlib.decompress(stream))
+        except zlib.error:
+            chunks.append(stream)
+
+    texts: list[str] = []
+    for chunk in chunks:
+        for literal in _PDF_LITERAL_RE.findall(chunk):
+            text = _decode_pdf_literal(literal)
+            if _looks_like_text(text):
+                texts.append(text)
+    excerpt = normalize_whitespace(" ".join(texts))
+    if not _looks_like_pdf_excerpt(excerpt):
+        return ""
+    return excerpt[:max_chars]
+
+
+def _enrich_pdf_text(
+    items: list[RawItem],
+    client: httpx.Client,
+    *,
+    max_items: int = PDF_TEXT_PARSE_LIMIT,
+) -> list[RawItem]:
+    enriched: list[RawItem] = []
+    parsed_count = 0
+    for item in items:
+        path = urlsplit(item.url).path.lower()
+        if parsed_count >= max_items or not path.endswith(".pdf"):
+            enriched.append(item)
+            continue
+        metadata = dict(item.metadata)
+        try:
+            response = _http_get(client, item.url)
+            excerpt = _extract_pdf_text(response.content)
+        except Exception as exc:  # noqa: BLE001 - preserve link-level item
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        if len(excerpt) < PDF_TEXT_MIN_CHARS:
+            metadata["content_extraction_error"] = "pdf text excerpt too short"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        metadata.update(
+            {
+                "content_extraction": "pdf_text_best_effort",
+                "pdf_text_chars": len(excerpt),
+            }
+        )
+        enriched.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=f"{item.raw_text} PDF text excerpt: {excerpt}",
+                metadata=metadata,
+            )
+        )
+        parsed_count += 1
+    return enriched
+
+
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 
 
@@ -843,12 +1023,26 @@ def _extract_imprenta_jsf_table(
         published_at = _date_to_iso(year, month, day)
         if not published_at:
             continue
-        title = f"{edition_label} {number}" + (f" — {kind}" if kind else "")
+        document_title = ""
+        if len(cells) > date_idx + 1:
+            candidate = cells[date_idx + 1]
+            if candidate and fold_accents(candidate.lower()) not in {"ui-button"}:
+                document_title = candidate
+        title_parts = [f"{edition_label} {number}", kind, document_title[:140]]
+        title = " — ".join(part for part in title_parts if part)
         synthetic_url = f"{base_url.rstrip('/')}?{query_param}={number}"
         canon = canonicalize_url(synthetic_url)
         if canon in seen:
             continue
         seen.add(canon)
+        metadata = {
+            "extraction": "imprenta_nacional_jsf_table",
+            "edition_number": number,
+        }
+        if kind:
+            metadata["entity_or_type"] = kind
+        if document_title:
+            metadata["document_title"] = document_title
         items.append(
             RawItem(
                 id=_make_id(source.id, synthetic_url, title),
@@ -860,7 +1054,7 @@ def _extract_imprenta_jsf_table(
                 fetched_at=fetched_at,
                 published_at=published_at,
                 raw_text=" | ".join(cells),
-                metadata={"extraction": "imprenta_nacional_jsf_table"},
+                metadata=metadata,
             )
         )
     return items
@@ -1163,7 +1357,7 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             response.text, str(response.url), source, fetched_at
         )
         if items:
-            return items
+            return _enrich_pdf_text(items, client)
     if source.id == "dane_icoced":
         items = _extract_dane_icoced(
             response.text, str(response.url), source, fetched_at

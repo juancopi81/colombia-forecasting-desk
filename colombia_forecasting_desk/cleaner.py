@@ -13,13 +13,16 @@ _TRUST_ROLE_TO_SIGNAL = {
     "polling_signal": "poll",
     "agenda_signal": "calendar_event",
     "resolution_source": "official_update",
-    "civic_signal": "civic_event",
+    "legal_signal": "court_or_regulatory_movement",
+    "regulatory_signal": "court_or_regulatory_movement",
+    "civic_signal": "new_data",
 }
 
 SHORT_TEXT_THRESHOLD = 40
 SUMMARY_MAX_CHARS = 280
 UI_ARTIFACT_RE = re.compile(r"\bui-button\b", re.IGNORECASE)
 TRAILING_SEPARATOR_RE = re.compile(r"(?:\s*\|\s*)+$")
+IMPRENTA_INDEX_EXTRACTION = "imprenta_nacional_jsf_table"
 
 
 def strip_html(text: str) -> str:
@@ -55,6 +58,13 @@ def signal_type_for(source: Metasource) -> str:
     return _TRUST_ROLE_TO_SIGNAL.get(source.trust_role, "unknown")
 
 
+def _is_opaque_imprenta_index(raw: RawItem) -> bool:
+    return (
+        raw.metadata.get("extraction") == IMPRENTA_INDEX_EXTRACTION
+        and not raw.metadata.get("document_title")
+    )
+
+
 def fold_accents(text: str) -> str:
     return (
         unicodedata.normalize("NFKD", text)
@@ -76,6 +86,8 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         notes.append("low_quality:no_title")
     if len(clean_text) < SHORT_TEXT_THRESHOLD:
         notes.append("low_quality:short_text")
+    if _is_opaque_imprenta_index(raw):
+        notes.append("low_quality:missing_document_title")
     quality_notes = ",".join(notes)
 
     return CleanedItem(

@@ -105,6 +105,50 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.source_health[0].parsed_content_count == 0
     assert result.run_dir == tmp_path / "2026-04-27"
     assert (result.run_dir / "source_health.json").exists()
+    assert (result.run_dir / "m2_handoff.md").exists()
+
+
+def test_run_keeps_future_calendar_items_inside_planning_window(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    source = Metasource(
+        id="calendar_source",
+        name="Calendar Source",
+        url="https://example.com/calendar",
+        type="calendar",
+        country_relevance="high",
+        access_status="html_public",
+        fetch_method="html",
+        priority="high",
+        update_frequency="event_driven",
+        trust_role="agenda_signal",
+        parsing_difficulty="medium",
+        enabled=True,
+        notes="",
+    )
+    items = [
+        RawItem(
+            id="future-calendar",
+            source_id="calendar_source",
+            source_name="Calendar Source",
+            source_type="calendar",
+            url="https://example.com/calendar/future",
+            title="Calendario electoral fecha limite de inscripcion",
+            fetched_at="2026-05-06T12:00:00Z",
+            published_at="2026-06-15T00:00:00Z",
+            raw_text="Calendario electoral fecha limite de inscripcion presidencial.",
+            metadata={},
+        )
+    ]
+
+    monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
+    monkeypatch.setattr(pipeline, "fetch_all", lambda _: (items, []))
+
+    result = pipeline.run(date="2026-05-06", runs_root=tmp_path)
+
+    assert [item.id for item in result.cleaned_items] == ["future-calendar"]
+    assert result.source_health[0].rankable_count == 1
 
 
 def test_run_rejects_invalid_date(tmp_path) -> None:
@@ -179,6 +223,22 @@ def test_derive_content_mode_identifies_document_link_only_sources() -> None:
 
     assert mode == "document_links_only"
     assert document_links == 2
+    assert parsed == 0
+
+
+def test_derive_content_mode_treats_imprenta_rows_as_document_links() -> None:
+    mode, document_links, parsed = pipeline._derive_content_mode(
+        [
+            _raw(
+                url="https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=421",
+                metadata={"extraction": "imprenta_nacional_jsf_table"},
+            )
+        ],
+        0,
+    )
+
+    assert mode == "document_links_only"
+    assert document_links == 1
     assert parsed == 0
 
 

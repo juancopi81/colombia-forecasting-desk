@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from colombia_forecasting_desk.brief import render_brief
+from colombia_forecasting_desk.brief import render_brief, render_m2_handoff
 from colombia_forecasting_desk.models import (
     Cluster,
     IndicatorComponent,
@@ -67,9 +67,12 @@ def test_brief_has_all_sections(make_cleaned) -> None:
         "## Run Summary",
         "## Analyst Attention",
         "## Indicator Watch",
+        "## M2 Seed Questions",
+        "## Forecastable Signals",
         "## Top Signals",
         "## Emerging Questions",
         "## Topics to Monitor",
+        "## Rejected / Noisy Top Signals",
         "## Source Health Actions",
         "## Source Health",
         "## Noisy / Low-Confidence Items",
@@ -81,7 +84,7 @@ def test_brief_has_all_sections(make_cleaned) -> None:
     assert "dane_prensa" in out
     assert "503 Service Unavailable" in out
     assert "low_quality:short_text" in out
-    assert "(populated in M2)" in out
+    assert "Use `M2 Seed Questions`" in out
 
 
 def test_brief_renders_onboarding_and_status_columns(make_cleaned) -> None:
@@ -295,3 +298,61 @@ def test_brief_handles_no_clusters_no_failures() -> None:
     assert "_No clusters._" in out
     assert "_No source failures during this run._" in out
     assert "_None flagged._" in out
+
+
+def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
+    summary = RunSummary(
+        run_date="2026-05-06",
+        started_at="2026-05-06T12:00:00Z",
+        finished_at="2026-05-06T12:00:30Z",
+        sources_checked=2,
+        sources_failed=0,
+        raw_items=10,
+        cleaned_items=10,
+        clusters=1,
+    )
+    indicator = IndicatorObservation(
+        indicator_id="trm_usd_cop",
+        name="TRM / USD-COP",
+        category="markets",
+        status="observed",
+        frequency="daily",
+        source_name="SFC",
+        source_url="https://example.com/trm",
+        period="2026-05-06",
+        headline="TRM vigente: 3723.33 COP/USD.",
+        values={"trm_cop_per_usd": 3723.33, "seven_day_change_pct": 2.46},
+        freshness_status="current",
+    )
+    health = [
+        SourceHealth(
+            source_id="eltiempo_colombia",
+            source_name="El Tiempo",
+            url="https://example.com/rss",
+            raw_count=10,
+            cleaned_count=10,
+            dated_count=10,
+            rankable_count=10,
+            failure_count=0,
+            onboarding_status="working",
+            status="ok",
+            content_mode="html_or_api",
+        )
+    ]
+
+    out = render_m2_handoff(
+        summary,
+        [_cluster()],
+        [],
+        ["banrep"],
+        source_health=health,
+        indicator_watch=[indicator],
+    )
+
+    assert "# M2 Question Selection Handoff" in out
+    assert "Task For The AI" in out
+    assert "Indicator-Driven Seed Questions" in out
+    assert "Forecastable Event Signals" in out
+    assert "Required M2 Output Schema" in out
+    assert "rolling RSS media pulse" in out
+    assert "Will the official TRM remain" in out

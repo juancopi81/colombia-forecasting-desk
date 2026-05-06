@@ -12,9 +12,12 @@ from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
     _enrich_dane_icoced_xlsx,
+    _enrich_pdf_text,
     _extract_anchors,
     _extract_corte_comunicados,
     _extract_dane_comunicados,
+    _extract_imprenta_jsf_table,
+    _extract_pdf_text,
     _cap_items,
     _parse_rss_entries,
     _parse_dane_icoced_xlsx,
@@ -201,6 +204,14 @@ class _FakeBinaryClient:
         return _FakeBinaryResponse(_minimal_icoced_xlsx())
 
 
+def _minimal_text_pdf(text: str) -> bytes:
+    return (
+        b"%PDF-1.4\n1 0 obj\n<<>>\nstream\nBT\n("
+        + text.encode("latin-1")
+        + b") Tj\nET\nendstream\nendobj\n%%EOF"
+    )
+
+
 def test_enrich_dane_icoced_xlsx_marks_item_as_parsed_content() -> None:
     item = RawItem(
         id="icoced-1",
@@ -225,6 +236,44 @@ def test_enrich_dane_icoced_xlsx_marks_item_as_parsed_content() -> None:
     assert "ICOCED total registró una variación mensual de 0,75%" in enriched.raw_text
 
 
+def test_extract_pdf_text_reads_literal_text_stream() -> None:
+    text = (
+        "El DANE inicia la tercera entrega de resultados del Censo Economico "
+        "Nacional Urbano con informacion suficiente para el analista."
+    )
+    assert "Censo Economico Nacional" in _extract_pdf_text(_minimal_text_pdf(text))
+
+
+class _FakePdfClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        text = (
+            "El DANE publica un comunicado tecnico con resultados economicos "
+            "nacionales y suficiente texto para superar el umbral minimo."
+        )
+        return _FakeBinaryResponse(_minimal_text_pdf(text))
+
+
+def test_enrich_pdf_text_marks_pdf_item_as_parsed_content() -> None:
+    item = RawItem(
+        id="dane-pdf-1",
+        source_id="dane_comunicados_prensa",
+        source_name="DANE",
+        source_type="official_updates",
+        url="https://www.dane.gov.co/files/prensa/comunicados/cp-demo.pdf",
+        title="DANE publica comunicado tecnico",
+        fetched_at="2026-05-06T00:00:00Z",
+        published_at="2026-05-05T00:00:00Z",
+        raw_text="DANE publica comunicado tecnico 05/05/2026 PDF Descargar",
+        metadata={"extraction": "dane_comunicados_table"},
+    )
+
+    enriched = _enrich_pdf_text([item], _FakePdfClient(), max_items=1)[0]
+
+    assert enriched.metadata["content_extraction"] == "pdf_text_best_effort"
+    assert "PDF text excerpt" in enriched.raw_text
+    assert "resultados economicos nacionales" in enriched.raw_text
+
+
 def test_extract_corte_comunicados_reads_dated_links(sample_source) -> None:
     source = replace(sample_source, id="corte_constitucional_comunicados", type="legal")
     html = """
@@ -246,6 +295,34 @@ def test_extract_corte_comunicados_reads_dated_links(sample_source) -> None:
     assert len(items) == 1
     assert items[0].published_at == "2026-04-23T00:00:00Z"
     assert items[0].metadata["extraction"] == "corte_comunicados_dated_anchor"
+
+
+def test_extract_imprenta_table_includes_document_title_when_available(sample_source) -> None:
+    source = replace(sample_source, id="gacetas_congreso", type="legal")
+    html = """
+    <table>
+      <tr>
+        <td>401</td>
+        <td>Cámara de Representantes</td>
+        <td>04/05/2026</td>
+        <td>Informe de ponencia para primer debate reforma laboral</td>
+        <td><button>ui-button</button></td>
+      </tr>
+    </table>
+    """
+
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-05-06T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+
+    assert len(items) == 1
+    assert "reforma laboral" in items[0].title
+    assert items[0].metadata["document_title"].startswith("Informe de ponencia")
 
 
 class _FakeFeed:

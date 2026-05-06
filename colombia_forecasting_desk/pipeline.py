@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlsplit
 
-from .brief import render_brief
+from .brief import render_brief, render_m2_handoff
 from .cleaner import clean
 from .cluster import cluster as cluster_items
 from .cluster import topic_keywords
@@ -37,6 +37,7 @@ DEFAULT_CONFIG_PATH = Path("config/metasources.yaml")
 RUNS_DIR = Path("runs")
 SANDBOX_DIR_NAME = "sandbox"
 MAX_AGE_DAYS = 14
+MAX_FUTURE_CALENDAR_DAYS = 400
 PDF_EXTENSIONS = (".pdf",)
 SPREADSHEET_EXTENSIONS = (".xlsx", ".xls", ".csv", ".ods")
 DOCUMENT_EXTENSIONS = (".doc", ".docx", ".ppt", ".pptx", ".zip")
@@ -81,6 +82,7 @@ def _drop_too_old(
 ) -> list[CleanedItem]:
     current = now or datetime.now(timezone.utc)
     cutoff = current - timedelta(days=MAX_AGE_DAYS)
+    future_calendar_cutoff = current + timedelta(days=MAX_FUTURE_CALENDAR_DAYS)
     kept: list[CleanedItem] = []
     dropped = 0
     for it in items:
@@ -89,6 +91,12 @@ def _drop_too_old(
             continue
         dt = parse_iso(it.published_at)
         if dt is None:
+            kept.append(it)
+            continue
+        if (
+            it.source_type == "calendar"
+            and current < dt <= future_calendar_cutoff
+        ):
             kept.append(it)
             continue
         if cutoff <= dt <= current:
@@ -129,6 +137,8 @@ def _raw_item_content_kind(item: RawItem) -> str:
     metadata = item.metadata or {}
     if metadata.get("content_extraction") or metadata.get("parsed_content"):
         return "parsed_content"
+    if metadata.get("extraction") == "imprenta_nacional_jsf_table":
+        return "document_link"
 
     path = urlsplit(item.url).path.lower()
     if any(ext in path for ext in SPREADSHEET_EXTENSIONS):
@@ -407,6 +417,15 @@ def run(
         indicator_watch=indicator_watch,
     )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
+    handoff_text = render_m2_handoff(
+        summary,
+        ranked,
+        failures,
+        keywords,
+        source_health=source_health,
+        indicator_watch=indicator_watch,
+    )
+    (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
 
     logger.info("Wrote artifacts to %s", run_dir)

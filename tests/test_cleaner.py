@@ -52,14 +52,16 @@ def test_signal_type_mapping_all_roles() -> None:
     assert signal_type_for(_source(trust_role="polling_signal")) == "poll"
     assert signal_type_for(_source(trust_role="agenda_signal")) == "calendar_event"
     assert signal_type_for(_source(trust_role="resolution_source")) == "official_update"
-    assert signal_type_for(_source(trust_role="civic_signal")) == "civic_event"
+    assert signal_type_for(_source(trust_role="legal_signal")) == "court_or_regulatory_movement"
+    assert signal_type_for(_source(trust_role="regulatory_signal")) == "court_or_regulatory_movement"
+    assert signal_type_for(_source(trust_role="civic_signal")) == "new_data"
     assert signal_type_for(_source(trust_role="weird_role")) == "unknown"
 
 
-def test_clean_assigns_civic_event_for_secop_like_source(make_raw) -> None:
+def test_clean_assigns_new_data_for_secop_like_source(make_raw) -> None:
     """Regression test for the M1.5 review finding: SECOP datasets use
     trust_role=civic_signal, and items must end up classified as
-    `civic_event` rather than the catch-all `unknown` so briefs surface
+    `new_data` rather than the catch-all `unknown` so briefs surface
     them with a meaningful signal type.
     """
     secop_source = _source(
@@ -70,7 +72,7 @@ def test_clean_assigns_civic_event_for_secop_like_source(make_raw) -> None:
         access_status="api_public",
     )
     cleaned = clean(make_raw(title="SECOP II Contrato — algo"), secop_source)
-    assert cleaned.signal_type == "civic_event"
+    assert cleaned.signal_type == "new_data"
 
 
 def test_clean_strips_html_and_sets_signal(make_raw, sample_source) -> None:
@@ -96,6 +98,47 @@ def test_clean_flags_short_text(make_raw, sample_source) -> None:
     raw = make_raw(raw_text="x", title="title")
     cleaned = clean(raw, sample_source)
     assert "low_quality:short_text" in cleaned.quality_notes
+
+
+def test_clean_flags_opaque_imprenta_rows_without_document_title(make_raw, sample_source) -> None:
+    source = _source(
+        id="gacetas_congreso",
+        type="legal",
+        trust_role="agenda_signal",
+    )
+    raw = make_raw(
+        source_id="gacetas_congreso",
+        source_type="legal",
+        title="Gaceta del Congreso 421 — Senado de la República",
+        raw_text="421 | Senado de la República | 05/05/2026",
+        metadata={"extraction": "imprenta_nacional_jsf_table"},
+    )
+
+    cleaned = clean(raw, source)
+
+    assert "low_quality:missing_document_title" in cleaned.quality_notes
+
+
+def test_clean_allows_imprenta_rows_with_document_title(make_raw, sample_source) -> None:
+    source = _source(
+        id="gacetas_congreso",
+        type="legal",
+        trust_role="agenda_signal",
+    )
+    raw = make_raw(
+        source_id="gacetas_congreso",
+        source_type="legal",
+        title="Gaceta del Congreso 401 — Informe de ponencia reforma laboral",
+        raw_text="401 | Cámara | 04/05/2026 | Informe de ponencia reforma laboral",
+        metadata={
+            "extraction": "imprenta_nacional_jsf_table",
+            "document_title": "Informe de ponencia reforma laboral",
+        },
+    )
+
+    cleaned = clean(raw, source)
+
+    assert "low_quality:missing_document_title" not in cleaned.quality_notes
 
 
 def test_clean_flags_no_title(make_raw, sample_source) -> None:

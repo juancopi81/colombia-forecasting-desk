@@ -53,6 +53,27 @@ def test_clusters_unrelated_stay_separate(make_cleaned) -> None:
     assert len(clusters) == 2
 
 
+def test_generic_imprenta_editions_do_not_cluster_by_shared_boilerplate(
+    make_cleaned,
+) -> None:
+    a = make_cleaned(
+        id="a",
+        source_id="gacetas_congreso",
+        source_type="legal",
+        title="Gaceta del Congreso 398 — Senado de la República",
+    )
+    b = make_cleaned(
+        id="b",
+        source_id="gacetas_congreso",
+        source_type="legal",
+        title="Gaceta del Congreso 399 — Senado de la República",
+    )
+
+    clusters = cluster([a, b])
+
+    assert len(clusters) == 2
+
+
 def test_cluster_summary_matches_title_member(make_cleaned) -> None:
     short = make_cleaned(
         id="a",

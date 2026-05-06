@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from math import floor
 
+from .forecastability import forecastability_score
 from .models import Cluster
 
 _PRIORITY_WEIGHT = {"high": 2, "medium": 1, "low": 0}
@@ -127,6 +128,7 @@ def score_cluster(cluster: Cluster, now: datetime | None = None) -> float:
         + 1.0 * len(cluster.signal_types)
         + _primary_source_bonus(cluster.source_types)
         + _analyst_relevance_adjustment(cluster)
+        + forecastability_score(cluster)
     )
 
 

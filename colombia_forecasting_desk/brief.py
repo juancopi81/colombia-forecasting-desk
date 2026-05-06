@@ -3,6 +3,15 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+from .forecastability import (
+    deadline_hint,
+    forecastability_reasons,
+    forecastability_score,
+    is_forecastable_candidate,
+    noise_reasons,
+    question_seed,
+    resolution_hint,
+)
 from .models import (
     CleanedItem,
     Cluster,
@@ -19,6 +28,9 @@ INDICATOR_LIMIT = 12
 ANALYST_ATTENTION_LIMIT = 8
 SOURCE_ACTION_LIMIT = 8
 MONTHLY_LAG_WARNING_DAYS = 120
+FORECASTABLE_SIGNAL_LIMIT = 8
+REJECTED_SIGNAL_LIMIT = 6
+M2_SEED_LIMIT = 8
 
 
 def _bullet_or_none(items: list[str], empty_text: str = "_None._") -> str:
@@ -77,6 +89,79 @@ def _render_cluster(idx: int, cluster: Cluster) -> str:
         f"**Recommended next sources:**\n{next_sources}\n\n"
         f"**Links:**\n{links_block}\n"
     )
+
+
+def _cluster_links(cluster: Cluster, limit: int = 3) -> str:
+    seen: set[str] = set()
+    lines: list[str] = []
+    for url, title, src in zip(
+        cluster.member_urls, cluster.member_titles, cluster.member_source_names
+    ):
+        if url in seen:
+            continue
+        seen.add(url)
+        lines.append(f"- [{title.strip() or '(no title)'}]({url}) — {src}")
+        if len(lines) >= limit:
+            break
+    return "\n".join(lines) if lines else "- _None._"
+
+
+def _forecastable_clusters(
+    clusters: list[Cluster],
+    limit: int = FORECASTABLE_SIGNAL_LIMIT,
+) -> list[Cluster]:
+    candidates = [cluster for cluster in clusters if is_forecastable_candidate(cluster)]
+    candidates.sort(
+        key=lambda c: (forecastability_score(c), c.score, c.source_count),
+        reverse=True,
+    )
+    return candidates[:limit]
+
+
+def _render_forecastable_signal(idx: int, cluster: Cluster) -> str:
+    reasons = forecastability_reasons(cluster)
+    caveats = noise_reasons(cluster)
+    caveat_text = "; ".join(caveats) if caveats else "none"
+    return (
+        f"### {idx}. {cluster.title}\n\n"
+        f"- Forecastability score: {forecastability_score(cluster):.1f}\n"
+        f"- Source count: {cluster.source_count}\n"
+        f"- Source types: {', '.join(cluster.source_types) or 'n/a'}\n"
+        f"- Latest update: {cluster.latest_published_at or 'n/a'}\n"
+        f"- Why this is forecastable: {', '.join(reasons) or 'needs analyst review'}\n"
+        f"- Caveats: {caveat_text}\n\n"
+        f"**Signal:** {cluster.summary or cluster.title}\n\n"
+        f"**Question seed:** {question_seed(cluster)}\n\n"
+        f"**Likely resolution source:** {resolution_hint(cluster)}\n\n"
+        f"**Deadline/window hint:** {deadline_hint(cluster)}\n\n"
+        "**Missing evidence to ask for in M2:** primary-source details, current "
+        "status, exact deadline, and whether the event is already resolved.\n\n"
+        f"**Links:**\n{_cluster_links(cluster)}\n"
+    )
+
+
+def _render_forecastable_signals(clusters: list[Cluster]) -> str:
+    candidates = _forecastable_clusters(clusters)
+    if not candidates:
+        return "_No deterministic forecastable event candidates passed the M1 filter._"
+    return "\n---\n\n".join(
+        _render_forecastable_signal(i + 1, cluster)
+        for i, cluster in enumerate(candidates)
+    )
+
+
+def _render_rejected_signals(clusters: list[Cluster]) -> str:
+    rejected: list[tuple[float, Cluster, list[str]]] = []
+    for cluster in clusters:
+        reasons = noise_reasons(cluster)
+        if reasons or not is_forecastable_candidate(cluster):
+            rejected.append((cluster.score, cluster, reasons or ["weak forecastability"]))
+    if not rejected:
+        return "_No obvious rejected/noisy top signals._"
+    lines = []
+    for _, cluster, reasons in rejected[:REJECTED_SIGNAL_LIMIT]:
+        lines.append(f"- **{cluster.title}:** {'; '.join(reasons)}.")
+    return "\n".join(lines)
 
 
 def _render_failures(failures: list[SourceFailure]) -> str:
@@ -354,6 +439,137 @@ def _render_analyst_attention(
     return "\n".join(lines)
 
 
+def _indicator_seed_questions(
+    indicators: list[IndicatorObservation],
+    run_date: str,
+) -> list[dict[str, str]]:
+    seeds: list[dict[str, str]] = []
+    by_id = {indicator.indicator_id: indicator for indicator in indicators}
+
+    trm = by_id.get("trm_usd_cop")
+    if trm and any("`material_move`" in a for a in _indicator_alerts(trm, indicators, run_date)):
+        value = trm.values.get("trm_cop_per_usd")
+        value_text = f"{value:.2f} COP/USD" if isinstance(value, int | float) else "the latest official TRM"
+        seeds.append(
+            {
+                "theme": "FX move persistence",
+                "trigger": trm.headline,
+                "question": (
+                    "Will the official TRM remain at least 2% weaker than its "
+                    "seven-day-ago level seven calendar days after this run?"
+                ),
+                "resolution": "Superintendencia Financiera / datos.gov.co official TRM.",
+                "deadline": "Seven calendar days after the run date.",
+                "missing": f"Market context for why TRM moved; current reference level is {value_text}.",
+            }
+        )
+
+    policy = by_id.get("policy_rate_ibr")
+    if policy and any("`liquidity_spread`" in a for a in _indicator_alerts(policy, indicators, run_date)):
+        seeds.append(
+            {
+                "theme": "BanRep policy/liquidity",
+                "trigger": policy.headline,
+                "question": (
+                    "Will Banco de la Republica change the policy rate at the "
+                    "next board decision?"
+                ),
+                "resolution": "BanRep board communique and official policy-rate series.",
+                "deadline": "Next scheduled BanRep board decision.",
+                "missing": "Next meeting date, inflation expectations, board guidance, and market pricing.",
+            }
+        )
+
+    manufacturing = by_id.get("manufacturing")
+    if manufacturing and any(
+        "`cross_indicator_tension`" in a
+        for a in _indicator_alerts(manufacturing, indicators, run_date)
+    ):
+        seeds.append(
+            {
+                "theme": "Activity divergence",
+                "trigger": manufacturing.headline,
+                "question": (
+                    "Will the next DANE EMMET release still show negative real "
+                    "manufacturing sales year over year?"
+                ),
+                "resolution": "DANE EMMET next monthly release.",
+                "deadline": "Next DANE manufacturing release.",
+                "missing": "Subsector drivers, electricity demand trend, inventories, and import/capital-goods context.",
+            }
+        )
+
+    fiscal = by_id.get("fiscal_tax_pulse")
+    if fiscal and any("`real_terms_warning`" in a for a in _indicator_alerts(fiscal, indicators, run_date)):
+        seeds.append(
+            {
+                "theme": "Fiscal revenue stress",
+                "trigger": fiscal.headline,
+                "question": (
+                    "Will the next DIAN monthly tax-collection release again "
+                    "show nominal gross revenue growth below annual IPC?"
+                ),
+                "resolution": "DIAN monthly tax-collection XLSX and DANE IPC.",
+                "deadline": "Next DIAN monthly collection release.",
+                "missing": "Withholding, VAT, customs, fiscal-plan assumptions, and whether calendar effects explain the miss.",
+            }
+        )
+
+    trade = by_id.get("external_trade")
+    if trade and any("`mixed_period_components`" in a for a in _indicator_alerts(trade, indicators, run_date)):
+        seeds.append(
+            {
+                "theme": "External trade alignment",
+                "trigger": trade.headline,
+                "question": (
+                    "When exports and imports are observed for the same period, "
+                    "will Colombia's goods trade balance improve year over year?"
+                ),
+                "resolution": "DANE/DIAN exports and imports releases for the same reference month.",
+                "deadline": "Next import release that aligns with the latest export period.",
+                "missing": "Same-period import data, oil/fuel export detail, and capital-goods import drivers.",
+            }
+        )
+
+    oil = by_id.get("oil_gas_production")
+    if oil and any("`observation_lag`" in a for a in _indicator_alerts(oil, indicators, run_date)):
+        seeds.append(
+            {
+                "theme": "Hydrocarbon data lag",
+                "trigger": oil.headline,
+                "question": (
+                    "Will ANH publish a newer consolidated oil/gas production "
+                    "period within the next 30 days?"
+                ),
+                "resolution": "ANH official production statistics or datos.gov.co Socrata mirrors.",
+                "deadline": "30 days after the run date.",
+                "missing": "Normal ANH publication lag and whether the current dataset mirror is delayed.",
+            }
+        )
+
+    return seeds[:M2_SEED_LIMIT]
+
+
+def _render_m2_seed_questions(
+    indicators: list[IndicatorObservation],
+    run_date: str,
+) -> str:
+    seeds = _indicator_seed_questions(indicators, run_date)
+    if not seeds:
+        return "_No deterministic indicator-driven seed questions fired._"
+    blocks = []
+    for idx, seed in enumerate(seeds, 1):
+        blocks.append(
+            f"### {idx}. {seed['theme']}\n\n"
+            f"- Trigger: {seed['trigger'] or 'n/a'}\n"
+            f"- Question seed: {seed['question']}\n"
+            f"- Likely resolution source: {seed['resolution']}\n"
+            f"- Deadline/window hint: {seed['deadline']}\n"
+            f"- Missing evidence: {seed['missing']}\n"
+        )
+    return "\n---\n\n".join(blocks)
+
+
 def _render_indicator_watch(
     indicators: list[IndicatorObservation], run_date: str
 ) -> str:
@@ -452,12 +668,18 @@ def render_brief(
         f"{_render_analyst_attention(indicator_watch or [], source_health or [], run_summary.run_date)}\n\n"
         "## Indicator Watch\n\n"
         f"{_render_indicator_watch(indicator_watch or [], run_summary.run_date)}\n\n"
+        "## M2 Seed Questions\n\n"
+        f"{_render_m2_seed_questions(indicator_watch or [], run_summary.run_date)}\n\n"
+        "## Forecastable Signals\n\n"
+        f"{_render_forecastable_signals(ranked_clusters)}\n\n"
         "## Top Signals\n\n"
         f"{top_section}\n\n"
         "## Emerging Questions\n\n"
-        "- _(populated in M2)_\n\n"
+        "- Use `M2 Seed Questions` and `Forecastable Signals` as the first-pass queue.\n\n"
         "## Topics to Monitor\n\n"
         f"{keywords_section}\n\n"
+        "## Rejected / Noisy Top Signals\n\n"
+        f"{_render_rejected_signals(ranked_clusters)}\n\n"
         "## Source Health Actions\n\n"
         f"{_render_source_health_actions(source_health or [])}\n\n"
         "## Source Health\n\n"
@@ -467,5 +689,109 @@ def render_brief(
         "## Source Failures\n\n"
         f"{_render_failures(failures)}\n\n"
         "## Suggested Next Step\n\n"
-        "- Review top 3 clusters; propose forecastable questions in M2.\n"
+        "- Paste `m2_handoff.md` plus `prompts/question_selection.md` into an AI to run M2 question selection.\n"
+    )
+
+
+def _render_handoff_instructions() -> str:
+    return (
+        "You are running M2 question selection for Colombia Forecasting Desk. "
+        "Use only the evidence in this handoff unless you explicitly label a "
+        "gap as missing evidence. Do not browse, estimate probabilities, write "
+        "investment/trading/betting advice, or draft posts. Produce 5-10 "
+        "candidate forecast questions, reject weak items, score candidates, "
+        "and select the top 1-3 for evidence-pack research. Each selected "
+        "question must have clear resolution criteria, a likely resolution "
+        "source, a deadline/window, and missing evidence."
+    )
+
+
+def _render_source_caveats(source_health: list[SourceHealth]) -> str:
+    if not source_health:
+        return "- No source-health report was available."
+    lines = []
+    by_id = {health.source_id: health for health in source_health}
+    if "eltiempo_colombia" in by_id:
+        lines.append(
+            "- `eltiempo_colombia` is a rolling RSS media pulse, not guaranteed "
+            "full-day coverage unless a local cache/scheduler is running."
+        )
+    for health in source_health:
+        if health.failure_count:
+            lines.append(
+                f"- `{health.source_id}` failed during this run; absence of "
+                "signals from it is not evidence of no activity."
+            )
+        elif health.content_mode in {"pdf_links_only", "document_links_only"}:
+            lines.append(
+                f"- `{health.source_id}` is link-only in this run; M2 should "
+                "ask for document contents before relying on the signal."
+            )
+        elif health.status in {"no_raw", "no_rankable"} and health.onboarding_status == "needs_parser":
+            lines.append(
+                f"- `{health.source_id}` is undercovered (`{health.status}`); "
+                "treat silence from this domain as unknown."
+            )
+    return "\n".join(lines[:SOURCE_ACTION_LIMIT]) if lines else "- No major caveats."
+
+
+def render_m2_handoff(
+    run_summary: RunSummary,
+    ranked_clusters: list[Cluster],
+    failures: list[SourceFailure],
+    topic_keywords: list[str],
+    source_health: list[SourceHealth] | None = None,
+    indicator_watch: list[IndicatorObservation] | None = None,
+) -> str:
+    indicators = indicator_watch or []
+    health = source_health or []
+    forecastable = _render_forecastable_signals(ranked_clusters)
+    seeds = _render_m2_seed_questions(indicators, run_summary.run_date)
+    keywords = (
+        "\n".join(f"- {keyword}" for keyword in topic_keywords)
+        if topic_keywords
+        else "- _None._"
+    )
+    failures_text = _render_failures(failures)
+
+    return (
+        f"# M2 Question Selection Handoff — {run_summary.run_date}\n\n"
+        "## Task For The AI\n\n"
+        f"{_render_handoff_instructions()}\n\n"
+        "## Run Snapshot\n\n"
+        f"- Run date: {run_summary.run_date}\n"
+        f"- Sources checked: {run_summary.sources_checked}\n"
+        f"- Sources failed: {run_summary.sources_failed}\n"
+        f"- Raw items: {run_summary.raw_items}\n"
+        f"- Cleaned items: {run_summary.cleaned_items}\n"
+        f"- Clusters: {run_summary.clusters}\n\n"
+        "## Analyst Attention\n\n"
+        f"{_render_analyst_attention(indicators, health, run_summary.run_date)}\n\n"
+        "## Indicator-Driven Seed Questions\n\n"
+        f"{seeds}\n\n"
+        "## Forecastable Event Signals\n\n"
+        f"{forecastable}\n\n"
+        "## Rejected / Noisy Signals\n\n"
+        f"{_render_rejected_signals(ranked_clusters)}\n\n"
+        "## Source Coverage Caveats\n\n"
+        f"{_render_source_caveats(health)}\n\n"
+        "## Source Failures\n\n"
+        f"{failures_text}\n\n"
+        "## Topics To Monitor\n\n"
+        f"{keywords}\n\n"
+        "## Required M2 Output Schema\n\n"
+        "For each candidate question, return:\n\n"
+        "- `question`: precise yes/no or numeric-threshold forecast question\n"
+        "- `why_now`: one sentence tied to a signal above\n"
+        "- `interest_score`: 1-5\n"
+        "- `forecastability_score`: 1-5\n"
+        "- `evidence_score`: 1-5\n"
+        "- `freshness_score`: 1-5\n"
+        "- `risk_score`: 1-5 where 5 is highest risk\n"
+        "- `resolution_source`: primary source that decides the outcome\n"
+        "- `deadline_or_window`: date or explicit window\n"
+        "- `missing_evidence`: what must be checked before probability estimation\n"
+        "- `decision`: `select_for_evidence_pack` or `reject`\n\n"
+        "Select the top 1-3 questions for evidence packs and briefly explain "
+        "why rejected questions were rejected.\n"
     )
