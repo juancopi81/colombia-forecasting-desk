@@ -7,11 +7,19 @@ from colombia_forecasting_desk.indicator_watch import (
     cement_component_from_html,
     construction_bundle_observation_from_components,
     construction_licenses_component_from_html,
+    crude_oil_component_from_anh_rows,
+    electricity_demand_component_from_xm_response,
+    energy_system_observation_from_components,
+    fiscalized_gas_component_from_anh_rows,
     housing_finance_component_from_html,
     ipc_observation_from_html,
     labor_market_observation_from_html,
+    latest_complete_anh_period,
     manufacturing_observation_from_html,
+    oil_gas_observation_from_components,
+    reservoir_component_from_xm_response,
     retail_sales_observation_from_html,
+    spot_price_component_from_xm_response,
     trm_observation_from_rows,
 )
 from colombia_forecasting_desk.models import IndicatorObservation
@@ -45,6 +53,19 @@ def test_indicator_watch_registers_all_core_indicators() -> None:
         "cement",
         "licenses",
         "housing_finance",
+    ]
+    energy = next(item for item in watch if item.indicator_id == "energy_system")
+    assert [component.component_id for component in energy.components] == [
+        "electricity_demand",
+        "reservoir_useful_volume",
+        "spot_price",
+    ]
+    oil_gas = next(
+        item for item in watch if item.indicator_id == "oil_gas_production"
+    )
+    assert [component.component_id for component in oil_gas.components] == [
+        "oil_production",
+        "gas_production",
     ]
 
 
@@ -420,6 +441,129 @@ def test_construction_bundle_merges_components_with_icoced(make_raw) -> None:
     assert by_id["icoced"].status == "observed"
     assert by_id["cement"].status == "observed"
     assert by_id["licenses"].status == "pending_source"
+
+
+def test_energy_components_from_xm_responses_build_bundle() -> None:
+    demand = electricity_demand_component_from_xm_response(
+        {
+            "Items": [
+                {
+                    "Date": "2026-05-03",
+                    "HourlyEntities": [
+                        {
+                            "Id": "Sistema",
+                            "Values": {
+                                "code": "Sistema",
+                                **{
+                                    f"Hour{hour:02d}": "1000000"
+                                    for hour in range(1, 25)
+                                },
+                            },
+                        }
+                    ],
+                },
+                {
+                    "Date": "2026-05-02",
+                    "HourlyEntities": [
+                        {
+                            "Id": "Sistema",
+                            "Values": {
+                                "code": "Sistema",
+                                **{
+                                    f"Hour{hour:02d}": "10000000"
+                                    for hour in range(1, 25)
+                                },
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+    reservoir = reservoir_component_from_xm_response(
+        {
+            "Items": [
+                {
+                    "Date": "2026-05-03",
+                    "DailyEntities": [{"Id": "Sistema", "Value": "0.65009"}],
+                }
+            ]
+        }
+    )
+    spot = spot_price_component_from_xm_response(
+        {
+            "Items": [
+                {
+                    "Date": "2026-05-02",
+                    "DailyEntities": [{"Id": "Sistema", "Value": "179.10883"}],
+                }
+            ]
+        }
+    )
+
+    assert demand is not None
+    assert demand.period == "2026-05-02"
+    assert demand.values["demand_gwh"] == 240.0
+    assert demand.values["peak_hourly_mw"] == 10000.0
+    assert reservoir is not None
+    assert reservoir.values["reservoir_useful_volume_pct"] == 65.01
+    assert spot is not None
+    assert spot.values["spot_price_cop_per_kwh"] == 179.11
+
+    bundle = energy_system_observation_from_components([demand, reservoir, spot])
+
+    assert bundle is not None
+    assert bundle.status == "observed"
+    assert bundle.period == "2026-05-03"
+    assert bundle.values["observed_components"] == 3
+    assert bundle.values["components"]["electricity_demand"]["demand_gwh"] == 240.0
+
+
+def test_anh_components_choose_latest_complete_period_and_build_bundle() -> None:
+    assert latest_complete_anh_period(
+        [
+            {"vigencia": "2025", "mes": "11", "count": "100"},
+            {"vigencia": "2025", "mes": "10", "count": "330"},
+            {"vigencia": "2025", "mes": "9", "count": "340"},
+        ]
+    ) == (2025, 10)
+    oil = crude_oil_component_from_anh_rows(
+        [
+            {"departamento": "CASANARE", "produccion_bls": "11,955.00"},
+            {"departamento": "META", "produccion_bls": "73,862.00"},
+        ],
+        year=2025,
+        month=10,
+        release_date="2026-03-02T00:00:00Z",
+    )
+    gas = fiscalized_gas_component_from_anh_rows(
+        [
+            {"departamento": "CASANARE", "produccionkpc": "6,209.00"},
+            {"departamento": "META", "produccionkpc": "93,791.00"},
+        ],
+        year=2025,
+        month=10,
+        release_date="2026-03-02T00:00:00Z",
+    )
+
+    assert oil is not None
+    assert oil.period == "2025-10"
+    assert oil.values["total_barrels"] == 85817.0
+    assert oil.values["average_barrels_per_day"] == 2768.29
+    assert oil.values["top_departments_by_barrels"][0] == {
+        "name": "META",
+        "value": 73862.0,
+    }
+    assert gas is not None
+    assert gas.values["total_kpc"] == 100000.0
+    assert gas.values["average_million_cubic_feet_per_day"] == 3.23
+
+    bundle = oil_gas_observation_from_components([oil, gas])
+
+    assert bundle is not None
+    assert bundle.status == "observed"
+    assert bundle.values["observed_components"] == 2
+    assert bundle.values["components"]["gas_production"]["total_kpc"] == 100000.0
 
 
 def test_indicator_watch_marks_stale_observation_but_keeps_it_visible() -> None:

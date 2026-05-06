@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from calendar import monthrange
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
@@ -52,6 +53,27 @@ ANH_PRODUCTION_URL = (
     "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/"
     "sistemas-integrados-operaciones/estad%C3%ADsticas-de-producci%C3%B3n/"
 )
+XM_API_SOURCE_URL = "https://github.com/EquipoAnaliticaXM/API_XM"
+XM_HOURLY_API_URL = "https://servapibi.xm.com.co/hourly"
+XM_DAILY_API_URL = "https://servapibi.xm.com.co/daily"
+XM_LOOKBACK_DAYS = 10
+XM_MIN_FULL_DAY_DEMAND_GWH = 100
+ANH_CRUDE_RESOURCE_ID = "fdvb-hsrf"
+ANH_GAS_RESOURCE_ID = "5dux-bfvx"
+ANH_CRUDE_API_URL = (
+    f"https://www.datos.gov.co/resource/{ANH_CRUDE_RESOURCE_ID}.json"
+)
+ANH_GAS_API_URL = f"https://www.datos.gov.co/resource/{ANH_GAS_RESOURCE_ID}.json"
+ANH_CRUDE_SOURCE_URL = (
+    "https://www.datos.gov.co/Minas-y-Energ-a/"
+    f"Produccion-Fiscalizada-Crudo-Consolidada/{ANH_CRUDE_RESOURCE_ID}"
+)
+ANH_GAS_SOURCE_URL = (
+    "https://www.datos.gov.co/Minas-y-Energ-a/"
+    f"Produccion-Fiscalizada-Gas-Consolidada/{ANH_GAS_RESOURCE_ID}"
+)
+ANH_PERIOD_COUNT_LIMIT = 18
+ANH_COMPLETENESS_RATIO = 0.75
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,8 +271,9 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "before policy announcements",
         ),
         next_step=(
-            "Look for XM/UPME API or downloadable structured time series before "
-            "attempting portal scraping."
+            "XM demand, useful reservoir volume, and spot-price API components "
+            "are wired; add thermal generation and non-regulated demand if the "
+            "watch needs a stress decomposition."
         ),
     ),
     IndicatorDefinition(
@@ -289,8 +312,8 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "gas production + reservoir/energy demand flags reliability and import needs",
         ),
         next_step=(
-            "Use ANH downloadable production files or datos.gov.co mirrors if "
-            "available."
+            "ANH datos.gov.co crude and gas production components are wired; "
+            "add royalties and Brent when fiscal sensitivity needs more depth."
         ),
     ),
     IndicatorDefinition(
@@ -339,13 +362,16 @@ def _parse_socrata_date(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _to_float(value: Any) -> float | None:
+def _to_float_unrounded(value: Any) -> float | None:
     if value is None:
         return None
     try:
         text = str(value).strip().replace(" ", "")
         if "," in text and "." in text:
-            text = text.replace(".", "").replace(",", ".")
+            if text.rfind(",") > text.rfind("."):
+                text = text.replace(".", "").replace(",", ".")
+            else:
+                text = text.replace(",", "")
         elif "," in text:
             text = text.replace(",", ".")
         elif text.count(".") > 1:
@@ -354,9 +380,16 @@ def _to_float(value: Any) -> float | None:
             before, after = text.split(".", 1)
             if len(after) == 3 and 1 <= len(before.lstrip("-")) <= 3:
                 text = before + after
-        return round(float(text), 2)
+        return float(text)
     except ValueError:
         return None
+
+
+def _to_float(value: Any) -> float | None:
+    parsed = _to_float_unrounded(value)
+    if parsed is None:
+        return None
+    return round(parsed, 2)
 
 
 _MONTHS_ES = {
@@ -511,7 +544,46 @@ _BUNDLE_COMPONENTS = {
             "source_url": HOUSING_FINANCE_URL,
             "next_step": "Headline HTML is wired; add credit type and geography annex details later.",
         },
-    )
+    ),
+    "energy_system": (
+        {
+            "component_id": "electricity_demand",
+            "name": "Electricity demand",
+            "source_name": "XM",
+            "source_url": XM_API_SOURCE_URL,
+            "next_step": "Public XM API is wired; add regulated/non-regulated split later.",
+        },
+        {
+            "component_id": "reservoir_useful_volume",
+            "name": "Reservoir useful volume",
+            "source_name": "XM",
+            "source_url": XM_API_SOURCE_URL,
+            "next_step": "Public XM API is wired; add reservoir-level stress detail later.",
+        },
+        {
+            "component_id": "spot_price",
+            "name": "Spot price",
+            "source_name": "XM",
+            "source_url": XM_API_SOURCE_URL,
+            "next_step": "Public XM API is wired; add scarcity price spread later.",
+        },
+    ),
+    "oil_gas_production": (
+        {
+            "component_id": "oil_production",
+            "name": "Crude oil production",
+            "source_name": "ANH / datos.gov.co",
+            "source_url": ANH_CRUDE_SOURCE_URL,
+            "next_step": "Socrata aggregate is wired; add field/operator contribution shifts later.",
+        },
+        {
+            "component_id": "gas_production",
+            "name": "Fiscalized gas production",
+            "source_name": "ANH / datos.gov.co",
+            "source_url": ANH_GAS_SOURCE_URL,
+            "next_step": "Socrata aggregate is wired; add commercialized gas and demand balance later.",
+        },
+    ),
 }
 
 
@@ -622,15 +694,19 @@ def _bundle_values(
     }
 
 
+def _component_frequency(indicator_id: str) -> str:
+    if indicator_id in {"construction_bundle", "oil_gas_production"}:
+        return "monthly"
+    if indicator_id == "energy_system":
+        return "daily"
+    return _definition_map()[indicator_id].frequency
+
+
 def _apply_freshness(
     observation: IndicatorObservation,
     now: datetime,
 ) -> IndicatorObservation:
-    component_frequency = (
-        "monthly"
-        if observation.indicator_id == "construction_bundle"
-        else observation.frequency
-    )
+    component_frequency = _component_frequency(observation.indicator_id)
     components = [
         replace(
             component,
@@ -1124,8 +1200,12 @@ def _quarter_period(quarter_text: str, year: str) -> str:
     return year
 
 
-def construction_bundle_observation_from_components(
+def _bundle_observation_from_components(
+    indicator_id: str,
     components: Iterable[IndicatorComponent],
+    *,
+    failed_headline: str,
+    observed_headline_prefix: str,
 ) -> IndicatorObservation | None:
     component_list = list(components)
     observed_components = [
@@ -1137,19 +1217,17 @@ def construction_bundle_observation_from_components(
     if not observed_components:
         if not failed_components:
             return None
-        definition = _definition_map()["construction_bundle"]
+        definition = _definition_map()[indicator_id]
         return _headline_definition(
             definition,
             status="failed",
             period="",
             release_date="",
-            headline="Construction bundle components failed to fetch or parse.",
+            headline=failed_headline,
             values={},
-            components=_complete_bundle_components(
-                "construction_bundle", component_list
-            ),
+            components=_complete_bundle_components(indicator_id, component_list),
         )
-    definition = _definition_map()["construction_bundle"]
+    definition = _definition_map()[indicator_id]
     latest_component = max(
         observed_components,
         key=lambda component: component.release_date or "",
@@ -1158,19 +1236,52 @@ def construction_bundle_observation_from_components(
         component.component_id: component.values for component in observed_components
     }
     component_ids = ", ".join(component.component_id for component in observed_components)
-    completed = _complete_bundle_components("construction_bundle", component_list)
+    completed = _complete_bundle_components(indicator_id, component_list)
     return _headline_definition(
         definition,
         status="observed",
         period=latest_component.period,
         release_date=latest_component.release_date or "",
-        headline=f"Construction bundle has observed components: {component_ids}.",
+        headline=f"{observed_headline_prefix}: {component_ids}.",
         values={
             "observed_components": len(observed_components),
-            "total_components": len(_BUNDLE_COMPONENTS["construction_bundle"]),
+            "total_components": len(_BUNDLE_COMPONENTS[indicator_id]),
             "components": values,
         },
         components=completed,
+    )
+
+
+def construction_bundle_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    return _bundle_observation_from_components(
+        "construction_bundle",
+        components,
+        failed_headline="Construction bundle components failed to fetch or parse.",
+        observed_headline_prefix="Construction bundle has observed components",
+    )
+
+
+def energy_system_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    return _bundle_observation_from_components(
+        "energy_system",
+        components,
+        failed_headline="Energy system components failed to fetch or parse.",
+        observed_headline_prefix="Energy system has observed components",
+    )
+
+
+def oil_gas_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    return _bundle_observation_from_components(
+        "oil_gas_production",
+        components,
+        failed_headline="Oil and gas production components failed to fetch or parse.",
+        observed_headline_prefix="Oil and gas production has observed components",
     )
 
 
@@ -1267,6 +1378,280 @@ def trm_observation_from_rows(
     )
 
 
+def _iso_date_from_ymd(value: str) -> str:
+    return value + "T00:00:00Z"
+
+
+def _latest_xm_item(items: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
+    dated_items = [
+        item for item in items if isinstance(item.get("Date"), str) and item.get("Date")
+    ]
+    if not dated_items:
+        return None
+    return max(dated_items, key=lambda item: str(item["Date"]))
+
+
+def _hourly_entity_values(item: dict[str, Any]) -> list[float]:
+    entities = item.get("HourlyEntities")
+    if not isinstance(entities, list) or not entities:
+        return []
+    values = entities[0].get("Values")
+    if not isinstance(values, dict):
+        return []
+    parsed: list[float] = []
+    for hour in range(1, 25):
+        value = _to_float(values.get(f"Hour{hour:02d}"))
+        if value is not None:
+            parsed.append(value)
+    return parsed
+
+
+def _daily_entity_value(item: dict[str, Any]) -> float | None:
+    entities = item.get("DailyEntities")
+    if not isinstance(entities, list) or not entities:
+        return None
+    return _to_float_unrounded(entities[0].get("Value"))
+
+
+def electricity_demand_component_from_xm_response(
+    payload: dict[str, Any],
+) -> IndicatorComponent | None:
+    candidates: list[tuple[str, list[float], float]] = []
+    for item in payload.get("Items", []):
+        if not isinstance(item, dict) or not isinstance(item.get("Date"), str):
+            continue
+        hourly_kwh = _hourly_entity_values(item)
+        if not hourly_kwh:
+            continue
+        demand_gwh = round(sum(hourly_kwh) / 1_000_000, 2)
+        candidates.append((str(item["Date"]), hourly_kwh, demand_gwh))
+    if not candidates:
+        return None
+    complete_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate[2] >= XM_MIN_FULL_DAY_DEMAND_GWH
+    ]
+    period, hourly_kwh, demand_gwh = max(
+        complete_candidates or candidates,
+        key=lambda candidate: candidate[0],
+    )
+    peak_mw = round((max(hourly_kwh) / 1_000), 2)
+    return _component(
+        component_id="electricity_demand",
+        name="Electricity demand",
+        status="observed",
+        source_name="XM",
+        source_url=XM_API_SOURCE_URL,
+        period=period,
+        release_date=_iso_date_from_ymd(period),
+        headline=(
+            f"XM {period}: SIN electricity demand {demand_gwh:.2f} GWh; "
+            f"hourly peak {peak_mw:.2f} MW."
+        ),
+        values={
+            "demand_gwh": demand_gwh,
+            "peak_hourly_mw": peak_mw,
+            "hour_count": len(hourly_kwh),
+        },
+        next_step="Add regulated/non-regulated demand split when useful.",
+    )
+
+
+def reservoir_component_from_xm_response(
+    payload: dict[str, Any],
+) -> IndicatorComponent | None:
+    item = _latest_xm_item(payload.get("Items", []))
+    if item is None:
+        return None
+    value = _daily_entity_value(item)
+    if value is None:
+        return None
+    reservoir_pct = round(value * 100, 2) if abs(value) <= 1 else value
+    period = str(item["Date"])
+    return _component(
+        component_id="reservoir_useful_volume",
+        name="Reservoir useful volume",
+        status="observed",
+        source_name="XM",
+        source_url=XM_API_SOURCE_URL,
+        period=period,
+        release_date=_iso_date_from_ymd(period),
+        headline=f"XM {period}: SIN useful reservoir volume {reservoir_pct:.2f}%.",
+        values={"reservoir_useful_volume_pct": reservoir_pct},
+        next_step="Add reservoir-level stress detail when useful.",
+    )
+
+
+def spot_price_component_from_xm_response(
+    payload: dict[str, Any],
+) -> IndicatorComponent | None:
+    item = _latest_xm_item(payload.get("Items", []))
+    if item is None:
+        return None
+    price = _daily_entity_value(item)
+    if price is None:
+        return None
+    price = round(price, 2)
+    period = str(item["Date"])
+    return _component(
+        component_id="spot_price",
+        name="Spot price",
+        status="observed",
+        source_name="XM",
+        source_url=XM_API_SOURCE_URL,
+        period=period,
+        release_date=_iso_date_from_ymd(period),
+        headline=f"XM {period}: weighted national spot price {price:.2f} COP/kWh.",
+        values={"spot_price_cop_per_kwh": price},
+        next_step="Add scarcity-price spread when useful.",
+    )
+
+
+def _period_from_anh_count(row: dict[str, Any]) -> tuple[int, int, int] | None:
+    year = _to_float(row.get("vigencia"))
+    month = _to_float(row.get("mes"))
+    count = _to_float(row.get("count"))
+    if year is None or month is None or count is None:
+        return None
+    return int(year), int(month), int(count)
+
+
+def latest_complete_anh_period(
+    period_counts: Iterable[dict[str, Any]],
+) -> tuple[int, int] | None:
+    periods = [
+        period for row in period_counts if (period := _period_from_anh_count(row))
+    ]
+    if not periods:
+        return None
+    max_count = max(count for _, _, count in periods)
+    min_complete_count = max_count * ANH_COMPLETENESS_RATIO
+    for year, month, count in sorted(periods, reverse=True):
+        if count >= min_complete_count:
+            return year, month
+    year, month, _ = max(periods)
+    return year, month
+
+
+def _top_departments(
+    rows: Iterable[dict[str, Any]],
+    value_field: str,
+) -> list[dict[str, Any]]:
+    totals: dict[str, float] = {}
+    for row in rows:
+        department = normalize_whitespace(str(row.get("departamento") or "Unknown"))
+        value = _to_float(row.get(value_field))
+        if value is None:
+            continue
+        totals[department] = totals.get(department, 0.0) + value
+    return [
+        {"name": name, "value": round(value, 2)}
+        for name, value in sorted(totals.items(), key=lambda item: item[1], reverse=True)[
+            :5
+        ]
+    ]
+
+
+def _anh_period_label(rows: list[dict[str, Any]], year: int, month: int) -> str:
+    for row in rows:
+        month_name = row.get("nombre_mes") or row.get("nombremes")
+        if isinstance(month_name, str) and month_name.strip():
+            return f"{month_name.strip()} {year}"
+    return f"{year}-{month:02d}"
+
+
+def crude_oil_component_from_anh_rows(
+    rows: Iterable[dict[str, Any]],
+    *,
+    year: int,
+    month: int,
+    release_date: str,
+) -> IndicatorComponent | None:
+    row_list = list(rows)
+    total_barrels = sum(
+        value
+        for row in row_list
+        if (value := _to_float(row.get("produccion_bls"))) is not None
+    )
+    if not total_barrels:
+        return None
+    days = monthrange(year, month)[1]
+    average_bpd = round(total_barrels / days, 2)
+    period = f"{year}-{month:02d}"
+    return _component(
+        component_id="oil_production",
+        name="Crude oil production",
+        status="observed",
+        source_name="ANH / datos.gov.co",
+        source_url=ANH_CRUDE_SOURCE_URL,
+        period=period,
+        release_date=release_date,
+        headline=(
+            f"ANH crude {period}: {average_bpd:,.0f} barrels/day average "
+            f"from {_anh_period_label(row_list, year, month)} field rows."
+        ),
+        values={
+            "total_barrels": round(total_barrels, 2),
+            "average_barrels_per_day": average_bpd,
+            "field_rows": len(row_list),
+            "top_departments_by_barrels": _top_departments(
+                row_list, "produccion_bls"
+            ),
+        },
+        next_step="Add field/operator contribution changes and royalty linkage later.",
+    )
+
+
+def fiscalized_gas_component_from_anh_rows(
+    rows: Iterable[dict[str, Any]],
+    *,
+    year: int,
+    month: int,
+    release_date: str,
+) -> IndicatorComponent | None:
+    row_list = list(rows)
+    total_kpc = sum(
+        value
+        for row in row_list
+        if (value := _to_float(row.get("produccionkpc"))) is not None
+    )
+    if not total_kpc:
+        return None
+    days = monthrange(year, month)[1]
+    average_mmcfd = round((total_kpc / days) / 1_000, 2)
+    period = f"{year}-{month:02d}"
+    return _component(
+        component_id="gas_production",
+        name="Fiscalized gas production",
+        status="observed",
+        source_name="ANH / datos.gov.co",
+        source_url=ANH_GAS_SOURCE_URL,
+        period=period,
+        release_date=release_date,
+        headline=(
+            f"ANH gas {period}: {average_mmcfd:,.2f} million cubic feet/day "
+            f"average from {_anh_period_label(row_list, year, month)} field rows."
+        ),
+        values={
+            "total_kpc": round(total_kpc, 2),
+            "average_million_cubic_feet_per_day": average_mmcfd,
+            "field_rows": len(row_list),
+            "top_departments_by_kpc": _top_departments(row_list, "produccionkpc"),
+        },
+        next_step="Add commercialized gas, demand balance, and import-risk linkage later.",
+    )
+
+
+def _socrata_rows_updated_release_date(metadata: dict[str, Any]) -> str:
+    timestamp = metadata.get("rowsUpdatedAt") or metadata.get("viewLastModified")
+    if isinstance(timestamp, int):
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
+            "%Y-%m-%dT00:00:00Z"
+        )
+    return ""
+
+
 def _failed_observation(
     definition: IndicatorDefinition,
     message: str,
@@ -1346,6 +1731,61 @@ _DANE_CONSTRUCTION_COMPONENTS: tuple[
     ("housing_finance", HOUSING_FINANCE_URL, housing_finance_component_from_html),
 )
 
+_XM_ENERGY_COMPONENTS: tuple[
+    tuple[
+        str,
+        str,
+        str,
+        Callable[[dict[str, Any]], IndicatorComponent | None],
+    ],
+    ...,
+] = (
+    (
+        "electricity_demand",
+        XM_HOURLY_API_URL,
+        "DemaReal",
+        electricity_demand_component_from_xm_response,
+    ),
+    (
+        "reservoir_useful_volume",
+        XM_DAILY_API_URL,
+        "PorcVoluUtilDiar",
+        reservoir_component_from_xm_response,
+    ),
+    (
+        "spot_price",
+        XM_DAILY_API_URL,
+        "PPPrecBolsNaci",
+        spot_price_component_from_xm_response,
+    ),
+)
+
+_ANH_PRODUCTION_COMPONENTS: tuple[
+    tuple[
+        str,
+        str,
+        str,
+        str,
+        Callable[..., IndicatorComponent | None],
+    ],
+    ...,
+] = (
+    (
+        "oil_production",
+        ANH_CRUDE_RESOURCE_ID,
+        ANH_CRUDE_API_URL,
+        "produccion_bls",
+        crude_oil_component_from_anh_rows,
+    ),
+    (
+        "gas_production",
+        ANH_GAS_RESOURCE_ID,
+        ANH_GAS_API_URL,
+        "produccionkpc",
+        fiscalized_gas_component_from_anh_rows,
+    ),
+)
+
 
 def _fetch_dane_html_observation(
     client: httpx.Client,
@@ -1371,42 +1811,179 @@ def _fetch_dane_html_observation(
     return observation
 
 
+def _component_default(indicator_id: str, component_id: str) -> dict[str, Any]:
+    defaults = {
+        str(component["component_id"]): component
+        for component in _BUNDLE_COMPONENTS[indicator_id]
+    }
+    return defaults[component_id]
+
+
+def _failed_component(
+    indicator_id: str,
+    component_id: str,
+    headline: str,
+) -> IndicatorComponent:
+    default = _component_default(indicator_id, component_id)
+    return _component(
+        component_id=component_id,
+        name=str(default["name"]),
+        status="failed",
+        source_name=str(default["source_name"]),
+        source_url=str(default["source_url"]),
+        headline=headline,
+        freshness_status="failed",
+        next_step=str(default["next_step"]),
+    )
+
+
 def _fetch_dane_component(
     client: httpx.Client,
     component_id: str,
     url: str,
     parser: Callable[[str], IndicatorComponent | None],
 ) -> IndicatorComponent:
-    defaults = {
-        str(component["component_id"]): component
-        for component in _BUNDLE_COMPONENTS["construction_bundle"]
-    }
-    default = defaults[component_id]
     try:
         response = client.get(url)
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        return _component(
+        return _failed_component(
+            "construction_bundle",
             component_id=component_id,
-            name=str(default["name"]),
-            status="failed",
-            source_name=str(default["source_name"]),
-            source_url=url,
             headline=f"DANE component fetch failed: {exc.__class__.__name__}: {exc}",
-            freshness_status="failed",
-            next_step=str(default["next_step"]),
         )
     component = parser(response.text)
     if component is None:
-        return _component(
+        return _failed_component(
+            "construction_bundle",
             component_id=component_id,
-            name=str(default["name"]),
-            status="failed",
-            source_name=str(default["source_name"]),
-            source_url=url,
             headline="DANE component fetch returned no parseable current-result text.",
-            freshness_status="failed",
-            next_step=str(default["next_step"]),
+        )
+    return component
+
+
+def _fetch_xm_component(
+    client: httpx.Client,
+    component_id: str,
+    url: str,
+    metric_id: str,
+    parser: Callable[[dict[str, Any]], IndicatorComponent | None],
+) -> IndicatorComponent:
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=XM_LOOKBACK_DAYS)
+    try:
+        response = client.post(
+            url,
+            json={
+                "MetricId": metric_id,
+                "StartDate": start_date.isoformat(),
+                "EndDate": end_date.isoformat(),
+                "Entity": "Sistema",
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        return _failed_component(
+            "energy_system",
+            component_id=component_id,
+            headline=f"XM component fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    if not isinstance(payload, dict):
+        return _failed_component(
+            "energy_system",
+            component_id=component_id,
+            headline="XM component fetch returned non-object JSON.",
+        )
+    component = parser(payload)
+    if component is None:
+        return _failed_component(
+            "energy_system",
+            component_id=component_id,
+            headline="XM component fetch returned no parseable rows.",
+        )
+    return component
+
+
+def _fetch_anh_component(
+    client: httpx.Client,
+    component_id: str,
+    resource_id: str,
+    api_url: str,
+    value_field: str,
+    parser: Callable[..., IndicatorComponent | None],
+) -> IndicatorComponent:
+    try:
+        counts_response = client.get(
+            api_url,
+            params={
+                "$select": "vigencia,mes,count(*)",
+                "$group": "vigencia,mes",
+                "$order": "vigencia DESC, mes DESC",
+                "$limit": str(ANH_PERIOD_COUNT_LIMIT),
+            },
+        )
+        counts_response.raise_for_status()
+        period_counts = counts_response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline=f"ANH period lookup failed: {exc.__class__.__name__}: {exc}",
+        )
+    if not isinstance(period_counts, list):
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline="ANH period lookup returned non-list JSON.",
+        )
+    period = latest_complete_anh_period(period_counts)
+    if period is None:
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline="ANH period lookup returned no parseable periods.",
+        )
+    year, month = period
+    try:
+        rows_response = client.get(
+            api_url,
+            params={
+                "$select": f"vigencia,mes,departamento,{value_field}",
+                "$where": f"vigencia='{year}' AND mes='{month}'",
+                "$limit": "5000",
+            },
+        )
+        rows_response.raise_for_status()
+        rows = rows_response.json()
+        metadata_response = client.get(
+            f"https://www.datos.gov.co/api/views/{resource_id}"
+        )
+        metadata_response.raise_for_status()
+        metadata = metadata_response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline=f"ANH rows fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    if not isinstance(rows, list) or not isinstance(metadata, dict):
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline="ANH rows fetch returned an unexpected JSON shape.",
+        )
+    component = parser(
+        rows,
+        year=year,
+        month=month,
+        release_date=_socrata_rows_updated_release_date(metadata),
+    )
+    if component is None:
+        return _failed_component(
+            "oil_gas_production",
+            component_id=component_id,
+            headline="ANH rows fetch returned no parseable production values.",
         )
     return component
 
@@ -1427,6 +2004,24 @@ def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
         )
         if construction:
             observations.append(construction)
+        energy_components = [
+            _fetch_xm_component(client, component_id, url, metric_id, parser)
+            for component_id, url, metric_id, parser in _XM_ENERGY_COMPONENTS
+        ]
+        energy = energy_system_observation_from_components(energy_components)
+        if energy:
+            observations.append(energy)
+        oil_gas_components = [
+            _fetch_anh_component(
+                client, component_id, resource_id, url, value_field, parser
+            )
+            for component_id, resource_id, url, value_field, parser in (
+                _ANH_PRODUCTION_COMPONENTS
+            )
+        ]
+        oil_gas = oil_gas_observation_from_components(oil_gas_components)
+        if oil_gas:
+            observations.append(oil_gas)
     return observations
 
 

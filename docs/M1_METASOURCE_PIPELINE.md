@@ -276,6 +276,15 @@ bundle now merges ICOCED costs with DANE headline HTML for cement production
 and shipments, construction licenses, and housing finance; deeper XLSX annexes
 remain optional follow-up work.
 
+M1.11 adds the first non-DANE bundle expansion. The `energy_system` card now
+uses XM's public API for electricity demand, useful reservoir volume, and
+weighted national spot price. The `oil_gas_production` card now uses ANH's
+official datos.gov.co Socrata mirrors for consolidated crude and gas
+production, selecting the latest complete-looking period when the newest month
+is only partially loaded. This gives the watch a daily operating-stress view
+and a monthly hydrocarbon fiscal/external-account view without starting PDF or
+spreadsheet parsing.
+
 ## Indicator Watch
 
 Each run writes:
@@ -334,11 +343,17 @@ Current observed cards:
   construction licenses, and housing finance.
 - `secop_procurement`: existing Socrata procurement adapters aggregated by day,
   source, process type, and top entity.
+- `energy_system`: XM public API components for SIN electricity demand, useful
+  reservoir volume, and weighted national spot price.
+- `oil_gas_production`: ANH / datos.gov.co consolidated crude and fiscalized
+  gas production aggregates, including top departments by volume.
 
 The remaining cards are intentionally visible as parser/source backlog so M1
 can prioritize high-value official data before automating M2 question writing.
-The next bundle candidates are energy system, external trade, oil/gas
-production, and fiscal/tax pulse.
+The next bundle candidates are external trade and fiscal/tax pulse. The next
+hardening candidates are source health thresholds, regression fixtures from
+live structured endpoints, and explicit alert rules for stale critical
+components.
 
 ## Source Health
 
