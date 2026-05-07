@@ -168,3 +168,23 @@ def test_opaque_gaceta_index_is_not_forecastable_candidate() -> None:
     assert "official publication index lacks document title or parsed text" in noise_reasons(
         cluster
     )
+
+
+def test_secop_only_cluster_is_not_forecastable_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-secop-only",
+        title="SECOP proceso de compraventa de materiales",
+        summary="Proceso contractual publicado en SECOP.",
+        source_types=["dataset"],
+        signal_types=["new_data"],
+        member_source_ids=["secop_i_procesos", "secop_ii_contratos"],
+        member_source_names=["SECOP I", "SECOP II"],
+        member_titles=["SECOP proceso", "SECOP contrato"],
+        member_urls=["https://datos.gov.co/a", "https://datos.gov.co/b"],
+        priorities=["high"],
+    )
+
+    assert not is_forecastable_candidate(cluster)
+    assert "SECOP-only procurement rows belong in the procurement pulse unless they have a national hook" in noise_reasons(
+        cluster
+    )

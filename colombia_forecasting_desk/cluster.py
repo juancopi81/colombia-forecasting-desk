@@ -4,9 +4,9 @@ import hashlib
 import re
 from collections import Counter
 
-from .cleaner import fold_accents
 from .models import CleanedItem, Cluster
 from .stopwords_es import STOPWORDS_ES
+from .tagger import fold_accents, sort_entity_tags, sort_topic_tags
 
 JACCARD_THRESHOLD = 0.4
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
@@ -14,6 +14,43 @@ _GENERIC_IMPRENTA_TITLE_RE = re.compile(
     r"^(?:gaceta del congreso\s+\d+|diario oficial\s+[\d.]+)"
     r"(?:\s+[-]\s+[^-]+)?$",
     re.IGNORECASE,
+)
+_STRONG_TAG_PAIRS = frozenset(
+    {
+        ("banrep", "monetary_policy"),
+        ("banrep", "inflation"),
+        ("dane", "inflation"),
+        ("dane", "labor_market"),
+        ("dane", "external_trade"),
+        ("dane", "construction"),
+        ("dian", "fiscal_tax"),
+        ("dian", "external_trade"),
+        ("dian", "regulatory"),
+        ("congreso", "labor_market"),
+        ("congreso", "fiscal_tax"),
+        ("congreso", "external_trade"),
+        ("congreso", "energy"),
+        ("congreso", "hydrocarbons"),
+        ("congreso", "electoral"),
+        ("congreso", "regulatory"),
+        ("congreso", "security"),
+        ("registraduria", "electoral"),
+        ("cne", "electoral"),
+        ("corte_constitucional", "constitutional_court"),
+        ("corte_constitucional", "regulatory"),
+        ("corte_constitucional", "electoral"),
+        ("corte_constitucional", "fiscal_tax"),
+        ("minhacienda", "fiscal_tax"),
+        ("anh", "hydrocarbons"),
+        ("anh", "energy"),
+        ("secop", "procurement"),
+        ("presidencia", "security"),
+        ("presidencia", "fiscal_tax"),
+        ("presidencia", "energy"),
+        ("presidencia", "hydrocarbons"),
+        ("presidencia", "electoral"),
+        ("presidencia", "regulatory"),
+    }
 )
 
 
@@ -47,6 +84,22 @@ def _can_union_by_title(a: CleanedItem, b: CleanedItem) -> bool:
     ):
         return False
     return True
+
+
+def _can_union_by_tags(a: CleanedItem, b: CleanedItem) -> bool:
+    if a.source_id == b.source_id:
+        return False
+    if _is_generic_imprenta_listing(a) or _is_generic_imprenta_listing(b):
+        return False
+    shared_entities = set(a.detected_entities) & set(b.detected_entities)
+    shared_topics = set(a.detected_topics) & set(b.detected_topics)
+    if not shared_entities or not shared_topics:
+        return False
+    return any(
+        (entity, topic) in _STRONG_TAG_PAIRS
+        for entity in shared_entities
+        for topic in shared_topics
+    )
 
 
 class _UnionFind:
@@ -90,6 +143,12 @@ def _build_cluster(members: list[CleanedItem]) -> Cluster:
     source_types = sorted({m.source_type for m in members})
     signal_types = sorted({m.signal_type for m in members})
     priorities = [m.priority for m in members]
+    detected_entities = sort_entity_tags(
+        {tag for m in members for tag in m.detected_entities}
+    )
+    detected_topics = sort_topic_tags(
+        {tag for m in members for tag in m.detected_topics}
+    )
     timestamps = [m.published_at for m in members if m.published_at]
     latest = max(timestamps) if timestamps else None
     return Cluster(
@@ -108,6 +167,8 @@ def _build_cluster(members: list[CleanedItem]) -> Cluster:
         member_source_names=[m.source_name for m in members],
         member_source_ids=[m.source_id for m in members],
         priorities=priorities,
+        detected_entities=detected_entities,
+        detected_topics=detected_topics,
         why_it_matters="",
         possible_questions=[],
         missing_evidence=[],
@@ -122,15 +183,15 @@ def cluster(items: list[CleanedItem], threshold: float = JACCARD_THRESHOLD) -> l
     token_sets = [tokenize_title(it.title) for it in items]
     uf = _UnionFind(n)
     for i in range(n):
-        if not token_sets[i]:
-            continue
         for j in range(i + 1, n):
-            if not token_sets[j]:
-                continue
             if (
-                _can_union_by_title(items[i], items[j])
+                token_sets[i]
+                and token_sets[j]
+                and _can_union_by_title(items[i], items[j])
                 and jaccard(token_sets[i], token_sets[j]) >= threshold
             ):
+                uf.union(i, j)
+            elif _can_union_by_tags(items[i], items[j]):
                 uf.union(i, j)
 
     groups: dict[int, list[int]] = {}

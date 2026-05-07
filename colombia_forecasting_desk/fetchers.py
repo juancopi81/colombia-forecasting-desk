@@ -906,7 +906,7 @@ def _enrich_pdf_text(
     parsed_count = 0
     for item in items:
         path = urlsplit(item.url).path.lower()
-        if parsed_count >= max_items or not path.endswith(".pdf"):
+        if parsed_count >= max_items or ".pdf" not in path:
             enriched.append(item)
             continue
         metadata = dict(item.metadata)
@@ -1355,6 +1355,17 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     if source.id == "dane_comunicados_prensa":
         items = _extract_dane_comunicados(
             response.text, str(response.url), source, fetched_at
+        )
+        if items:
+            return _enrich_pdf_text(items, client)
+    if source.id == "mincit_zonas_francas":
+        items = _extract_dated_anchors(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+            "anchor",
+            require_date=False,
         )
         if items:
             return _enrich_pdf_text(items, client)

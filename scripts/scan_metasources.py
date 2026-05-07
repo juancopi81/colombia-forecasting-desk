@@ -28,12 +28,17 @@ SANDBOX_TITLE_PREVIEW = 5
 def _print_source_report(result) -> None:
     print("")
     print("Source health:")
-    print("source_id | content | raw | dated | rankable | doc_links | parsed | failures")
-    print("--- | --- | ---: | ---: | ---: | ---: | ---: | ---:")
+    print(
+        "source_id | acceptance | content | raw | dated | rankable | tagged | "
+        "untagged | doc_links | parsed | failures"
+    )
+    print("--- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---:")
     for health in result.source_health:
         print(
-            f"{health.source_id} | {health.content_mode} | {health.raw_count} | "
+            f"{health.source_id} | {health.acceptance_status} | "
+            f"{health.content_mode} | {health.raw_count} | "
             f"{health.dated_count} | {health.rankable_count} | "
+            f"{health.tagged_count} | {health.untagged_rankable_count} | "
             f"{health.document_link_count} | {health.parsed_content_count} | "
             f"{health.failure_count}"
         )
@@ -53,8 +58,11 @@ def _print_sandbox_report(result) -> None:
     )
     print(
         f"  content={health.content_mode} "
+        f"acceptance={health.acceptance_status} "
         f"doc_links={health.document_link_count} "
-        f"parsed={health.parsed_content_count}"
+        f"parsed={health.parsed_content_count} "
+        f"tagged={health.tagged_count} "
+        f"untagged={health.untagged_rankable_count}"
     )
     if health.failures:
         print("  failure messages:")
@@ -99,6 +107,11 @@ def main() -> int:
         ),
         default=None,
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit nonzero if M1 acceptance_report.json has error-level issues.",
+    )
     args = parser.parse_args()
 
     try:
@@ -134,10 +147,19 @@ def main() -> int:
         f"  indicators={len(result.indicator_watch)} "
         f"observed={len(observed_indicators)}"
     )
+    print(
+        f"  candidates={len(result.m1_candidates.get('candidates', []))} "
+        f"acceptance={result.acceptance_report.get('status', 'unknown')} "
+        f"errors={result.acceptance_report.get('error_count', 'n/a')} "
+        f"warnings={result.acceptance_report.get('warning_count', 'n/a')}"
+    )
     if args.source:
         _print_sandbox_report(result)
     elif args.source_report:
         _print_source_report(result)
+    if args.strict and not result.acceptance_report.get("strict_pass", False):
+        print("Strict acceptance failed. See acceptance_report.json.")
+        return 2
     return 0
 
 

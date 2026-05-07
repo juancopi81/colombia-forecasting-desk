@@ -61,12 +61,80 @@ def test_generic_imprenta_editions_do_not_cluster_by_shared_boilerplate(
         source_id="gacetas_congreso",
         source_type="legal",
         title="Gaceta del Congreso 398 — Senado de la República",
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
     )
     b = make_cleaned(
         id="b",
         source_id="gacetas_congreso",
         source_type="legal",
         title="Gaceta del Congreso 399 — Senado de la República",
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+
+    clusters = cluster([a, b])
+
+    assert len(clusters) == 2
+
+
+def test_cluster_aggregates_detected_tags(make_cleaned) -> None:
+    a = make_cleaned(
+        id="a",
+        title="Inflación marzo cifras DANE",
+        detected_entities=["dane"],
+        detected_topics=["inflation"],
+    )
+    b = make_cleaned(
+        id="b",
+        title="Inflación marzo cifras BanRep",
+        detected_entities=["banrep"],
+        detected_topics=["monetary_policy", "inflation"],
+    )
+
+    [grouped] = cluster([a, b])
+
+    assert grouped.detected_entities == ["banrep", "dane"]
+    assert grouped.detected_topics == ["monetary_policy", "inflation"]
+
+
+def test_clusters_cross_source_strong_shared_tags_when_titles_differ(
+    make_cleaned,
+) -> None:
+    a = make_cleaned(
+        id="a",
+        source_id="banrep_comunicados",
+        title="Junta mantiene tasa de interes",
+        detected_entities=["banrep"],
+        detected_topics=["monetary_policy"],
+    )
+    b = make_cleaned(
+        id="b",
+        source_id="eltiempo_colombia",
+        title="Emisor deja politica monetaria sin cambios",
+        detected_entities=["banrep"],
+        detected_topics=["monetary_policy"],
+    )
+
+    clusters = cluster([a, b])
+
+    assert sorted(len(group.items) for group in clusters) == [2]
+
+
+def test_same_source_strong_shared_tags_do_not_force_cluster(make_cleaned) -> None:
+    a = make_cleaned(
+        id="a",
+        source_id="banrep_comunicados",
+        title="Junta mantiene tasa de interes",
+        detected_entities=["banrep"],
+        detected_topics=["monetary_policy"],
+    )
+    b = make_cleaned(
+        id="b",
+        source_id="banrep_comunicados",
+        title="Emisor deja politica monetaria sin cambios",
+        detected_entities=["banrep"],
+        detected_topics=["monetary_policy"],
     )
 
     clusters = cluster([a, b])

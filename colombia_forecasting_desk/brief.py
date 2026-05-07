@@ -164,6 +164,100 @@ def _render_rejected_signals(clusters: list[Cluster]) -> str:
     return "\n".join(lines)
 
 
+def _render_candidate_db_summary(
+    m1_candidates: dict | None,
+    acceptance_report: dict | None = None,
+) -> str:
+    if not m1_candidates:
+        return "- `m1_candidates.json`: _not generated for this render._"
+    candidates = m1_candidates.get("candidates", [])
+    rejected = m1_candidates.get("rejected", [])
+    caveats = m1_candidates.get("source_caveats", [])
+    status = (acceptance_report or {}).get("status", "unknown")
+    errors = (acceptance_report or {}).get("error_count", "n/a")
+    warnings = (acceptance_report or {}).get("warning_count", "n/a")
+    return (
+        f"- `m1_candidates.json`: {len(candidates)} candidates, "
+        f"{len(rejected)} rejected signals, {len(caveats)} source caveats.\n"
+        f"- `acceptance_report.json`: status={status}; errors={errors}; "
+        f"warnings={warnings}."
+    )
+
+
+def _candidate_links(candidate: dict, limit: int = 3) -> str:
+    evidence = candidate.get("evidence") if isinstance(candidate, dict) else {}
+    links = evidence.get("links") if isinstance(evidence, dict) else []
+    if not isinstance(links, list) or not links:
+        return "- _None._"
+    lines: list[str] = []
+    seen: set[str] = set()
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        url = str(link.get("url") or "")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        title = str(link.get("title") or "(no title)")
+        source = str(link.get("source_name") or "source")
+        lines.append(f"- [{title}]({url}) — {source}")
+        if len(lines) >= limit:
+            break
+    return "\n".join(lines) if lines else "- _None._"
+
+
+def _render_candidate_event_signals(m1_candidates: dict | None) -> str | None:
+    if not m1_candidates:
+        return None
+    candidates = [
+        candidate
+        for candidate in m1_candidates.get("candidates", [])
+        if isinstance(candidate, dict)
+        and candidate.get("candidate_type") == "event_signal"
+    ][:FORECASTABLE_SIGNAL_LIMIT]
+    if not candidates:
+        return "_No deterministic forecastable event candidates passed the M1 filter._"
+    blocks: list[str] = []
+    for idx, candidate in enumerate(candidates, 1):
+        evidence = candidate.get("evidence") or {}
+        entities = ", ".join(candidate.get("entities") or []) or "n/a"
+        topics = ", ".join(candidate.get("topics") or []) or "n/a"
+        blocks.append(
+            f"### {idx}. {candidate.get('trigger') or candidate.get('question_seed')}\n\n"
+            f"- Candidate ID: `{candidate.get('candidate_id')}`\n"
+            f"- Forecastability score: "
+            f"{(candidate.get('m1_scores') or {}).get('forecastability_score')}\n"
+            f"- Entities: {entities}\n"
+            f"- Topics: {topics}\n"
+            f"- Why this is forecastable: "
+            f"{', '.join(candidate.get('reasons') or []) or 'needs analyst review'}\n"
+            f"- Caveats: "
+            f"{'; '.join(candidate.get('noise_reasons') or []) or 'none'}\n\n"
+            f"**Signal:** {evidence.get('starting_evidence') or candidate.get('trigger') or 'n/a'}\n\n"
+            f"**Question seed:** {candidate.get('question_seed')}\n\n"
+            f"**Likely resolution source:** {candidate.get('resolution_source')}\n\n"
+            f"**Deadline/window hint:** {candidate.get('deadline_or_window')}\n\n"
+            f"**Missing evidence to ask for in M2:** "
+            f"{'; '.join(candidate.get('missing_evidence') or []) or 'n/a'}\n\n"
+            f"**Links:**\n{_candidate_links(candidate)}\n"
+        )
+    return "\n---\n\n".join(blocks)
+
+
+def _render_rejected_candidates(m1_candidates: dict | None) -> str | None:
+    if not m1_candidates:
+        return None
+    rejected = [
+        item for item in m1_candidates.get("rejected", []) if isinstance(item, dict)
+    ][:REJECTED_SIGNAL_LIMIT]
+    if not rejected:
+        return "_No obvious rejected/noisy top signals._"
+    return "\n".join(
+        f"- **{item.get('title') or item.get('origin_id')}:** {item.get('reason')}."
+        for item in rejected
+    )
+
+
 def _render_failures(failures: list[SourceFailure]) -> str:
     if not failures:
         return "_No source failures during this run._"
@@ -190,14 +284,16 @@ def _render_source_health(source_health: list[SourceHealth]) -> str:
     if not source_health:
         return "_No source health report generated._"
     lines = [
-        "| Source | Onboarding | Status | Content | Raw | Dated | Rankable | Doc links | Parsed | Failures |",
-        "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Source | Onboarding | Status | Acceptance | Content | Raw | Dated | Rankable | Tagged | Untagged | Doc links | Parsed | Failures |",
+        "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for health in source_health:
         lines.append(
             f"| `{health.source_id}` | {health.onboarding_status} | "
-            f"{health.status} | {health.content_mode} | {health.raw_count} | "
+            f"{health.status} | {health.acceptance_status} | "
+            f"{health.content_mode} | {health.raw_count} | "
             f"{health.dated_count} | {health.rankable_count} | "
+            f"{health.tagged_count} | {health.untagged_rankable_count} | "
             f"{health.document_link_count} | {health.parsed_content_count} | "
             f"{health.failure_count} |"
         )
@@ -642,6 +738,8 @@ def render_brief(
     topic_keywords: list[str],
     source_health: list[SourceHealth] | None = None,
     indicator_watch: list[IndicatorObservation] | None = None,
+    m1_candidates: dict | None = None,
+    acceptance_report: dict | None = None,
 ) -> str:
     top = ranked_clusters[:TOP_SIGNALS_LIMIT]
     top_blocks = [
@@ -670,8 +768,10 @@ def render_brief(
         f"{_render_indicator_watch(indicator_watch or [], run_summary.run_date)}\n\n"
         "## M2 Seed Questions\n\n"
         f"{_render_m2_seed_questions(indicator_watch or [], run_summary.run_date)}\n\n"
+        "## Candidate DB\n\n"
+        f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
         "## Forecastable Signals\n\n"
-        f"{_render_forecastable_signals(ranked_clusters)}\n\n"
+        f"{_render_candidate_event_signals(m1_candidates) or _render_forecastable_signals(ranked_clusters)}\n\n"
         "## Top Signals\n\n"
         f"{top_section}\n\n"
         "## Emerging Questions\n\n"
@@ -679,7 +779,7 @@ def render_brief(
         "## Topics to Monitor\n\n"
         f"{keywords_section}\n\n"
         "## Rejected / Noisy Top Signals\n\n"
-        f"{_render_rejected_signals(ranked_clusters)}\n\n"
+        f"{_render_rejected_candidates(m1_candidates) or _render_rejected_signals(ranked_clusters)}\n\n"
         "## Source Health Actions\n\n"
         f"{_render_source_health_actions(source_health or [])}\n\n"
         "## Source Health\n\n"
@@ -742,6 +842,8 @@ def render_m2_handoff(
     topic_keywords: list[str],
     source_health: list[SourceHealth] | None = None,
     indicator_watch: list[IndicatorObservation] | None = None,
+    m1_candidates: dict | None = None,
+    acceptance_report: dict | None = None,
 ) -> str:
     indicators = indicator_watch or []
     health = source_health or []
@@ -769,10 +871,12 @@ def render_m2_handoff(
         f"{_render_analyst_attention(indicators, health, run_summary.run_date)}\n\n"
         "## Indicator-Driven Seed Questions\n\n"
         f"{seeds}\n\n"
+        "## Candidate DB Snapshot\n\n"
+        f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
         "## Forecastable Event Signals\n\n"
-        f"{forecastable}\n\n"
+        f"{_render_candidate_event_signals(m1_candidates) or forecastable}\n\n"
         "## Rejected / Noisy Signals\n\n"
-        f"{_render_rejected_signals(ranked_clusters)}\n\n"
+        f"{_render_rejected_candidates(m1_candidates) or _render_rejected_signals(ranked_clusters)}\n\n"
         "## Source Coverage Caveats\n\n"
         f"{_render_source_caveats(health)}\n\n"
         "## Source Failures\n\n"

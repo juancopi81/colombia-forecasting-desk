@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 
 from bs4 import BeautifulSoup
 
 from .models import CleanedItem, Metasource, RawItem
+from .tagger import fold_accents, tag_item
 
 _TRUST_ROLE_TO_SIGNAL = {
     "official_signal": "official_update",
@@ -65,14 +65,6 @@ def _is_opaque_imprenta_index(raw: RawItem) -> bool:
     )
 
 
-def fold_accents(text: str) -> str:
-    return (
-        unicodedata.normalize("NFKD", text)
-        .encode("ascii", "ignore")
-        .decode("ascii")
-    )
-
-
 def clean(raw: RawItem, source: Metasource) -> CleanedItem:
     title = normalize_whitespace(raw.title or "")
     clean_text = strip_ui_artifacts(strip_html(raw.raw_text or ""))
@@ -89,6 +81,14 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
     if _is_opaque_imprenta_index(raw):
         notes.append("low_quality:missing_document_title")
     quality_notes = ",".join(notes)
+    tag_metadata = {
+        **(raw.metadata or {}),
+        "source_id": raw.source_id,
+        "source_name": raw.source_name,
+        "source_type": raw.source_type,
+        "trust_role": source.trust_role,
+    }
+    detected_entities, detected_topics = tag_item(title, clean_text, tag_metadata)
 
     return CleanedItem(
         id=raw.id,
@@ -104,6 +104,8 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         signal_type=signal_type_for(source),
         country_relevance=source.country_relevance,
         quality_notes=quality_notes,
+        detected_entities=detected_entities,
+        detected_topics=detected_topics,
         trust_role=source.trust_role,
         priority=source.priority,
     )

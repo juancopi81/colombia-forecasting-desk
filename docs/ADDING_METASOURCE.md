@@ -178,3 +178,10 @@ For a document parser to count as parsed content, set either
 `metadata.content_extraction` or `metadata.parsed_content` on the emitted
 `RawItem`. Prefer adding one document parser at a time and keeping the original
 attachment URL in `RawItem.url`.
+
+For M1.15, link-only document sources can remain enabled for source-health
+visibility, but they must not be promoted into `m1_candidates.json` as
+forecastable candidates unless the item has a document title, parsed body text,
+or another deterministic evidence excerpt. `acceptance_report.json` and
+`--strict` catch this as an error when a candidate depends on a link-only
+source.

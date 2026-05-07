@@ -100,6 +100,13 @@ def _has_secop_source(cluster: Cluster) -> bool:
     )
 
 
+def _has_only_secop_sources(cluster: Cluster) -> bool:
+    return bool(cluster.member_source_ids) and all(
+        source_id.startswith(_SECOP_SOURCE_PREFIXES)
+        for source_id in cluster.member_source_ids
+    )
+
+
 def _is_opaque_imprenta_cluster(cluster: Cluster) -> bool:
     if not set(cluster.member_source_ids) <= {"diario_oficial", "gacetas_congreso"}:
         return False
@@ -139,9 +146,9 @@ def forecastability_reasons(cluster: Cluster) -> list[str]:
 def noise_reasons(cluster: Cluster) -> list[str]:
     terms = cluster_terms(cluster)
     reasons: list[str] = []
-    if _has_secop_source(cluster) and cluster.source_count == 1:
+    if _has_only_secop_sources(cluster):
         reasons.append(
-            "individual SECOP row belongs in the procurement pulse unless it has a national hook"
+            "SECOP-only procurement rows belong in the procurement pulse unless they have a national hook"
         )
     if _is_opaque_imprenta_cluster(cluster):
         reasons.append(
@@ -165,6 +172,8 @@ def forecastability_score(cluster: Cluster) -> float:
     score += 1.5 * len(forecastability_reasons(cluster))
     score -= 2.0 * len(noise_reasons(cluster))
     if _has_secop_source(cluster) and cluster.source_count == 1:
+        score -= 4.0
+    if _has_only_secop_sources(cluster):
         score -= 4.0
     if _is_opaque_imprenta_cluster(cluster):
         score -= 8.0
