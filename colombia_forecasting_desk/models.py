@@ -82,6 +82,8 @@ class Cluster:
     member_source_names: list[str] = field(default_factory=list)
     member_source_ids: list[str] = field(default_factory=list)
     priorities: list[str] = field(default_factory=list)
+    detected_entities: list[str] = field(default_factory=list)
+    detected_topics: list[str] = field(default_factory=list)
     why_it_matters: str = ""
     possible_questions: list[str] = field(default_factory=list)
     missing_evidence: list[str] = field(default_factory=list)
@@ -114,6 +116,9 @@ class SourceHealth:
     content_mode: str = "no_items"
     document_link_count: int = 0
     parsed_content_count: int = 0
+    tagged_count: int = 0
+    untagged_rankable_count: int = 0
+    acceptance_status: str = "ok"
 
 
 @dataclass(frozen=True, slots=True)

@@ -66,8 +66,10 @@ runs/YYYY-MM-DD/raw_items.json
 runs/YYYY-MM-DD/cleaned_items.json
 runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/indicator_watch.json
+runs/YYYY-MM-DD/m1_candidates.json
 runs/YYYY-MM-DD/metasource_brief.md
 runs/YYYY-MM-DD/m2_handoff.md
+runs/YYYY-MM-DD/acceptance_report.json
 runs/YYYY-MM-DD/source_health.json
 ```
 
@@ -87,6 +89,12 @@ The main paste-ready artifact for manual M2 question selection is:
 
 ```text
 runs/YYYY-MM-DD/m2_handoff.md
+```
+
+The primary structured M1-to-M2 contract is:
+
+```text
+runs/YYYY-MM-DD/m1_candidates.json
 ```
 
 ## Raw Item Shape
@@ -324,6 +332,20 @@ readable, Imprenta/Gaceta rows preserve document titles when the static table
 exposes them, and future calendar items are retained inside the planning
 window instead of being dropped as future-dated news.
 
+M1.15 makes the M2 handoff deterministic. Each run now writes
+`m1_candidates.json`, a structured candidate/rejection/source-caveat database
+with stable candidate ids, deterministic question seeds, evidence links,
+resolution-source hints, deadline windows, entity/topic tags, and explicit
+missing evidence. The Markdown handoff remains the human-readable/pasteable
+view, but it is backed by the candidate database. Each run also writes
+`acceptance_report.json`; `scripts/scan_metasources.py --strict` exits nonzero
+when error-level checks find malformed candidates, link-only evidence promoted
+as forecastable, or an otherwise nonempty run with zero candidates. Cleaning now
+adds deterministic entity/topic tags, clusters aggregate those tags, and source
+health reports tag coverage and an acceptance status. MinCIT PDF attachment
+URLs now enter the same fail-closed PDF enrichment path used by DANE press
+documents.
+
 ## Indicator Watch
 
 Each run writes:
@@ -542,7 +564,7 @@ Links:
 
 ## Source Health
 
-| Source | Onboarding | Status | Content | Raw | Dated | Rankable | Doc links | Parsed | Failures |
+| Source | Onboarding | Status | Acceptance | Content | Raw | Dated | Rankable | Tagged | Untagged | Doc links | Parsed | Failures |
 
 ## Noisy / Low-Confidence Items
 
@@ -613,6 +635,8 @@ Links:
 
 - [x] Create `runs/YYYY-MM-DD/metasource_brief.md`.
 - [x] Create `runs/YYYY-MM-DD/m2_handoff.md`.
+- [x] Create `runs/YYYY-MM-DD/m1_candidates.json`.
+- [x] Create `runs/YYYY-MM-DD/acceptance_report.json`.
 - [x] Include run summary.
 - [x] Include top ranked clusters.
 - [x] Include possible forecastable questions.
@@ -632,9 +656,12 @@ M1 is complete when:
 - [x] `indicator_watch.json` is generated.
 - [x] `metasource_brief.md` is generated.
 - [x] `m2_handoff.md` is generated.
+- [x] `m1_candidates.json` is generated.
+- [x] `acceptance_report.json` is generated.
 - [x] Source failures are logged but do not crash the full run.
 - [x] The daily brief is useful enough for an LLM or human to decide what to inspect next.
 - [x] The M2 handoff is useful enough to paste into an AI for candidate question selection.
+- [x] `--strict` can enforce hard M1 quality gates before M2.
 
 ## Suggested First Command
 

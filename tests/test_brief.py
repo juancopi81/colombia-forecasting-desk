@@ -68,6 +68,7 @@ def test_brief_has_all_sections(make_cleaned) -> None:
         "## Analyst Attention",
         "## Indicator Watch",
         "## M2 Seed Questions",
+        "## Candidate DB",
         "## Forecastable Signals",
         "## Top Signals",
         "## Emerging Questions",
@@ -353,6 +354,7 @@ def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
     assert "Task For The AI" in out
     assert "Indicator-Driven Seed Questions" in out
     assert "Forecastable Event Signals" in out
+    assert "Candidate DB Snapshot" in out
     assert "Required M2 Output Schema" in out
     assert "rolling RSS media pulse" in out
     assert "Will the official TRM remain" in out

@@ -117,8 +117,12 @@ colombia-forecasting-desk/
       raw_items.json
       cleaned_items.json
       clusters.json
+      indicator_watch.json
+      m1_candidates.json
       metasource_brief.md
       m2_handoff.md
+      acceptance_report.json
+      source_health.json
       candidate_questions.md
       evidence_packs/
       forecast_drafts/
@@ -295,6 +299,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Deduplicate obvious duplicates.
 - [x] Cluster related signals.
 - [x] Generate `runs/YYYY-MM-DD/metasource_brief.md`.
+- [x] Generate deterministic `m1_candidates.json`.
+- [x] Generate `acceptance_report.json` quality gates.
 
 ### M2 — Question Discovery
 

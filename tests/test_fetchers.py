@@ -274,6 +274,26 @@ def test_enrich_pdf_text_marks_pdf_item_as_parsed_content() -> None:
     assert "resultados economicos nacionales" in enriched.raw_text
 
 
+def test_enrich_pdf_text_handles_pdf_aspx_attachment_urls() -> None:
+    item = RawItem(
+        id="mincit-pdf-1",
+        source_id="mincit_zonas_francas",
+        source_name="MinCIT",
+        source_type="regulatory",
+        url="https://zf.mincit.gov.co/getattachment/estadisticas/zonas.pdf.aspx",
+        title="Zonas Francas aprobadas",
+        fetched_at="2026-05-06T00:00:00Z",
+        published_at="2026-02-18T00:00:00Z",
+        raw_text="Zonas Francas aprobadas Fecha de actualización: 18 de febrero de 2026",
+        metadata={"extraction": "anchor"},
+    )
+
+    enriched = _enrich_pdf_text([item], _FakePdfClient(), max_items=1)[0]
+
+    assert enriched.metadata["content_extraction"] == "pdf_text_best_effort"
+    assert "PDF text excerpt" in enriched.raw_text
+
+
 def test_extract_corte_comunicados_reads_dated_links(sample_source) -> None:
     source = replace(sample_source, id="corte_constitucional_comunicados", type="legal")
     html = """

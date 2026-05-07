@@ -103,9 +103,12 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.source_health[0].content_mode == "html_or_api"
     assert result.source_health[0].document_link_count == 0
     assert result.source_health[0].parsed_content_count == 0
+    assert result.source_health[0].acceptance_status == "untagged"
     assert result.run_dir == tmp_path / "2026-04-27"
     assert (result.run_dir / "source_health.json").exists()
     assert (result.run_dir / "m2_handoff.md").exists()
+    assert (result.run_dir / "m1_candidates.json").exists()
+    assert (result.run_dir / "acceptance_report.json").exists()
 
 
 def test_run_keeps_future_calendar_items_inside_planning_window(
@@ -183,6 +186,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert (result.run_dir / "source_health.json").exists()
     assert result.source_health[0].source_id == "test_source"
     assert result.source_health[0].rankable_count == 1
+    assert (result.run_dir / "m1_candidates.json").exists()
+    assert (result.run_dir / "acceptance_report.json").exists()
 
 
 def test_run_single_source_unknown_id_raises(monkeypatch, tmp_path) -> None:
@@ -267,6 +272,17 @@ def test_derive_content_mode_identifies_parsed_document_content() -> None:
     assert mode == "parsed_content"
     assert document_links == 0
     assert parsed == 1
+
+
+def test_source_acceptance_status_helpers() -> None:
+    assert pipeline._source_acceptance_status("failed", 0, 0, 0, 0) == "failed"
+    assert (
+        pipeline._source_acceptance_status("ok", 2, 0, 0, 0)
+        == "document_unparsed"
+    )
+    assert pipeline._source_acceptance_status("no_raw", 0, 0, 0, 0) == "no_raw"
+    assert pipeline._source_acceptance_status("ok", 0, 0, 0, 2) == "untagged"
+    assert pipeline._source_acceptance_status("ok", 0, 0, 2, 0) == "ok"
 
 
 def test_source_health_propagates_onboarding_status(monkeypatch, tmp_path) -> None:

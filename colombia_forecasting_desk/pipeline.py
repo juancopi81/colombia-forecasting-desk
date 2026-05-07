@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlsplit
 
+from .acceptance import build_acceptance_report
 from .brief import render_brief, render_m2_handoff
+from .candidates import build_m1_candidates
 from .cleaner import clean
 from .cluster import cluster as cluster_items
 from .cluster import topic_keywords
@@ -52,6 +54,8 @@ class PipelineResult:
     failures: list[SourceFailure]
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
+    m1_candidates: dict
+    acceptance_report: dict
     summary: RunSummary
 
 
@@ -194,6 +198,8 @@ def build_source_health(
     rankable_counts: dict[str, int] = {}
     failures_by_source: dict[str, list[SourceFailure]] = {}
     raw_by_source: dict[str, list[RawItem]] = {}
+    tagged_counts: dict[str, int] = {}
+    untagged_rankable_counts: dict[str, int] = {}
 
     for item in raw_items:
         raw_counts[item.source_id] = raw_counts.get(item.source_id, 0) + 1
@@ -204,6 +210,12 @@ def build_source_health(
         cleaned_counts[item.source_id] = cleaned_counts.get(item.source_id, 0) + 1
     for item in rankable_items:
         rankable_counts[item.source_id] = rankable_counts.get(item.source_id, 0) + 1
+        if item.detected_entities or item.detected_topics:
+            tagged_counts[item.source_id] = tagged_counts.get(item.source_id, 0) + 1
+        else:
+            untagged_rankable_counts[item.source_id] = (
+                untagged_rankable_counts.get(item.source_id, 0) + 1
+            )
     for failure in failures:
         failures_by_source.setdefault(failure.source_id, []).append(failure)
 
@@ -216,6 +228,8 @@ def build_source_health(
         content_mode, document_link_count, parsed_content_count = _derive_content_mode(
             raw_by_source.get(source.id, []), len(source_failures)
         )
+        tagged_count = tagged_counts.get(source.id, 0)
+        untagged_rankable_count = untagged_rankable_counts.get(source.id, 0)
         health.append(
             SourceHealth(
                 source_id=source.id,
@@ -234,9 +248,36 @@ def build_source_health(
                 content_mode=content_mode,
                 document_link_count=document_link_count,
                 parsed_content_count=parsed_content_count,
+                tagged_count=tagged_count,
+                untagged_rankable_count=untagged_rankable_count,
+                acceptance_status=_source_acceptance_status(
+                    status,
+                    document_link_count,
+                    parsed_content_count,
+                    tagged_count,
+                    untagged_rankable_count,
+                ),
             )
         )
     return health
+
+
+def _source_acceptance_status(
+    status: str,
+    document_link_count: int,
+    parsed_content_count: int,
+    tagged_count: int,
+    untagged_rankable_count: int,
+) -> str:
+    if status == "failed":
+        return "failed"
+    if document_link_count > 0 and parsed_content_count == 0:
+        return "document_unparsed"
+    if status in {"no_raw", "no_rankable"}:
+        return status
+    if untagged_rankable_count > 0 and tagged_count == 0:
+        return "untagged"
+    return "ok"
 
 
 def _drop_empty(items: Iterable[CleanedItem]) -> list[CleanedItem]:
@@ -312,6 +353,22 @@ def run_single_source(
         cleaned_items=len(cleaned),
         clusters=len(ranked),
     )
+    keywords = topic_keywords(rankable, top_n=5)
+    m1_candidates = build_m1_candidates(
+        summary,
+        ranked,
+        failures,
+        keywords,
+        source_health=source_health,
+        indicator_watch=indicator_watch,
+    )
+    acceptance_report = build_acceptance_report(
+        summary,
+        m1_candidates,
+        source_health,
+        failures,
+        cleaned,
+    )
 
     run_dir = Path(runs_root) / SANDBOX_DIR_NAME / source.id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -323,6 +380,8 @@ def run_single_source(
     )
     _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+    _write_json(run_dir / "m1_candidates.json", m1_candidates)
+    _write_json(run_dir / "acceptance_report.json", acceptance_report)
     _write_json(run_dir / "run_summary.json", asdict(summary))
 
     logger.info("Wrote sandbox artifacts to %s", run_dir)
@@ -334,6 +393,8 @@ def run_single_source(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        m1_candidates=m1_candidates,
+        acceptance_report=acceptance_report,
         summary=summary,
     )
 
@@ -394,6 +455,21 @@ def run(
         cleaned_items=len(cleaned),
         clusters=len(ranked),
     )
+    m1_candidates = build_m1_candidates(
+        summary,
+        ranked,
+        failures,
+        keywords,
+        source_health=source_health,
+        indicator_watch=indicator_watch,
+    )
+    acceptance_report = build_acceptance_report(
+        summary,
+        m1_candidates,
+        source_health,
+        failures,
+        cleaned,
+    )
 
     run_dir = Path(runs_root) / run_date
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -407,6 +483,8 @@ def run(
         run_dir / "source_failures.json", [asdict(f) for f in failures]
     )
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+    _write_json(run_dir / "m1_candidates.json", m1_candidates)
+    _write_json(run_dir / "acceptance_report.json", acceptance_report)
     brief_text = render_brief(
         summary,
         ranked,
@@ -415,6 +493,8 @@ def run(
         keywords,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        m1_candidates=m1_candidates,
+        acceptance_report=acceptance_report,
     )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
     handoff_text = render_m2_handoff(
@@ -424,6 +504,8 @@ def run(
         keywords,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        m1_candidates=m1_candidates,
+        acceptance_report=acceptance_report,
     )
     (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -437,5 +519,7 @@ def run(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        m1_candidates=m1_candidates,
+        acceptance_report=acceptance_report,
         summary=summary,
     )

@@ -19,16 +19,19 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `cleaned_items.json` — items after HTML stripping, normalization, filtering, and dedupe
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
+- `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
+- `acceptance_report.json` — hard M1 quality checks and warning-level source/candidate caveats
 - `source_failures.json` — per-source errors (run never crashes on a single source)
-- `source_health.json` — per-source raw, dated, rankable, content-mode, document-link, parsed-content, and failure counts
+- `source_health.json` — per-source raw, dated, rankable, tag, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
 
 ### Optional flags
 
 ```bash
 uv run python scripts/scan_metasources.py --date 2026-04-27 --config config/metasources.yaml --source-report
+uv run python scripts/scan_metasources.py --date 2026-04-27 --strict
 ```
 
 ## Project layout
@@ -45,4 +48,4 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.14 — M2-ready handoff**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.15 — deterministic candidate DB + quality gates**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
