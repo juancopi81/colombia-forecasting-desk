@@ -281,3 +281,36 @@ def test_link_only_source_cluster_is_rejected_even_when_forecastable() -> None:
         "source is link-only in this run; document contents are missing"
     )
     assert out["rejected"][0]["reject_reason"] == out["rejected"][0]["reason"]
+
+
+def test_mixed_document_and_html_source_cluster_is_not_rejected_as_link_only() -> None:
+    cluster = _cluster(
+        member_source_ids=["dane_comunicados_prensa"],
+        member_source_names=["DANE"],
+        member_urls=["https://www.dane.gov.co/noticias/ipc.html"],
+    )
+    health = SourceHealth(
+        source_id="dane_comunicados_prensa",
+        source_name="DANE",
+        url="https://example.com/dane",
+        raw_count=2,
+        cleaned_count=2,
+        dated_count=2,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="mixed_document_and_html_links",
+        document_link_count=1,
+        parsed_content_count=0,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=["banrep", "tasa"],
+        source_health=[health],
+        generated_at="2026-05-06T12:00:31Z",
+    )
+
+    assert len(out["candidates"]) == 1
+    assert out["rejected"] == []

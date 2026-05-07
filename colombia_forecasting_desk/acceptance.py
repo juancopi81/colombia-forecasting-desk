@@ -4,6 +4,7 @@ from collections import Counter
 from typing import Any, Iterable
 
 from .models import CleanedItem, RunSummary, SourceFailure, SourceHealth
+from .source_quality import is_unparsed_link_only_source
 
 ACCEPTANCE_SCHEMA_VERSION = "m1_acceptance.v1"
 TOP_SOURCE_SHARE_WARNING_THRESHOLD = 0.6
@@ -136,7 +137,7 @@ def build_acceptance_report(
     link_only_sources = {
         health.source_id
         for health in source_health_list
-        if health.document_link_count > 0 and health.parsed_content_count == 0
+        if is_unparsed_link_only_source(health)
     }
     for candidate in candidates:
         overlapping = sorted(link_only_sources & set(_candidate_source_ids(candidate)))

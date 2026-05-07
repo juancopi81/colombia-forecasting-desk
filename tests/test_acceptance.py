@@ -126,6 +126,52 @@ def test_acceptance_errors_when_candidate_uses_link_only_source() -> None:
     assert report["strict_pass"] is False
 
 
+def test_acceptance_does_not_error_on_mixed_document_and_html_source(
+    make_cleaned,
+) -> None:
+    report = build_acceptance_report(
+        _summary(),
+        {
+            "candidates": [
+                _candidate(
+                    evidence={
+                        "source_ids": ["dane_comunicados_prensa"],
+                        "links": [{"url": "https://example.com/html-story"}],
+                        "starting_evidence": "HTML official signal.",
+                    }
+                )
+            ]
+        },
+        [
+            SourceHealth(
+                source_id="dane_comunicados_prensa",
+                source_name="DANE",
+                url="https://example.com",
+                raw_count=2,
+                cleaned_count=2,
+                dated_count=2,
+                rankable_count=1,
+                failure_count=0,
+                content_mode="mixed_document_and_html_links",
+                document_link_count=1,
+                parsed_content_count=0,
+            )
+        ],
+        [],
+        [
+            make_cleaned(
+                source_id="dane_comunicados_prensa",
+                detected_entities=["dane"],
+                detected_topics=["inflation"],
+            )
+        ],
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "candidate_from_link_only_source" not in codes
+    assert report["strict_pass"] is True
+
+
 def test_acceptance_warns_on_high_impact_source_failure() -> None:
     report = build_acceptance_report(
         _summary(sources_failed=1),

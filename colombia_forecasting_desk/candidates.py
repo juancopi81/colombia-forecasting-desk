@@ -20,6 +20,7 @@ from .models import (
     SourceFailure,
     SourceHealth,
 )
+from .source_quality import is_unparsed_link_only_source
 
 SCHEMA_VERSION = "m1_candidates.v1"
 DEFAULT_MISSING_EVIDENCE = [
@@ -436,7 +437,7 @@ def _link_only_source_ids(source_health: list[SourceHealth]) -> set[str]:
     return {
         health.source_id
         for health in source_health
-        if health.document_link_count > 0 and health.parsed_content_count == 0
+        if is_unparsed_link_only_source(health)
     }
 
 
