@@ -34,6 +34,12 @@ uv run python scripts/scan_metasources.py --date 2026-04-27 --config config/meta
 uv run python scripts/scan_metasources.py --date 2026-04-27 --strict
 ```
 
+`--strict` exits nonzero when M1 hard gates fail. It checks both candidate
+quality and operational coverage: malformed candidates, link-only evidence
+promoted as forecastable, too few raw/cleaned/rankable items in a full run, too
+many source failures, too few observed Indicator Watch cards, or excessive
+high-impact source failures.
+
 ## Project layout
 
 ```

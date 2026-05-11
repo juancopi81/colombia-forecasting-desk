@@ -368,6 +368,7 @@ def run_single_source(
         source_health,
         failures,
         cleaned,
+        indicator_watch,
     )
 
     run_dir = Path(runs_root) / SANDBOX_DIR_NAME / source.id
@@ -469,6 +470,7 @@ def run(
         source_health,
         failures,
         cleaned,
+        indicator_watch,
     )
 
     run_dir = Path(runs_root) / run_date

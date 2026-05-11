@@ -340,11 +340,13 @@ missing evidence. The Markdown handoff remains the human-readable/pasteable
 view, but it is backed by the candidate database. Each run also writes
 `acceptance_report.json`; `scripts/scan_metasources.py --strict` exits nonzero
 when error-level checks find malformed candidates, link-only evidence promoted
-as forecastable, or an otherwise nonempty run with zero candidates. Cleaning now
-adds deterministic entity/topic tags, clusters aggregate those tags, and source
-health reports tag coverage and an acceptance status. MinCIT PDF attachment
-URLs now enter the same fail-closed PDF enrichment path used by DANE press
-documents.
+as forecastable, an otherwise nonempty run with zero candidates, or a full
+multi-source run that is operationally too thin to trust. Operational hard gates
+cover raw/cleaned/rankable item floors, source failure share, observed Indicator
+Watch coverage, and excessive high-impact source failures. Cleaning now adds
+deterministic entity/topic tags, clusters aggregate those tags, and source
+health reports tag coverage and an acceptance status. MinCIT PDF attachment URLs
+now enter the same fail-closed PDF enrichment path used by DANE press documents.
 
 ## Indicator Watch
 

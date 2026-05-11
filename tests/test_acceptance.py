@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from colombia_forecasting_desk.acceptance import build_acceptance_report
-from colombia_forecasting_desk.models import RunSummary, SourceFailure, SourceHealth
+from colombia_forecasting_desk.models import (
+    IndicatorObservation,
+    RunSummary,
+    SourceFailure,
+    SourceHealth,
+)
 
 
 def _summary(**overrides) -> RunSummary:
@@ -35,6 +40,33 @@ def _candidate(**overrides) -> dict:
     return base
 
 
+def _indicator(**overrides) -> IndicatorObservation:
+    base = dict(
+        indicator_id="trm_usd_cop",
+        name="TRM / USD-COP",
+        category="markets",
+        status="observed",
+        frequency="daily",
+        source_name="SFC",
+        source_url="https://example.com/trm",
+    )
+    base.update(overrides)
+    return IndicatorObservation(**base)
+
+
+def _failure(source_id: str, **overrides) -> SourceFailure:
+    base = dict(
+        source_id=source_id,
+        source_name=source_id,
+        url="https://example.com",
+        error_class="HTTPStatusError",
+        error_message="failed",
+        occurred_at="2026-05-06T12:00:00Z",
+    )
+    base.update(overrides)
+    return SourceFailure(**base)
+
+
 def test_acceptance_passes_for_well_formed_candidate(make_cleaned) -> None:
     report = build_acceptance_report(
         _summary(),
@@ -63,6 +95,52 @@ def test_acceptance_passes_for_well_formed_candidate(make_cleaned) -> None:
     assert report["status"] == "pass"
     assert report["strict_pass"] is True
     assert report["error_count"] == 0
+
+
+def test_acceptance_passes_full_run_with_warning_level_source_failures(
+    make_cleaned,
+) -> None:
+    report = build_acceptance_report(
+        _summary(
+            sources_checked=27,
+            sources_failed=2,
+            raw_items=296,
+            cleaned_items=203,
+            clusters=26,
+        ),
+        {"candidates": [_candidate()]},
+        [
+            SourceHealth(
+                source_id="banrep_rss",
+                source_name="BanRep",
+                url="https://example.com",
+                raw_count=1,
+                cleaned_count=1,
+                dated_count=1,
+                rankable_count=1,
+                failure_count=0,
+            )
+        ],
+        [
+            _failure("banrep_junta_comunicados"),
+            _failure("registraduria_noticias"),
+        ],
+        [
+            make_cleaned(
+                id=f"item-{idx}",
+                detected_entities=["banrep"],
+                detected_topics=["monetary_policy"],
+            )
+            for idx in range(5)
+        ],
+        [_indicator(indicator_id=f"indicator-{idx}") for idx in range(8)],
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert report["status"] == "pass"
+    assert report["strict_pass"] is True
+    assert report["error_count"] == 0
+    assert "high_impact_source_failed" in codes
 
 
 def test_acceptance_errors_on_candidate_without_resolution_or_evidence() -> None:
@@ -207,3 +285,29 @@ def test_acceptance_errors_on_nonempty_run_without_candidates() -> None:
 
     assert report["status"] == "fail"
     assert report["issues"][0]["code"] == "no_candidates_from_nonempty_run"
+
+
+def test_acceptance_errors_on_operationally_empty_full_run() -> None:
+    report = build_acceptance_report(
+        _summary(
+            sources_checked=27,
+            sources_failed=27,
+            raw_items=0,
+            cleaned_items=0,
+            clusters=0,
+        ),
+        {"candidates": []},
+        [],
+        [],
+        [],
+        [],
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert report["status"] == "fail"
+    assert report["strict_pass"] is False
+    assert "operational_raw_items_below_minimum" in codes
+    assert "operational_cleaned_items_below_minimum" in codes
+    assert "operational_source_failure_share_too_high" in codes
+    assert "operational_rankable_items_below_minimum" in codes
+    assert "operational_observed_indicators_below_minimum" in codes
