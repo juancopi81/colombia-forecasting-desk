@@ -203,6 +203,48 @@ def test_indicator_seed_candidate_from_observed_trm_move() -> None:
     )
 
 
+def test_indicator_seed_candidate_from_ise_activity_acceleration() -> None:
+    ise = IndicatorObservation(
+        indicator_id="ise_activity",
+        name="ISE / monthly activity",
+        category="macro_activity",
+        status="observed",
+        frequency="monthly",
+        source_name="DANE",
+        source_url=(
+            "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+            "cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise"
+        ),
+        period="2026-03",
+        release_date="2026-05-15T00:00:00Z",
+        headline="DANE ISE 2026-03: index 128.91, activity +3.98% y/y.",
+        values={"ise_index": 128.91, "annual_growth_pct": 3.98},
+        freshness_status="current",
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [],
+        [],
+        topic_keywords=[],
+        indicator_watch=[ise],
+        generated_at="2026-05-06T12:00:31Z",
+    )
+
+    assert len(out["candidates"]) == 1
+    candidate = out["candidates"][0]
+    assert candidate["candidate_type"] == "indicator_seed"
+    assert candidate["origin_id"] == "ise_activity"
+    assert candidate["topic"] == "economic_activity"
+    assert candidate["theme"] == "Activity acceleration"
+    assert candidate["reasons"] == ["indicator:activity_acceleration"]
+    assert candidate["question_seed"] == (
+        "Will the next DANE ISE release show annual growth of at least 3.0%?"
+    )
+    assert candidate["resolution_source"] == "DANE ISE next monthly release."
+    assert candidate["evidence"]["values"]["annual_growth_pct"] == 3.98
+
+
 def test_source_caveats_include_failures_and_link_only_sources() -> None:
     failure = SourceFailure(
         source_id="registraduria_noticias",

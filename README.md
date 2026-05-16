@@ -61,8 +61,9 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.22 — official legal-resolution bridge**, building on the
-M1.20 legislative registry pipeline and M1.21 MinCIT zonas-francas parser. The
+Currently at **M1.23 — GDP/ISE Indicator Watch coverage**, building on the
+M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, and
+M1.22 official legal-resolution bridge. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
 provide primary structured bill identity/status records; Senado agenda PDFs and
 Gacetas remain fallback/follow-up evidence. The MinCIT zonas francas source
@@ -74,7 +75,10 @@ normalized legal-act identities so official resolution matches can be attached
 only when the act number/year and MinCIT or zone-name context agree. DIAN
 regulatory-project coverage is source-specific instead of broad site
 navigation, but still marked as parser feasibility rather than rankable
-evidence. See
+evidence. DANE PIB and ISE official pages are now first-class Indicator Watch
+cards, including PIB sector drivers and current-release official document
+links, so GDP/ISE releases can become M2-ready activity seeds instead of only
+appearing as indirect context. See
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
 detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones
 (M2 question discovery, M3 evidence packs, M4 public X experiment).

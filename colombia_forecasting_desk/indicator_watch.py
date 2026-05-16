@@ -7,6 +7,7 @@ from calendar import monthrange
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
+from urllib.parse import urljoin
 from xml.etree import ElementTree
 
 import httpx
@@ -53,6 +54,15 @@ EMMET_URL = (
 LABOR_MARKET_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
     "mercado-laboral/empleo-y-desempleo"
+)
+GDP_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "cuentas-nacionales/cuentas-nacionales-trimestrales/"
+    "pib-informacion-tecnica"
+)
+ISE_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise"
 )
 CEMENT_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
@@ -203,6 +213,46 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
         next_step=(
             "Headline HTML is wired; add informality, youth, and city details "
             "from GEIH annexes when needed."
+        ),
+    ),
+    IndicatorDefinition(
+        indicator_id="gdp_growth",
+        name="GDP / PIB growth",
+        category="macro_activity",
+        frequency="quarterly",
+        source_name="DANE",
+        source_url=GDP_URL,
+        why_it_matters=(
+            "GDP is the broadest official read on Colombia's real economy and "
+            "anchors public narratives about growth, fiscal space, and policy."
+        ),
+        correlations=(
+            "GDP + ISE separates broad quarterly momentum from the faster monthly activity pulse",
+            "GDP + tax collection helps distinguish real activity growth from nominal fiscal stress",
+        ),
+        next_step=(
+            "Headline HTML is wired; add sector contribution annex drivers when "
+            "GDP growth becomes a selected forecast theme."
+        ),
+    ),
+    IndicatorDefinition(
+        indicator_id="ise_activity",
+        name="ISE / monthly activity",
+        category="macro_activity",
+        frequency="monthly",
+        source_name="DANE",
+        source_url=ISE_URL,
+        why_it_matters=(
+            "ISE is DANE's monthly proxy for economic activity, so it can reveal "
+            "growth acceleration or slowdown before the next GDP release."
+        ),
+        correlations=(
+            "ISE + retail/manufacturing/electricity demand can test whether activity strength is broad-based",
+            "ISE + tax collection can flag growth that is not translating into fiscal revenue",
+        ),
+        next_step=(
+            "Headline HTML is wired; add activity-group contribution details "
+            "when the watch needs a deeper nowcast."
         ),
     ),
     IndicatorDefinition(
@@ -400,7 +450,7 @@ def _to_float_unrounded(value: Any) -> float | None:
     if isinstance(value, int | float):
         return float(value)
     try:
-        text = str(value).strip().replace(" ", "")
+        text = str(value).strip().replace(" ", "").strip(".,")
         if "," in text and "." in text:
             if text.rfind(",") > text.rfind("."):
                 text = text.replace(".", "").replace(",", ".")
@@ -461,6 +511,11 @@ _MONTH_ABBR_ES = {
 _NUMBER = r"(-?[\d.,]+)"
 _PERCENT = rf"{_NUMBER}\s*%"
 _MONTH_NAMES = "|".join(_MONTHS_ES)
+_GROWTH_WITH_PERCENT = (
+    rf"(?:crece|crecio|presento(?: un)? crecimiento(?: de| del)?|"
+    rf"presento una variacion de|tuvo(?: un)? crecimiento(?: de| del)?)\s+"
+    rf"{_PERCENT}"
+)
 
 
 def _text_from_html(html: str) -> str:
@@ -534,6 +589,54 @@ def _release_date_from_text(text: str) -> str:
 
 def _latest_release_date(html: str) -> str:
     return _release_date_from_text(_text_from_html(html))
+
+
+def _date_text_from_iso(value: str) -> str:
+    parsed = _parse_iso_date(value)
+    return parsed.strftime("%d/%m/%Y") if parsed else ""
+
+
+def _current_document_links_from_html(
+    html: str,
+    *,
+    source_url: str,
+    release_date: str,
+) -> list[dict[str, str]]:
+    release_date_text = _date_text_from_iso(release_date)
+    if not release_date_text:
+        return []
+    soup = BeautifulSoup(html, "html.parser")
+    links: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor["href"])
+        if "/files/" not in href:
+            continue
+        row = anchor.find_parent("tr")
+        context = normalize_whitespace(
+            (row or anchor.parent or anchor).get_text(" ", strip=True)
+        )
+        if release_date_text not in context:
+            continue
+        url = urljoin(source_url, href)
+        if url in seen:
+            continue
+        seen.add(url)
+        cells = [
+            normalize_whitespace(cell.get_text(" ", strip=True))
+            for cell in (row.find_all(["td", "th"]) if row else [])
+        ]
+        title = cells[0] if cells else context.replace("Descargar", "").strip()
+        links.append(
+            {
+                "title": title,
+                "url": url,
+                "published_at": cells[1] if len(cells) > 1 else release_date_text,
+                "format": cells[2] if len(cells) > 2 else "",
+                "size": cells[3] if len(cells) > 3 else "",
+            }
+        )
+    return links
 
 
 _FRESHNESS_DAYS_BY_FREQUENCY = {
@@ -1052,6 +1155,135 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
         release_date=_latest_release_date(html),
         headline=headline,
         values=values,
+    )
+
+
+def _gdp_sector_drivers_from_html(html: str) -> list[dict[str, Any]]:
+    soup = BeautifulSoup(html, "html.parser")
+    drivers: list[dict[str, Any]] = []
+    for item in soup.find_all("li"):
+        text = normalize_whitespace(item.get_text(" ", strip=True))
+        match = re.search(
+            rf"(.+?)\s+crece\s+{_PERCENT}\s+\(contribuye\s+{_NUMBER}\s+"
+            r"puntos porcentuales",
+            text,
+            re.IGNORECASE,
+        )
+        if not match:
+            continue
+        drivers.append(
+            {
+                "name": normalize_whitespace(match.group(1)),
+                "annual_growth_pct": _to_float(match.group(2)),
+                "contribution_pp": _to_float(match.group(3)),
+            }
+        )
+    return drivers
+
+
+def gdp_observation_from_html(html: str) -> IndicatorObservation | None:
+    text = _folded_text_from_html(html)
+    quarter_pattern = r"((?:primer|segundo|tercer|cuarto|i|ii|iii|iv)\s+trimestre)"
+    match = re.search(
+        rf"en\s+el\s+{quarter_pattern}\s+de\s+(20\d{{2}})\w*.*?"
+        rf"producto interno bruto.*?serie original.*?{_GROWTH_WITH_PERCENT}"
+        rf".*?respecto al mismo periodo",
+        text,
+    )
+    if not match:
+        return None
+    quarter_text, year = match.group(1), match.group(2)
+    annual_growth = _to_float(match.group(3))
+    adjusted_match = re.search(
+        rf"respecto al trimestre inmediatamente anterior.*?serie ajustada.*?"
+        rf"{_GROWTH_WITH_PERCENT}",
+        text,
+    )
+    adjusted_growth = _to_float(adjusted_match.group(1)) if adjusted_match else None
+    period = _quarter_period(quarter_text, year)
+    headline = f"DANE GDP {period}: real GDP {annual_growth:+.2f}% y/y"
+    if adjusted_growth is not None:
+        headline += f", seasonally adjusted {adjusted_growth:+.2f}% q/q"
+    headline += "."
+    definition = _definition_map()["gdp_growth"]
+    release_date = _latest_release_date(html)
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=release_date,
+        headline=headline,
+        values={
+            "real_gdp_annual_growth_pct": annual_growth,
+            "real_gdp_qoq_adjusted_growth_pct": adjusted_growth,
+            "sector_drivers": _gdp_sector_drivers_from_html(html),
+            "official_documents": _current_document_links_from_html(
+                html,
+                source_url=definition.source_url,
+                release_date=release_date,
+            ),
+        },
+    )
+
+
+def ise_observation_from_html(html: str) -> IndicatorObservation | None:
+    text = _folded_text_from_html(html)
+    match = re.search(
+        rf"para el mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*.*?"
+        rf"(?:indicador de seguimiento a la economia|ise).*?serie original.*?"
+        rf"se ubico en\s+{_NUMBER}.*?(?:un\s+)?crecimiento(?: de| del)\s+"
+        rf"{_PERCENT}",
+        text,
+    )
+    index_value: float | None = None
+    if match:
+        month_name, year = match.group(1), match.group(2)
+        index_value = _to_float(match.group(3))
+        annual_growth = _to_float(match.group(4))
+    else:
+        fallback = re.search(
+            rf"para el mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*.*?"
+            rf"(?:indicador de seguimiento a la economia|ise).*?serie original.*?"
+            rf"(?:un\s+)?crecimiento(?: de| del)\s+{_PERCENT}",
+            text,
+        )
+        if not fallback:
+            return None
+        month_name, year = fallback.group(1), fallback.group(2)
+        annual_growth = _to_float(fallback.group(3))
+    adjusted_match = re.search(
+        rf"serie ajustada.*?(?:un\s+)?crecimiento(?: de| del)\s+{_PERCENT}",
+        text,
+    )
+    adjusted_growth = _to_float(adjusted_match.group(1)) if adjusted_match else None
+    period = _month_period(month_name, year)
+    index_text = (
+        f" index {index_value:.2f},"
+        if isinstance(index_value, int | float)
+        else ""
+    )
+    headline = f"DANE ISE {period}:{index_text} activity {annual_growth:+.2f}% y/y"
+    if adjusted_growth is not None:
+        headline += f", adjusted {adjusted_growth:+.2f}% y/y"
+    headline += "."
+    definition = _definition_map()["ise_activity"]
+    release_date = _latest_release_date(html)
+    return _headline_definition(
+        definition,
+        status="observed",
+        period=period,
+        release_date=release_date,
+        headline=headline,
+        values={
+            "ise_index": index_value,
+            "annual_growth_pct": annual_growth,
+            "adjusted_annual_growth_pct": adjusted_growth,
+            "official_documents": _current_document_links_from_html(
+                html,
+                source_url=definition.source_url,
+                release_date=release_date,
+            ),
+        },
     )
 
 
@@ -2179,6 +2411,8 @@ _DANE_HTML_INDICATORS: tuple[
 ] = (
     ("ipc_inflation", IPC_URL, ipc_observation_from_html),
     ("labor_market", LABOR_MARKET_URL, labor_market_observation_from_html),
+    ("gdp_growth", GDP_URL, gdp_observation_from_html),
+    ("ise_activity", ISE_URL, ise_observation_from_html),
     ("retail_sales", EMC_URL, retail_sales_observation_from_html),
     ("manufacturing", EMMET_URL, manufacturing_observation_from_html),
 )

@@ -248,13 +248,15 @@ parsed evidence.
 
 M1.7 adds an Indicator Watch alongside event clusters. Some high-value public
 signals are not daily events; they are latest-known state variables that should
-remain visible after the normal freshness window. The watch starts with twelve
+remain visible after the normal freshness window. The watch starts with fourteen
 must-track cards:
 
 - IPC / inflation
 - TRM / USD-COP
 - policy rate + IBR
 - labor market
+- GDP / PIB growth
+- ISE / monthly activity
 - retail sales
 - manufacturing
 - construction bundle
@@ -300,13 +302,13 @@ is only partially loaded. This gives the watch a daily operating-stress view
 and a monthly hydrocarbon fiscal/external-account view without starting PDF or
 spreadsheet parsing.
 
-M1.12 completes first-pass Indicator Watch wiring for all twelve cards. Policy
-rate + IBR now comes from BanRep's SUAMECA JSON series endpoint. External trade
-now reads DANE's current export/import headline HTML. Fiscal/tax pulse now
-parses DIAN's official monthly tax-collection XLSX inside its published ZIP
-using the standard library. This does not mean every card is fully deepened; it
-means the watch no longer has placeholder cards and can be evaluated for which
-signals deserve second-pass detail.
+M1.12 completed first-pass Indicator Watch wiring for the original twelve
+cards. Policy rate + IBR now comes from BanRep's SUAMECA JSON series endpoint.
+External trade now reads DANE's current export/import headline HTML.
+Fiscal/tax pulse now parses DIAN's official monthly tax-collection XLSX inside
+its published ZIP using the standard library. This does not mean every card is
+fully deepened; it means the original watch no longer had placeholder cards and
+could be evaluated for which signals deserved second-pass detail.
 
 M1.13 makes the brief more analyst-facing before starting M2. The brief now
 opens with deterministic `Analyst Attention` bullets, renders the Indicator
@@ -420,6 +422,15 @@ itself. If the downloaded PDF yields no extractable text, the item keeps
 `content_extraction_error` metadata and the source-health gate remains
 `document_unparsed` / `document_links_only` rather than green.
 
+M1.23 closes the DANE GDP/ISE coverage gap exposed by the May 15, 2026
+PIB/ISE release. The Indicator Watch now reads DANE's official PIB technical
+page and ISE page directly, so headline GDP growth and monthly ISE activity are
+structured cards rather than social-media-only context. The PIB card also
+captures DANE's top sector drivers and both cards retain current-release
+official document/annex links for M2/M3 follow-up. A strong ISE reading fires
+an `activity_acceleration` M2 seed, making the follow-up question explicit
+instead of relying on indirect retail/manufacturing clues.
+
 ## Indicator Watch
 
 Each run writes:
@@ -469,6 +480,12 @@ Current observed cards:
   division movements from the current technical page.
 - `labor_market`: DANE GEIH national unemployment, participation, occupation,
   and prior-year comparisons from the current labor page.
+- `gdp_growth`: DANE PIB quarterly real GDP annual growth, seasonally adjusted
+  quarter-over-quarter growth, top sector drivers, and current-release
+  document/annex links from the official technical page.
+- `ise_activity`: DANE ISE monthly original-series index and annual growth
+  from the official ISE page, plus adjusted annual growth when DANE exposes it
+  in the current-result HTML and current-release document/annex links.
 - `retail_sales`: DANE EMC headline real retail sales, employment, and ex-fuel
   annual changes from the current commerce page.
 - `manufacturing`: DANE EMMET headline real production, real sales, and
@@ -489,7 +506,7 @@ Current observed cards:
 - `fiscal_tax_pulse`: DIAN monthly gross tax collection by broad bucket from
   the official XLSX ZIP, including year-over-year change.
 
-All twelve cards now have a first-pass source. The next hardening candidates
+All fourteen cards now have a first-pass source. The next hardening candidates
 are source health thresholds, regression fixtures from live structured
 endpoints, and explicit alert rules for stale critical components. The next
 deepening candidates are SECOP sector fields, external-trade product/country
@@ -503,6 +520,8 @@ M1.13 adds deterministic alert rendering for known high-value conditions:
 - `mixed_period_components`: bundle components should not be combined because
   they refer to different periods, currently used for external trade.
 - `real_terms_warning`: nominal tax collection growth is below annual IPC.
+- `activity_acceleration`: monthly ISE annual growth is strong enough to merit
+  a next-release follow-up question.
 - `cross_indicator_tension`: activity indicators disagree in a way worth
   inspection, for example strong retail sales with negative manufacturing
   sales.

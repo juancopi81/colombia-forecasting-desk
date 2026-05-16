@@ -350,6 +350,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Add an official legal-resolution bridge that parses Diario Oficial,
       SUIN/Gestor-style legal act identities and attaches MinCIT resolution
       matches only when act number/year and MinCIT or zone-name context agree.
+- [x] Add DANE PIB and ISE official pages as first-class Indicator Watch cards
+      and promote strong ISE readings as M2 activity-acceleration seeds.
 
 ### M2 — Question Discovery
 

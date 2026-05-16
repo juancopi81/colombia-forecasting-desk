@@ -16,9 +16,11 @@ from colombia_forecasting_desk.indicator_watch import (
     external_trade_observation_from_components,
     fiscal_tax_observation_from_dian_xlsx,
     fiscalized_gas_component_from_anh_rows,
+    gdp_observation_from_html,
     housing_finance_component_from_html,
     imports_component_from_html,
     ipc_observation_from_html,
+    ise_observation_from_html,
     labor_market_observation_from_html,
     latest_complete_anh_period,
     manufacturing_observation_from_html,
@@ -35,12 +37,14 @@ from colombia_forecasting_desk.models import IndicatorObservation
 def test_indicator_watch_registers_all_core_indicators() -> None:
     watch = build_indicator_watch([], [])
 
-    assert len(watch) == 12
+    assert len(watch) == 14
     assert {item.indicator_id for item in watch} == {
         "ipc_inflation",
         "trm_usd_cop",
         "policy_rate_ibr",
         "labor_market",
+        "gdp_growth",
+        "ise_activity",
         "retail_sales",
         "manufacturing",
         "construction_bundle",
@@ -369,6 +373,113 @@ def test_labor_market_observation_from_html_extracts_dane_headline() -> None:
     assert observation.values["national_participation_rate_pct"] == 65.0
     assert observation.values["national_occupation_rate_pct"] == 59.3
     assert observation.values["thirteen_cities_unemployment_rate_pct"] == 9.4
+
+
+def test_gdp_observation_from_html_extracts_dane_headline() -> None:
+    observation = gdp_observation_from_html(
+        """
+        <main>
+          <p>Boletín técnico 15/05/2026</p>
+          <p>En el primer trimestre de 2026pr, el Producto Interno Bruto en su
+          serie original, crece 2,2% respecto al mismo periodo de 2025pr.</p>
+          <ul>
+            <li>Administración pública y defensa; Educación; Actividades de
+            atención de la salud humana y de servicios sociales crece 5,7%
+            (contribuye 0,9 puntos porcentuales a la variación anual).</li>
+            <li>Comercio al por mayor y al por menor; Transporte y
+            almacenamiento; Alojamiento y servicios de comida crece 2,9%
+            (contribuye 0,6 puntos porcentuales a la variación anual).</li>
+          </ul>
+          <p>Respecto al trimestre inmediatamente anterior, el Producto Interno
+          Bruto en su serie ajustada por efecto estacional y calendario crece
+          0,6%.</p>
+          <table>
+            <tr>
+              <td>Boletín técnico</td><td>15/05/2026</td><td>PDF</td><td>570 KB</td>
+              <td><a href="/files/operaciones/PIB/bol-PIB-Itrim2026.pdf">Descargar</a></td>
+            </tr>
+            <tr>
+              <td>PIB a precios constantes - primer trimestre 2026</td>
+              <td>15/05/2026</td><td>XLSX</td><td>1.07 MB</td>
+              <td><a href="/files/operaciones/PIB/anex-ProduccionConstantes-Itrim2026.xlsx">Descargar</a></td>
+            </tr>
+            <tr>
+              <td>Metodología</td><td>04/2023</td><td>PDF</td><td>260 KB</td>
+              <td><a href="/files/investigaciones/fichas/pib/DSO-CT-MET-001-V6.pdf">Descargar</a></td>
+            </tr>
+          </table>
+        </main>
+        """
+    )
+
+    assert observation is not None
+    assert observation.indicator_id == "gdp_growth"
+    assert observation.status == "observed"
+    assert observation.period == "2026-Q1"
+    assert observation.release_date == "2026-05-15T00:00:00Z"
+    assert observation.values["real_gdp_annual_growth_pct"] == 2.2
+    assert observation.values["real_gdp_qoq_adjusted_growth_pct"] == 0.6
+    assert observation.values["sector_drivers"][0] == {
+        "name": (
+            "Administración pública y defensa; Educación; Actividades de "
+            "atención de la salud humana y de servicios sociales"
+        ),
+        "annual_growth_pct": 5.7,
+        "contribution_pp": 0.9,
+    }
+    assert [doc["title"] for doc in observation.values["official_documents"]] == [
+        "Boletín técnico",
+        "PIB a precios constantes - primer trimestre 2026",
+    ]
+    assert observation.values["official_documents"][0]["url"] == (
+        "https://www.dane.gov.co/files/operaciones/PIB/bol-PIB-Itrim2026.pdf"
+    )
+
+
+def test_ise_observation_from_html_extracts_dane_headline() -> None:
+    observation = ise_observation_from_html(
+        """
+        <main>
+          <p>Comunicado 15/05/2026</p>
+          <p>Para el mes de marzo de 2026 pr, el ISE en su serie original se
+          ubicó en 128,91, lo que representó un crecimiento de 3,98% respecto
+          al mes de marzo de 2025 pr (123,97).</p>
+          <p>En su serie ajustada por efecto estacional y calendario, el ISE
+          presentó un crecimiento de 4,0%.</p>
+          <table>
+            <tr>
+              <td>Boletín técnico</td><td>15/05/2026</td><td>PDF</td><td>424 KB</td>
+              <td><a href="/files/operaciones/ISE/bol-ISE-mar2026.pdf">Descargar</a></td>
+            </tr>
+            <tr>
+              <td>Anexo (12 actividades)</td><td>15/05/2026</td><td>XLSX</td><td>595 KB</td>
+              <td><a href="/files/operaciones/ISE/anex-ISE-12actividades-mar2026.xlsx">Descargar</a></td>
+            </tr>
+            <tr>
+              <td>Metodología</td><td>28/03/2023</td><td>PDF</td><td>658 KB</td>
+              <td><a href="/files/investigaciones/fichas/ise/DSO-ISE-MET-001-V1.pdf">Descargar</a></td>
+            </tr>
+          </table>
+        </main>
+        """
+    )
+
+    assert observation is not None
+    assert observation.indicator_id == "ise_activity"
+    assert observation.status == "observed"
+    assert observation.period == "2026-03"
+    assert observation.release_date == "2026-05-15T00:00:00Z"
+    assert observation.values["ise_index"] == 128.91
+    assert observation.values["annual_growth_pct"] == 3.98
+    assert observation.values["adjusted_annual_growth_pct"] == 4.0
+    assert [doc["title"] for doc in observation.values["official_documents"]] == [
+        "Boletín técnico",
+        "Anexo (12 actividades)",
+    ]
+    assert observation.values["official_documents"][1]["url"] == (
+        "https://www.dane.gov.co/files/operaciones/ISE/"
+        "anex-ISE-12actividades-mar2026.xlsx"
+    )
 
 
 def test_construction_components_from_html_extract_dane_headlines() -> None:

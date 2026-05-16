@@ -270,6 +270,32 @@ def _indicator_candidates(
                 )
             )
 
+    ise = by_id.get("ise_activity")
+    if ise and ise.status == "observed":
+        annual_growth = ise.values.get("annual_growth_pct")
+        if isinstance(annual_growth, int | float) and annual_growth >= 3:
+            seeds.append(
+                (
+                    ise,
+                    {
+                        "theme": "Activity acceleration",
+                        "trigger": ise.headline,
+                        "question": (
+                            "Will the next DANE ISE release show annual growth "
+                            "of at least 3.0%?"
+                        ),
+                        "resolution": "DANE ISE next monthly release.",
+                        "deadline": "Next DANE ISE release.",
+                        "missing": (
+                            "Activity-group contribution details, base effects, "
+                            "and confirmation from retail, manufacturing, "
+                            "electricity, and tax collection."
+                        ),
+                    },
+                    ["activity_acceleration"],
+                )
+            )
+
     manufacturing = by_id.get("manufacturing")
     retail = by_id.get("retail_sales")
     if manufacturing and manufacturing.status == "observed":
@@ -718,6 +744,7 @@ def _indicator_topics(indicator: IndicatorObservation) -> list[str]:
         "markets": ["external_trade"],
         "monetary": ["monetary_policy"],
         "activity": ["labor_market"],
+        "macro_activity": ["economic_activity"],
         "fiscal": ["fiscal_tax"],
         "external": ["external_trade"],
         "energy_fiscal": ["hydrocarbons", "energy", "fiscal_tax"],

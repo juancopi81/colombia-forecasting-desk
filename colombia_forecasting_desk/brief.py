@@ -24,7 +24,7 @@ from .models import (
 TOP_SIGNALS_LIMIT = 10
 LOW_QUALITY_LIMIT = 10
 ERROR_MSG_TRUNCATE = 200
-INDICATOR_LIMIT = 12
+INDICATOR_LIMIT = 14
 ANALYST_ATTENTION_LIMIT = 8
 SOURCE_ACTION_LIMIT = 8
 HIGH_VALUE_UNDERCOVERED_SOURCES = frozenset({"dian_proyectos_normas"})
@@ -458,6 +458,14 @@ def _indicator_alerts(
                 f"`liquidity_spread`: IBR-policy spread is {spread:.2f} pp."
             )
 
+    if indicator.indicator_id == "ise_activity":
+        annual_growth = indicator.values.get("annual_growth_pct")
+        if isinstance(annual_growth, int | float) and annual_growth >= 3:
+            alerts.append(
+                f"`activity_acceleration`: ISE annual growth is "
+                f"{annual_growth:.2f}%."
+            )
+
     if indicator.indicator_id == "external_trade":
         periods = {
             component.period
@@ -574,6 +582,29 @@ def _indicator_seed_questions(
                 "resolution": "BanRep board communique and official policy-rate series.",
                 "deadline": "Next scheduled BanRep board decision.",
                 "missing": "Next meeting date, inflation expectations, board guidance, and market pricing.",
+            }
+        )
+
+    ise = by_id.get("ise_activity")
+    if ise and any(
+        "`activity_acceleration`" in a
+        for a in _indicator_alerts(ise, indicators, run_date)
+    ):
+        seeds.append(
+            {
+                "theme": "Activity acceleration",
+                "trigger": ise.headline,
+                "question": (
+                    "Will the next DANE ISE release show annual growth of at "
+                    "least 3.0%?"
+                ),
+                "resolution": "DANE ISE next monthly release.",
+                "deadline": "Next DANE ISE release.",
+                "missing": (
+                    "Activity-group contribution details, base effects, and "
+                    "confirmation from retail, manufacturing, electricity, and "
+                    "tax collection."
+                ),
             }
         )
 
