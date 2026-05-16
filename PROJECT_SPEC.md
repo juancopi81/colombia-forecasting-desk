@@ -24,6 +24,39 @@ This project explores whether an agent-assisted workflow can produce a better ou
 - What probability should we assign?
 - What would change the estimate?
 
+## Editorial Direction
+
+The desk should not over-optimize for clean but dry indicator questions. Those
+are useful for calibration, but the more public-interest forecast surface is
+where official data, regulation, policy, or institutional process creates a
+story a reader can understand.
+
+Prefer M2/M3 candidates with one or more of these hooks:
+
+- **Decision pending:** a permit, decree, reform, bill, court case, regulatory
+  approval, land-use decision, zona franca decision, or administrative act may
+  resolve by a date.
+- **Cost/input pressure:** materials, construction costs, cement, energy, fuel,
+  TRM, imports, logistics, or other input costs may rise enough to matter.
+- **Contradiction or tension:** two credible sources, indicators, or official
+  narratives point in different directions and a later source can clarify which
+  story is closer to reality.
+- **Named entity plus institutional path:** a company, municipality, project,
+  bill, agency, court, or regulator is tied to a clear next step.
+- **Public consequence:** the outcome would matter for households, firms,
+  investors as observers, public finances, elections, public services, or
+  institutional credibility without becoming personalized advice.
+
+Examples of stronger public-interest questions:
+
+- Will this specific project, land, or company become a zona franca?
+- Will construction/material costs increase again in the next official DANE
+  release?
+- Two sources appear to contradict each other; which one resolves and what
+  evidence explains the gap?
+- Will a named bill, decree, or regulatory proposal advance before a concrete
+  deadline?
+
 ## Product Boundary
 
 The project publishes probabilistic analysis, not personalized advice.
@@ -301,6 +334,22 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate `runs/YYYY-MM-DD/metasource_brief.md`.
 - [x] Generate deterministic `m1_candidates.json`.
 - [x] Generate `acceptance_report.json` quality gates.
+- [x] Harden Senado agenda promotion so loose PDF extracts remain research
+      leads unless they contain a clean project number and bill title.
+- [x] Add Gacetas del Congreso PDF follow-up extraction so parsed Gaceta
+      project/title snippets can support M2 legislative resolution work.
+- [x] Preserve decision-record metadata through cleaning/clustering and link
+      clean Senado agenda records to parsed Gaceta follow-up records when
+      project identity matches.
+- [x] Add official Senado and Cámara legislative registry sources as the primary
+      structured bill-identity/status layer, leaving agenda PDFs and Gacetas as
+      fallback or follow-up evidence.
+- [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
+      and promote only new/changed rows across snapshots as fresh decision
+      signals.
+- [x] Add an official legal-resolution bridge that parses Diario Oficial,
+      SUIN/Gestor-style legal act identities and attaches MinCIT resolution
+      matches only when act number/year and MinCIT or zone-name context agree.
 
 ### M2 — Question Discovery
 

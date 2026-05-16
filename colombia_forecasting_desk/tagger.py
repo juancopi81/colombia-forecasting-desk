@@ -14,6 +14,7 @@ CANONICAL_ENTITIES = (
     "cne",
     "corte_constitucional",
     "minhacienda",
+    "mincit",
     "anh",
     "secop",
     "presidencia",
@@ -76,6 +77,12 @@ _ENTITY_ALIASES: dict[str, tuple[str, ...]] = {
         "ministerio de hacienda",
         "ministerio de hacienda y credito publico",
         "min hacienda",
+    ),
+    "mincit": (
+        "mincit",
+        "ministerio de comercio industria y turismo",
+        "ministerio de comercio, industria y turismo",
+        "comercio industria y turismo",
     ),
     "anh": (
         "anh",
@@ -185,6 +192,10 @@ _TOPIC_ALIASES: dict[str, tuple[str, ...]] = {
         "proyecto de norma",
         "consulta publica",
         "superintendencia",
+        "zona franca",
+        "zonas francas",
+        "declaratoria",
+        "prorroga",
     ),
     "constitutional_court": (
         "corte constitucional",

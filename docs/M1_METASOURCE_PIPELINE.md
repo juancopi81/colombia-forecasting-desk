@@ -348,6 +348,78 @@ deterministic entity/topic tags, clusters aggregate those tags, and source
 health reports tag coverage and an acceptance status. MinCIT PDF attachment URLs
 now enter the same fail-closed PDF enrichment path used by DANE press documents.
 
+M1.16 starts the document-intelligence track with Senado agenda PDFs. The
+fetcher now has a no-new-dependency PDF text-operator extractor for official
+PDFs that expose readable text fragments, plus a Senado-specific enrichment
+step that replaces generic agenda PDF links with parsed legislative agenda
+entries. Those entries carry `content_extraction: senado_agenda_pdf`,
+`agenda_source_url`, `agenda_window_start`, optional `scheduled_date`,
+`agenda_action_type`, `project_label`, `project_records`, `document_title`,
+`project_identity_status`, and follow-up source hints for Gacetas/Congreso, so
+M2 can reason over named public-interest bill/action candidates instead of a
+generic weekly PDF title. M1.17 hardens promotion: Senado agenda entries without
+a clean project number and usable bill title are visible as research leads but
+are rejected as rankable forecast candidates. The
+parser remains fail-closed: if text extraction or entry extraction fails, the
+item keeps `content_extraction_error` and should not be treated as parsed
+document evidence.
+
+M1.18 extends this document-intelligence track to Gacetas del Congreso. The
+Imprenta table rows still start as official document links, but the fetcher now
+captures each row's PrimeFaces download button and posts the JSF form for the
+first recent Gaceta PDFs. A row is promoted to parsed document content only if
+the downloaded PDF yields `content_extraction: gaceta_pdf_text` plus a project
+label, document title, or body snippet. Rows that do not yield usable PDF text
+stay link-level with `content_extraction_error`.
+
+M1.19 adds the deterministic decision-record bridge. Raw metadata now survives
+cleaning and clustering, and `decision_records.link_legislative_followups`
+attaches parsed Gaceta follow-up matches to clean Senado agenda records when
+project number, year, and chamber agree. M1 candidates then expose those
+concrete follow-up sources instead of only generic search hints. DIAN regulatory
+projects also get a source-specific scout extractor: the landing page is
+filtered down to Agenda Reglamentaria / Proyectos de Normas leads instead of
+broad site navigation, but those rows remain undated parser-feasibility records
+until a rendered or structured endpoint exposes project-level status.
+
+M1.20 pivots the legislative source hierarchy from PDF-first parsing to official
+registry-first parsing. `senado_leyes_registry` posts Senado's public project
+search endpoint and follows detail fragments for clean bill number, title,
+status, commission, filing date, Gaceta/publication links, and filed-text links.
+`camara_proyectos_ley_registry` uses the Cámara Proyectos de Ley AJAX table and
+detail pages for Cámara/Senado project numbers, status, authors, commission,
+legislature, object text, and publication PDFs. Agenda PDFs and Gacetas remain
+useful as schedule/follow-up evidence, but they are no longer the first place
+the pipeline tries to recover bill identity.
+
+M1.21 applies the same registry-first principle to MinCIT zonas francas, but
+with an important forecasting guardrail. The `mincit_zonas_francas` source now
+expands the official `Zonas Francas aprobadas` PDF into structured approved-zone
+rows with `registry: mincit_zonas_francas_aprobadas`, `nit`,
+`zona_franca_name`, `zone_class`, `user_type`, `department`, `municipality`,
+`declaratory_resolution`, `extension_resolution`, `ciiu`, `snapshot_date`, and
+legal follow-up sources for MinCIT press, Diario Oficial, SUIN, and Gestor
+Normativo. These registry rows are historical snapshot evidence. They become
+current M1 decision signals only when `registry_changes` can compare them with
+a prior structured run and detect a new row or changed resolution field.
+
+M1.22 adds the official legal-resolution bridge. `legal_identity` normalizes
+acts such as `Resolución 2118 de 2025`, `Ley 1474 de 2011`, and
+`Decreto 123 de 2026` into stable kind/number/year keys. Diario Oficial now
+posts the Imprenta JSF download button for recent editions and marks
+`content_extraction: diario_oficial_pdf_text` only when the downloaded PDF
+yields usable legal-act identities. SUIN and Gestor-style legal rows are
+annotated with the same metadata when their titles expose act identities.
+`decision_records.link_official_legal_records` then attaches official
+resolution matches to MinCIT approved-zone rows only when the act key matches
+and the official legal source also contains MinCIT or named zone context. A
+same-number resolution from an unrelated entity remains unlinked.
+
+Reaching the Diario Oficial PDF viewer is not treated as parsed evidence by
+itself. If the downloaded PDF yields no extractable text, the item keeps
+`content_extraction_error` metadata and the source-health gate remains
+`document_unparsed` / `document_links_only` rather than green.
+
 ## Indicator Watch
 
 Each run writes:
@@ -463,6 +535,14 @@ source_id | content | raw | dated | rankable | doc_links | parsed | failures
 document content. Link-only sources can still be useful as calendar signals,
 but M1.6 treats parsed document content as the stronger evidence contract for
 sources whose useful data lives inside PDFs or spreadsheets.
+
+For document-intelligence sources, `parsed` should be backed by an emitted
+`RawItem.metadata.content_extraction` value and a test that demonstrates the
+record can become a valid M1 candidate. For example, Senado agenda entries use
+`senado_agenda_pdf`, but only entries with clean project identity metadata should
+promote to M2 candidates. Gacetas rows use `gaceta_pdf_text` only after a
+successful official PDF download and project/title extraction; opaque Imprenta
+rows remain document-link coverage debt.
 
 ## Daily Brief Structure
 

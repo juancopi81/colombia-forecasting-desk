@@ -170,6 +170,62 @@ def test_opaque_gaceta_index_is_not_forecastable_candidate() -> None:
     )
 
 
+def test_parsed_gaceta_project_is_forecastable_followup_evidence() -> None:
+    cluster = _cluster(
+        cluster_id="c-gaceta-parsed-project",
+        title=(
+            "Gaceta del Congreso 476 — Proyecto de Ley 550 DE 2026 "
+            "Cámara y Senado — por la cual se adiciona el Presupuesto "
+            "General de la Nación"
+        ),
+        summary=(
+            "Extracted from official Gaceta PDF. AL PROYECTO DE LEY NÚMERO "
+            "550 DE 2026 CÁMARA Y SENADO por la cual se adiciona el "
+            "Presupuesto General de la Nación."
+        ),
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["gacetas_congreso"],
+        member_source_names=["Gacetas del Congreso — Imprenta Nacional"],
+        member_titles=[
+            "Gaceta del Congreso 476 — Proyecto de Ley 550 DE 2026 Cámara y Senado"
+        ],
+        member_urls=[
+            "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=476"
+        ],
+        priorities=["high"],
+    )
+
+    assert is_forecastable_candidate(cluster)
+    assert noise_reasons(cluster) == []
+
+
+def test_clean_legislative_registry_project_is_forecastable_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-registry",
+        title=(
+            "Senado registry — Proyecto de Ley 1 de 2025 Senado — "
+            "por medio de la cual se establecen lineamientos en salud"
+        ),
+        summary=(
+            "Proyecto de Ley 1 de 2025 Senado. Estado: pendiente discutir "
+            "ponencia para primer debate en Senado."
+        ),
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["senado_leyes_registry"],
+        member_source_names=["Senado — Sección de Leyes / Proyectos de Ley"],
+        member_titles=[
+            "Senado registry — Proyecto de Ley 1 de 2025 Senado — salud"
+        ],
+        member_urls=["https://leyes.senado.gov.co/api/get_detalle_pdly.php?id=9540"],
+        priorities=["high"],
+    )
+
+    assert is_forecastable_candidate(cluster)
+    assert noise_reasons(cluster) == []
+
+
 def test_secop_only_cluster_is_not_forecastable_candidate() -> None:
     cluster = _cluster(
         cluster_id="c-secop-only",

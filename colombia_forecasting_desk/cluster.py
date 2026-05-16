@@ -12,7 +12,8 @@ JACCARD_THRESHOLD = 0.4
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 _GENERIC_IMPRENTA_TITLE_RE = re.compile(
     r"^(?:gaceta del congreso\s+\d+|diario oficial\s+[\d.]+)"
-    r"(?:\s+[-]\s+[^-]+)?$",
+    r"(?:\s+[-]\s+(?:senado de la republica|camara de representantes|"
+    r"edicion ordinaria|edicion extraordinaria))?$",
     re.IGNORECASE,
 )
 _STRONG_TAG_PAIRS = frozenset(
@@ -41,6 +42,7 @@ _STRONG_TAG_PAIRS = frozenset(
         ("corte_constitucional", "electoral"),
         ("corte_constitucional", "fiscal_tax"),
         ("minhacienda", "fiscal_tax"),
+        ("mincit", "regulatory"),
         ("anh", "hydrocarbons"),
         ("anh", "energy"),
         ("secop", "procurement"),
@@ -166,6 +168,7 @@ def _build_cluster(members: list[CleanedItem]) -> Cluster:
         member_titles=[m.title for m in members],
         member_source_names=[m.source_name for m in members],
         member_source_ids=[m.source_id for m in members],
+        member_metadata=[dict(m.metadata or {}) for m in members],
         priorities=priorities,
         detected_entities=detected_entities,
         detected_topics=detected_topics,

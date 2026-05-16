@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup
 
 from .cleaner import fold_accents, normalize_whitespace
 from .dedupe import canonicalize_url
+from .legal_identity import annotate_legal_identity, parse_legal_act_records
 from .models import Metasource, RawItem, SourceFailure
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,12 @@ SPA_SHELL_MARKERS = ("<app-root></app-root>", "<app-root>")
 PDF_TEXT_PARSE_LIMIT = 5
 PDF_TEXT_MAX_BYTES = 2_000_000
 PDF_TEXT_EXCERPT_CHARS = 1_200
+PDF_TEXT_FULL_CHARS = 20_000
 PDF_TEXT_MIN_CHARS = 80
+SENADO_AGENDA_PARSE_LIMIT = 2
+SENADO_AGENDA_ENTRY_LIMIT = 10
+GACETA_PDF_PARSE_LIMIT = 2
+LEGISLATIVE_REGISTRY_DEFAULT_LIMIT = 20
 
 NAV_TEXT = {
     "inicio", "contacto", "menu", "menú", "buscar", "ver mas", "ver más",
@@ -81,6 +87,13 @@ MONTHS_ES = {
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _current_legislature_label(now: datetime | None = None) -> str:
+    current = now or datetime.now(timezone.utc)
+    if current.month >= 7:
+        return f"{current.year}-{current.year + 1}"
+    return f"{current.year - 1}-{current.year}"
 
 
 def _make_id(source_id: str, url: str, title: str) -> str:
@@ -800,6 +813,13 @@ def _enrich_dane_icoced_xlsx(
 
 _PDF_STREAM_RE = re.compile(rb"stream\r?\n(.*?)\r?\nendstream", re.DOTALL)
 _PDF_LITERAL_RE = re.compile(rb"\((?:\\.|[^\\()])*\)")
+_PDF_TEXT_OBJECT_RE = re.compile(rb"\bBT\b(.*?)\bET\b", re.DOTALL)
+_PDF_TEXT_TOKEN_RE = re.compile(
+    rb"\((?:\\.|[^\\()])*\)|<\s*(?:[0-9A-Fa-f]{2}\s*)+>"
+)
+_PDF_ACTUAL_TEXT_RE = re.compile(
+    rb"/ActualText\s*(\((?:\\.|[^\\()])*\)|<\s*(?:[0-9A-Fa-f]{2}\s*)+>)"
+)
 _PDF_TEXT_ALLOWED_PUNCT = set(".,;:!?¿¡()[]{}%$#/+-_=°'\"@&\n\r\t ")
 _PDF_TEXT_ALLOWED_NONASCII = set("áéíóúÁÉÍÓÚñÑüÜ")
 _PDF_COMMON_SPANISH_TERMS = {
@@ -820,19 +840,204 @@ _PDF_COMMON_SPANISH_TERMS = {
 
 def _decode_pdf_literal(raw: bytes) -> str:
     body = raw[1:-1]
-    replacements = {
-        rb"\n": b"\n",
-        rb"\r": b"\r",
-        rb"\t": b"\t",
-        rb"\b": b"\b",
-        rb"\f": b"\f",
-        rb"\(": b"(",
-        rb"\)": b")",
-        rb"\\": b"\\",
-    }
-    for src, dst in replacements.items():
-        body = body.replace(src, dst)
-    return body.decode("latin-1", errors="ignore")
+    out = bytearray()
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if ch != 0x5C:
+            out.append(ch)
+            i += 1
+            continue
+        i += 1
+        if i >= len(body):
+            break
+        esc = body[i]
+        if esc in b"nrtbf":
+            out.append({ord("n"): 10, ord("r"): 13, ord("t"): 9, ord("b"): 8, ord("f"): 12}[esc])
+            i += 1
+            continue
+        if esc in b"()\\":
+            out.append(esc)
+            i += 1
+            continue
+        if esc in b"\r\n":
+            i += 1
+            if esc == 13 and i < len(body) and body[i] == 10:
+                i += 1
+            continue
+        if 48 <= esc <= 55:
+            digits = bytes([esc])
+            i += 1
+            for _ in range(2):
+                if i < len(body) and 48 <= body[i] <= 55:
+                    digits += bytes([body[i]])
+                    i += 1
+                else:
+                    break
+            out.append(int(digits, 8) & 0xFF)
+            continue
+        out.append(esc)
+        i += 1
+    return bytes(out).decode("latin-1", errors="ignore")
+
+
+def _decode_pdf_cmap_hex(cleaned: str, cmap: dict[str, str]) -> str:
+    if not cmap:
+        return ""
+    for width in (4, 2):
+        if len(cleaned) % width:
+            continue
+        chars: list[str] = []
+        hits = 0
+        for i in range(0, len(cleaned), width):
+            code = cleaned[i : i + width].upper()
+            value = cmap.get(code)
+            if value:
+                chars.append(value)
+                hits += 1
+            else:
+                chars.append(" ")
+        if hits:
+            return normalize_whitespace("".join(chars))
+    return ""
+
+
+def _decode_pdf_hex(raw: bytes, cmap: dict[str, str] | None = None) -> str:
+    cleaned = re.sub(rb"\s+", b"", raw[1:-1])
+    if not cleaned or len(cleaned) % 2:
+        return ""
+    cleaned_text = cleaned.decode("ascii", errors="ignore").upper()
+    if cmap:
+        decoded = _decode_pdf_cmap_hex(cleaned_text, cmap)
+        if decoded:
+            return decoded
+    try:
+        content = bytes.fromhex(cleaned_text)
+    except ValueError:
+        return ""
+    if content.startswith(b"\xfe\xff"):
+        return content[2:].decode("utf-16-be", errors="ignore")
+
+    candidates = [
+        content.decode("utf-16-be", errors="ignore"),
+        content.decode("utf-8", errors="ignore"),
+        content.decode("latin-1", errors="ignore"),
+    ]
+    candidates = [normalize_whitespace(candidate) for candidate in candidates]
+    return max(candidates, key=_text_signal_score, default="")
+
+
+def _decode_pdf_text_token(
+    raw: bytes, cmap: dict[str, str] | None = None
+) -> str:
+    if raw.startswith(b"("):
+        return _decode_pdf_literal(raw)
+    if raw.startswith(b"<"):
+        return _decode_pdf_hex(raw, cmap)
+    return ""
+
+
+def _text_signal_score(text: str) -> int:
+    return sum(
+        1
+        for ch in text
+        if (ch.isascii() and ch.isalpha()) or ch in _PDF_TEXT_ALLOWED_NONASCII
+    )
+
+
+def _looks_like_text_fragment(text: str) -> bool:
+    normalized = normalize_whitespace(text)
+    if not normalized or "\x00" in normalized:
+        return False
+    if _is_pdf_noise_fragment(normalized):
+        return False
+    useful = sum(
+        1
+        for ch in normalized
+        if (
+            (ch.isascii() and (ch.isalnum() or ch.isspace()))
+            or ch in _PDF_TEXT_ALLOWED_NONASCII
+            or ch in _PDF_TEXT_ALLOWED_PUNCT
+        )
+    )
+    return useful / len(normalized) >= 0.85 and _text_signal_score(normalized) > 0
+
+
+def _is_pdf_noise_fragment(text: str) -> bool:
+    folded = fold_accents(text.lower())
+    return (
+        "identityadobe" in folded
+        or "microsoft sans" in folded
+        or "segoe ui" in folded
+        or ("arial" in folded and "proyecto" not in folded)
+        or ("calibri" in folded and "proyecto" not in folded)
+    )
+
+
+def _extract_pdf_cmap(chunks: list[bytes]) -> dict[str, str]:
+    cmap: dict[str, str] = {}
+    for chunk in chunks:
+        text = chunk.decode("latin-1", errors="ignore")
+        for block in re.findall(r"beginbfchar(.*?)endbfchar", text, flags=re.DOTALL):
+            for source, target in re.findall(
+                r"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>", block
+            ):
+                try:
+                    decoded = bytes.fromhex(target).decode("utf-16-be", errors="ignore")
+                except ValueError:
+                    continue
+                if decoded:
+                    cmap[source.upper()] = decoded
+        for block in re.findall(r"beginbfrange(.*?)endbfrange", text, flags=re.DOTALL):
+            for start, end, target in re.findall(
+                r"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>",
+                block,
+            ):
+                try:
+                    start_i = int(start, 16)
+                    end_i = int(end, 16)
+                    target_i = int(target, 16)
+                except ValueError:
+                    continue
+                width = len(start)
+                if end_i - start_i > 256:
+                    continue
+                for offset, code in enumerate(range(start_i, end_i + 1)):
+                    try:
+                        decoded = chr(target_i + offset)
+                    except ValueError:
+                        continue
+                    cmap[f"{code:0{width}X}"] = decoded
+    return cmap
+
+
+def _extract_pdf_operator_lines(
+    chunk: bytes,
+    cmap: dict[str, str] | None = None,
+) -> list[str]:
+    lines: list[str] = []
+    for text_object in _PDF_TEXT_OBJECT_RE.findall(chunk):
+        fragments: list[str] = []
+        for token in _PDF_TEXT_TOKEN_RE.findall(text_object):
+            fragment = _decode_pdf_text_token(token, cmap)
+            if _looks_like_text_fragment(fragment):
+                fragments.append(fragment)
+        line = normalize_whitespace("".join(fragments))
+        if _looks_like_text_fragment(line):
+            lines.append(line)
+    return lines
+
+
+def _extract_pdf_actual_text(
+    chunk: bytes,
+    cmap: dict[str, str] | None = None,
+) -> list[str]:
+    fragments: list[str] = []
+    for token in _PDF_ACTUAL_TEXT_RE.findall(chunk):
+        fragment = normalize_whitespace(_decode_pdf_text_token(token, cmap))
+        if _looks_like_text_fragment(fragment):
+            fragments.append(fragment)
+    return fragments
 
 
 def _looks_like_text(text: str) -> bool:
@@ -876,24 +1081,540 @@ def _extract_pdf_text(content: bytes, *, max_chars: int = PDF_TEXT_EXCERPT_CHARS
     parser, but it gives M1 a useful excerpt when official PDFs expose readable
     literal strings without adding another production dependency.
     """
-    chunks: list[bytes] = [content[:PDF_TEXT_MAX_BYTES]]
+    chunks: list[bytes] = []
     for match in _PDF_STREAM_RE.finditer(content[:PDF_TEXT_MAX_BYTES]):
         stream = match.group(1).strip(b"\r\n")
         try:
             chunks.append(zlib.decompress(stream))
         except zlib.error:
             chunks.append(stream)
+    if not chunks:
+        chunks.append(content[:PDF_TEXT_MAX_BYTES])
 
-    texts: list[str] = []
+    primary_texts: list[str] = []
+    fallback_texts: list[str] = []
+    cmap = _extract_pdf_cmap(chunks)
     for chunk in chunks:
+        primary_texts.extend(_extract_pdf_operator_lines(chunk, cmap))
+        primary_texts.extend(_extract_pdf_actual_text(chunk, cmap))
         for literal in _PDF_LITERAL_RE.findall(chunk):
             text = _decode_pdf_literal(literal)
             if _looks_like_text(text):
-                texts.append(text)
-    excerpt = normalize_whitespace(" ".join(texts))
+                fallback_texts.append(text)
+
+    excerpt = normalize_whitespace(" ".join(primary_texts))
+    if _looks_like_pdf_excerpt(excerpt):
+        return excerpt[:max_chars]
+
+    excerpt = normalize_whitespace(" ".join([*primary_texts, *fallback_texts]))
     if not _looks_like_pdf_excerpt(excerpt):
         return ""
     return excerpt[:max_chars]
+
+
+_SENADO_AGENDA_PROJECT_RE = re.compile(
+    r"\bProyecto\s+de\s+(?P<kind>Ley|Acto\s+Legislativo)\s+No\.?\s+"
+    r"(?P<first_number>\d{1,4})\s+(?:de|del)\s+"
+    r"(?P<first_year>\d{4})\s+(?P<first_chamber>Senado|C[aá]mara)"
+    r"(?:[,;\s]+(?P<second_number>\d{1,4})\s+(?:de|del)\s+"
+    r"(?P<second_year>\d{4})\s+(?P<second_chamber>Senado|C[aá]mara))?",
+    re.IGNORECASE,
+)
+_SENADO_AGENDA_LOOSE_PROJECT_RE = re.compile(
+    r"\bProyecto\s+de\s+Ley\s+(?:No\.?\s*)?"
+    r"(?P<chamber>Senado|C[aá]mara)?\s*(?P<body>.{24,320}?)(?="
+    r"\b(?:Autores?|Ponente|Publicaci[oó]n|Proyecto\s+de\s+Ley|Hora|"
+    r"Lugar|Transmisi[oó]n|TEMA:|$))",
+    re.IGNORECASE,
+)
+_SENADO_AGENDA_DAY_RE = re.compile(
+    r"\b(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)"
+    r"\s+(\d{1,2})\s+de\s+"
+    r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|"
+    r"setiembre|octubre|noviembre|diciembre)"
+    r"(?:\s+de\s+(\d{4}))?",
+    re.IGNORECASE,
+)
+_SENADO_TITLE_REPAIR_PATTERNS = (
+    (r"\belacual\b", "el cual"),
+    (r"\bmodificael\b", "modifica el"),
+    (r"\blaleydeyse\b", "la ley de y se"),
+    (r"\blaley\b", "la ley"),
+    (r"\bdeyse\b", "de y se"),
+    (r"\botrasdisposiciones\b", "otras disposiciones"),
+)
+_SENADO_LOSSY_TITLE_MARKERS = (
+    "elacual",
+    "modificael",
+    "laley",
+    "deyse",
+    "otrasdisposiciones",
+)
+_GACETAS_CONGRESO_URL = "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml"
+
+
+def _normalize_senado_agenda_text_for_matching(text: str) -> str:
+    normalized = normalize_whitespace(text)
+    replacements = (
+        (r"Pr\s*oyecto", "Proyecto"),
+        (r"Proyec\s*to", "Proyecto"),
+        (r"ProyectodeLeyNode", "Proyecto de Ley No. "),
+        (r"ProyectodeLeyNo", "Proyecto de Ley No. "),
+        (r"Proyectode\s*Ley\s*Node", "Proyecto de Ley No. "),
+        (r"Proyecto\s*de\s*Ley\s*Node", "Proyecto de Ley No. "),
+        (r"Proyectode\s*Ley", "Proyecto de Ley"),
+        (r"Proyecto\s*deLey", "Proyecto de Ley"),
+        (r"No\.?\s*SENADO", "No. Senado"),
+        (r"No\.?\s*Senado", "No. Senado"),
+        (r"No\.?\s*de\s*C[aá]mara", "No. Cámara"),
+        (r"No\.?\s*C[aá]mara", "No. Cámara"),
+        (r"deC[aá]mara", "de Cámara"),
+        (r"delC[aá]mara", "de Cámara"),
+        (r"delSenado", "de Senado"),
+        (r"\bSENADO\b", "Senado"),
+        (r"\bCÁMARA\b", "Cámara"),
+        (r"Autores", " Autores"),
+        (r"Autor:", " Autor:"),
+        (r"Ponente", " Ponente"),
+        (r"Publicaci", " Publicaci"),
+        (r"Transmisión", " Transmisión"),
+        (r"Hora", " Hora"),
+        (r"Lugar", " Lugar"),
+        (r"TEMA:", " TEMA:"),
+    )
+    for pattern, replacement in replacements:
+        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+    return normalize_whitespace(normalized)
+
+
+def _year_from_iso(value: str | None) -> int | None:
+    if not value:
+        return None
+    try:
+        return int(value[:4])
+    except ValueError:
+        return None
+
+
+def _senado_project_label(match: re.Match[str]) -> str:
+    records = _senado_project_records(match)
+    kind = records[0]["kind"] if records else normalize_whitespace(match.group("kind"))
+    labels = [
+        f"{record['number']} de {record['year']} {record['chamber']}"
+        for record in records
+    ]
+    return f"Proyecto de {kind} {' / '.join(labels)}"
+
+
+def _senado_project_records(match: re.Match[str]) -> list[dict[str, str]]:
+    kind = normalize_whitespace(match.group("kind"))
+    records = [
+        {
+            "kind": kind,
+            "number": match.group("first_number"),
+            "year": match.group("first_year"),
+            "chamber": _normalize_senado_chamber(match.group("first_chamber")),
+        }
+    ]
+    second_number = match.group("second_number")
+    if second_number:
+        records.append(
+            {
+                "kind": kind,
+                "number": second_number,
+                "year": match.group("second_year"),
+                "chamber": _normalize_senado_chamber(match.group("second_chamber")),
+            }
+        )
+    return records
+
+
+def _normalize_senado_chamber(value: str | None) -> str:
+    folded = fold_accents((value or "").lower())
+    return "Cámara" if "camara" in folded else "Senado"
+
+
+def _senado_agenda_action(context: str) -> str:
+    folded = fold_accents(context.lower())
+    if "primer debate" in folded:
+        return "primer debate"
+    if "segundo debate" in folded:
+        return "segundo debate"
+    if "tercer debate" in folded:
+        return "tercer debate"
+    if "cuarto debate" in folded:
+        return "cuarto debate"
+    if "ponencia" in folded:
+        return "ponencia"
+    if "discusion" in folded or "discusion" in folded:
+        return "discusion"
+    return "agenda legislativa"
+
+
+def _senado_document_title(context: str) -> str:
+    quote_match = re.search(r"[“\"]([^”\"]{24,220})[”\"]", context)
+    if quote_match:
+        return _repair_senado_document_title(quote_match.group(1))
+    tema_match = re.search(
+        r"\bTEMA:\s*(.{24,260}?)(?:\bAutores?:|\bPublicaci[oó]n|$)",
+        context,
+        re.IGNORECASE,
+    )
+    if tema_match:
+        return _repair_senado_document_title(tema_match.group(1))
+    return ""
+
+
+def _senado_loose_document_title(body: str) -> str:
+    title = normalize_whitespace(body)
+    title = re.sub(
+        r"^(?:de\s+)?(?:No\.\s*)?(?:Senado|C[aá]mara)\b",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+    title = re.sub(r"\bla\s*G\s*aceta\s*No.*$", "", title, flags=re.IGNORECASE)
+    title = re.sub(
+        r"\b(?:HH\.?|H\.?\s*S\.?|H\.?\s*R\.?|Dr\.?)\b.*$",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+    title = re.split(
+        r"\b(?:Autor(?:es)?|Ponente(?:s)?|Publicaci[oó]n|Proyecto\s+de\s+Ley)\b",
+        title,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    return _repair_senado_document_title(title)[:220]
+
+
+def _repair_senado_document_title(title: str) -> str:
+    repaired = normalize_whitespace(title).strip(" .,:;-")
+    for pattern, replacement in _SENADO_TITLE_REPAIR_PATTERNS:
+        repaired = re.sub(pattern, replacement, repaired, flags=re.IGNORECASE)
+    return normalize_whitespace(repaired).strip(" .,:;-")
+
+
+def _senado_title_has_lossy_spacing(title: str) -> bool:
+    folded = fold_accents(title.lower())
+    return any(marker in folded for marker in _SENADO_LOSSY_TITLE_MARKERS)
+
+
+def _senado_project_identity_status(
+    label: str,
+    document_title: str,
+    *,
+    original_title: str = "",
+) -> str:
+    has_project_number = bool(
+        re.search(
+            r"\b\d{1,4}\s+de\s+\d{4}\s+(?:Senado|C[aá]mara)\b",
+            label,
+            flags=re.IGNORECASE,
+        )
+    )
+    if not has_project_number:
+        return "missing_project_number"
+    if len(document_title) < 24:
+        return "missing_document_title"
+    if _senado_title_has_lossy_spacing(original_title or document_title):
+        return "lossy_document_title"
+    return "clean_project_identity"
+
+
+def _senado_follow_up_sources(
+    agenda_item: RawItem,
+    project_label: str,
+) -> list[dict[str, str]]:
+    search_hint = project_label
+    return [
+        {
+            "source_id": "gacetas_congreso",
+            "source_name": "Gacetas del Congreso — Imprenta Nacional",
+            "url": _GACETAS_CONGRESO_URL,
+            "search_hint": search_hint,
+            "purpose": "Find ponencia, bill text, and later official publication records.",
+        },
+        {
+            "source_id": "senado_agenda_legislativa",
+            "source_name": agenda_item.source_name,
+            "url": agenda_item.url,
+            "search_hint": search_hint,
+            "purpose": "Check whether the item reappears or advances in a later agenda window.",
+        },
+    ]
+
+
+def _looks_like_senado_public_interest_title(title: str) -> bool:
+    folded = fold_accents(title.lower())
+    return any(
+        term in folded
+        for term in (
+            "adopta",
+            "aduanera",
+            "codigo",
+            "crea",
+            "declara",
+            "dictan",
+            "establece",
+            "expide",
+            "modifica",
+            "programa",
+            "promueve",
+            "reforma",
+            "regimen",
+            "salud",
+            "sancionatorio",
+            "sistema",
+            "tributario",
+            "violencia",
+        )
+    )
+
+
+def _senado_scheduled_date(
+    text: str, position: int, default_year: int | None
+) -> str | None:
+    latest: re.Match[str] | None = None
+    for match in _SENADO_AGENDA_DAY_RE.finditer(text[:position]):
+        latest = match
+    if latest is None:
+        return None
+    year_text = latest.group(3)
+    year = int(year_text) if year_text else default_year
+    month = MONTHS_ES.get(fold_accents(latest.group(2).lower()))
+    if year is None or month is None:
+        return None
+    return _date_to_iso(year, month, int(latest.group(1)))
+
+
+def _extract_senado_agenda_entries_from_text(
+    agenda_item: RawItem,
+    text: str,
+    *,
+    max_entries: int = SENADO_AGENDA_ENTRY_LIMIT,
+) -> list[RawItem]:
+    match_text = _normalize_senado_agenda_text_for_matching(text)
+    default_year = _year_from_iso(agenda_item.published_at) or _year_from_iso(
+        _parse_date_text_to_iso(agenda_item.title)
+    )
+    entries: list[RawItem] = []
+    seen_labels: set[str] = set()
+    detailed_positions: list[int] = []
+    for match in _SENADO_AGENDA_PROJECT_RE.finditer(match_text):
+        label = _senado_project_label(match)
+        project_records = _senado_project_records(match)
+        if label in seen_labels:
+            continue
+        seen_labels.add(label)
+        detailed_positions.append(match.start())
+        context_start = max(0, match.start() - 180)
+        context_end = min(len(text), match.end() + 520)
+        context = normalize_whitespace(match_text[context_start:context_end])
+        scheduled_at = _senado_scheduled_date(match_text, match.start(), default_year)
+        action = _senado_agenda_action(context)
+        document_title = _senado_document_title(context)
+        original_document_title = normalize_whitespace(document_title)
+        identity_status = _senado_project_identity_status(
+            label,
+            document_title,
+            original_title=original_document_title,
+        )
+        agenda_start = agenda_item.published_at
+        date_label = (scheduled_at or agenda_start or "")[:10] or "agenda window"
+        title = f"Senado agenda {date_label} — {action}: {label}"
+        if document_title:
+            title = f"{title} — {document_title[:180]}"
+        entry_url = f"{agenda_item.url}#project-{len(entries) + 1}"
+        raw_text = (
+            f"{title}. Extracted from official Senado agenda PDF. "
+            f"Agenda excerpt: {context}. Follow-up sources: Gacetas del Congreso "
+            f"and later Congreso/Senado agenda records; search hint: {label}."
+        )
+        entries.append(
+            RawItem(
+                id=_make_id(agenda_item.source_id, entry_url, title),
+                source_id=agenda_item.source_id,
+                source_name=agenda_item.source_name,
+                source_type=agenda_item.source_type,
+                url=entry_url,
+                title=title,
+                fetched_at=agenda_item.fetched_at,
+                published_at=scheduled_at or agenda_item.published_at,
+                raw_text=raw_text,
+                metadata={
+                    **dict(agenda_item.metadata),
+                    "extraction": "senado_agenda_pdf_entry",
+                    "content_extraction": "senado_agenda_pdf",
+                    "agenda_source_url": agenda_item.url,
+                    "agenda_title": agenda_item.title,
+                    "agenda_window_start": agenda_start,
+                    "scheduled_date": scheduled_at,
+                    "agenda_action_type": action,
+                    "project_label": label,
+                    "project_records": project_records,
+                    "document_title": document_title,
+                    "project_identity_status": identity_status,
+                    "has_clean_project_identity": (
+                        identity_status == "clean_project_identity"
+                    ),
+                    "follow_up_sources": _senado_follow_up_sources(
+                        agenda_item,
+                        label,
+                    ),
+                    "pdf_text_chars": len(text),
+                },
+            )
+        )
+        if len(entries) >= max_entries:
+            break
+
+    for match in _SENADO_AGENDA_LOOSE_PROJECT_RE.finditer(match_text):
+        if len(entries) >= max_entries:
+            break
+        if any(abs(match.start() - position) < 80 for position in detailed_positions):
+            continue
+        body = normalize_whitespace(match.group("body"))
+        if re.match(r"\d{1,4}\s+(?:de|del)\s+\d{4}\b", body, re.IGNORECASE):
+            continue
+        raw_document_title = _senado_loose_document_title(body)
+        document_title = _repair_senado_document_title(raw_document_title)
+        if len(document_title) < 20 or not _looks_like_senado_public_interest_title(
+            document_title
+        ):
+            continue
+        chamber = normalize_whitespace(match.group("chamber") or "Senado")
+        label = f"Proyecto de Ley {chamber}"
+        identity_status = _senado_project_identity_status(
+            label,
+            document_title,
+            original_title=raw_document_title,
+        )
+        seen_key = f"{label}|{document_title[:80]}"
+        if seen_key in seen_labels:
+            continue
+        seen_labels.add(seen_key)
+        context_start = max(0, match.start() - 180)
+        context_end = min(len(match_text), match.end() + 240)
+        context = normalize_whitespace(match_text[context_start:context_end])
+        scheduled_at = _senado_scheduled_date(match_text, match.start(), default_year)
+        action = _senado_agenda_action(context)
+        agenda_start = agenda_item.published_at
+        date_label = (scheduled_at or agenda_start or "")[:10] or "agenda window"
+        title = (
+            f"Senado agenda {date_label} — {action}: {label} — "
+            f"{document_title}"
+        )
+        entry_url = f"{agenda_item.url}#project-{len(entries) + 1}"
+        raw_text = (
+            f"{title}. Extracted from official Senado agenda PDF. "
+            f"Agenda excerpt: {context}. Follow-up sources: Gacetas del Congreso "
+            f"and later Congreso/Senado agenda records; search hint: {label}."
+        )
+        entries.append(
+            RawItem(
+                id=_make_id(agenda_item.source_id, entry_url, title),
+                source_id=agenda_item.source_id,
+                source_name=agenda_item.source_name,
+                source_type=agenda_item.source_type,
+                url=entry_url,
+                title=title,
+                fetched_at=agenda_item.fetched_at,
+                published_at=scheduled_at or agenda_item.published_at,
+                raw_text=raw_text,
+                metadata={
+                    **dict(agenda_item.metadata),
+                    "extraction": "senado_agenda_pdf_entry",
+                    "content_extraction": "senado_agenda_pdf",
+                    "agenda_source_url": agenda_item.url,
+                    "agenda_title": agenda_item.title,
+                    "agenda_window_start": agenda_start,
+                    "scheduled_date": scheduled_at,
+                    "agenda_action_type": action,
+                    "project_label": label,
+                    "document_title": document_title,
+                    "project_records": [],
+                    "project_identity_status": identity_status,
+                    "has_clean_project_identity": False,
+                    "follow_up_sources": _senado_follow_up_sources(
+                        agenda_item,
+                        label,
+                    ),
+                    "pdf_text_chars": len(text),
+                },
+            )
+        )
+    return entries
+
+
+def _is_senado_agenda_pdf_item(item: RawItem) -> bool:
+    title = fold_accents(item.title.lower())
+    return "agenda legislativa" in title and (
+        "pdf" in title or item.url.endswith("/file")
+    )
+
+
+def _enrich_senado_agenda_pdfs(
+    items: list[RawItem],
+    client: httpx.Client,
+    *,
+    max_items: int = SENADO_AGENDA_PARSE_LIMIT,
+) -> list[RawItem]:
+    enriched: list[RawItem] = []
+    parsed_count = 0
+    for item in items:
+        if not _is_senado_agenda_pdf_item(item) or parsed_count >= max_items:
+            enriched.append(item)
+            continue
+        metadata = dict(item.metadata)
+        try:
+            response = _http_get(client, item.url)
+            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+        except Exception as exc:  # noqa: BLE001 - preserve link-level item
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        entries = _extract_senado_agenda_entries_from_text(item, text)
+        if entries:
+            enriched.extend(entries)
+        else:
+            metadata.update(
+                {
+                    "content_extraction_error": "no legislative project entries found",
+                    "pdf_text_chars": len(text),
+                }
+            )
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+        parsed_count += 1
+    return enriched
 
 
 def _enrich_pdf_text(
@@ -973,7 +1694,872 @@ def _enrich_pdf_text(
     return enriched
 
 
+MINCIT_ZF_APPROVED_REGISTRY = "mincit_zonas_francas_aprobadas"
+MINCIT_ZF_APPROVED_EXTRACTION = "mincit_zonas_francas_approved_pdf"
+MINCIT_ZF_TEXT_MAX_CHARS = 120_000
+_MINCIT_ZF_APPROVED_TITLE_RE = re.compile(
+    r"\bzonas\s+francas\s+aprobadas\b",
+    re.IGNORECASE,
+)
+_MINCIT_ZF_SNAPSHOT_DATE_RE = re.compile(
+    r"\bFECHA\s*:?\s*(\d{1,2})\s+DE\s+([A-ZÁÉÍÓÚÑ]+)\s+DE\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+_MINCIT_ZF_SOURCE_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+_MINCIT_ZF_RESOLUTION_RE = re.compile(
+    r"\bR(?:es|e)\.?\s*(?:No\.?\s*)?\d+.*?\b\d{4}\b",
+    re.IGNORECASE,
+)
+_MINCIT_ZF_CLASS_RE = re.compile(
+    r"\b(Permanente\s+Especial|Permanente)\b",
+    re.IGNORECASE,
+)
+_MINCIT_ZF_DEPARTMENTS = (
+    "Archipiélago de San Andrés, Providencia y Santa Catalina",
+    "Archipielago de San Andres, Providencia y Santa Catalina",
+    "Norte de Santander",
+    "Valle del Cauca",
+    "Cundinamarca",
+    "Bogotá",
+    "Bogota",
+    "Antioquia",
+    "Atlántico",
+    "Atlantico",
+    "Bolívar",
+    "Bolivar",
+    "Boyacá",
+    "Boyaca",
+    "Caldas",
+    "Caquetá",
+    "Caqueta",
+    "Casanare",
+    "Cauca",
+    "Cesar",
+    "Chocó",
+    "Choco",
+    "Córdoba",
+    "Cordoba",
+    "Guainía",
+    "Guainia",
+    "Guaviare",
+    "Huila",
+    "La Guajira",
+    "Magdalena",
+    "Meta",
+    "Nariño",
+    "Narino",
+    "Quindío",
+    "Quindio",
+    "Risaralda",
+    "Santander",
+    "Sucre",
+    "Tolima",
+    "Arauca",
+    "Amazonas",
+    "Putumayo",
+    "Vaupés",
+    "Vaupes",
+    "Vichada",
+)
+_MINCIT_ZF_DEPARTMENT_PATTERNS = tuple(
+    (
+        dep,
+        re.compile(rf"\s({re.escape(dep)})(?=\s+)", re.IGNORECASE),
+    )
+    for dep in sorted(_MINCIT_ZF_DEPARTMENTS, key=len, reverse=True)
+)
+_MINCIT_DIARIO_OFICIAL_URL = "https://svrpubindc.imprenta.gov.co/diario/index.xhtml"
+_MINCIT_PRESS_URL = "https://www.mincit.gov.co/prensa/noticias"
+_SUIN_URL = "https://www.suin-juriscol.gov.co/"
+_GESTOR_NORMATIVO_URL = "https://www.funcionpublica.gov.co/eva/gestornormativo/"
+
+
+def _extract_pdf_text_objects_text(
+    content: bytes,
+    *,
+    max_chars: int = PDF_TEXT_FULL_CHARS,
+) -> str:
+    """Extract PDF text-object content without dropping numeric-only fragments.
+
+    The generic PDF excerpt parser intentionally rejects many numeric fragments
+    to avoid false positives. MinCIT's approved-zones PDF is a numeric table, so
+    the source-specific parser needs the text object stream with NITs,
+    resolution numbers, dates, and CIIU codes intact.
+    """
+    chunks: list[bytes] = []
+    for match in _PDF_STREAM_RE.finditer(content[:PDF_TEXT_MAX_BYTES]):
+        stream = match.group(1).strip(b"\r\n")
+        try:
+            chunks.append(zlib.decompress(stream))
+        except zlib.error:
+            chunks.append(stream)
+    if not chunks:
+        chunks.append(content[:PDF_TEXT_MAX_BYTES])
+
+    lines: list[str] = []
+    cmap = _extract_pdf_cmap(chunks)
+    for chunk in chunks:
+        for text_object in _PDF_TEXT_OBJECT_RE.findall(chunk):
+            fragments = [
+                _decode_pdf_text_token(token, cmap)
+                for token in _PDF_TEXT_TOKEN_RE.findall(text_object)
+            ]
+            line = normalize_whitespace("".join(fragments))
+            if line:
+                lines.append(line)
+    return normalize_whitespace(" ".join(lines))[:max_chars]
+
+
+def _mincit_zf_is_approved_pdf_item(item: RawItem) -> bool:
+    path = urlsplit(item.url).path.lower()
+    title = fold_accents(item.title.lower())
+    return ".pdf" in path and bool(_MINCIT_ZF_APPROVED_TITLE_RE.search(title))
+
+
+def _mincit_zf_snapshot_date(text: str) -> str | None:
+    match = _MINCIT_ZF_SNAPSHOT_DATE_RE.search(text)
+    if match:
+        day, month_name, year = match.groups()
+        month = MONTHS_ES.get(fold_accents(month_name.lower()))
+        if month is not None:
+            return _date_to_iso(int(year), month, int(day))
+    return None
+
+
+def _mincit_zf_source_report_date(text: str) -> str | None:
+    match = _MINCIT_ZF_SOURCE_DATE_RE.search(text)
+    if not match:
+        return None
+    day, month, year = (int(part) for part in match.groups())
+    return _date_to_iso(year, month, day)
+
+
+def _normalize_mincit_zf_text(text: str) -> str:
+    normalized = normalize_whitespace(text)
+    # The PDF occasionally splits 9-digit NITs as "90113504 8" at cell breaks.
+    normalized = re.sub(
+        r"\b(\d{8})\s+(\d)\s+(?=(?:Zona|Centro|ZFB)\b)",
+        r"\1\2 ",
+        normalized,
+    )
+    return normalized
+
+
+def _mincit_zf_row_slices(text: str) -> list[tuple[str, str]]:
+    normalized = _normalize_mincit_zf_text(text)
+    start = normalized.find("NIT NOMBRE")
+    if start != -1:
+        normalized = normalized[start:]
+    matches = list(re.finditer(r"\b(?P<nit>\d{8,10})\s+", normalized))
+    rows: list[tuple[str, str]] = []
+    for idx, match in enumerate(matches):
+        body_start = match.end()
+        body_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(normalized)
+        body = normalize_whitespace(normalized[body_start:body_end])
+        body = re.split(
+            r"\s+(?:Fuente:\s*Ministerio|SESI[ÓO]N|RESUMEN\s+ZONAS\s+FRANCAS|"
+            r"ZONAS\s+FRANCAS\s+PERMANENTES\s+ESPECIALES)",
+            body,
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0]
+        if "Res." not in body and "Re." not in body:
+            continue
+        rows.append((match.group("nit"), body))
+    return rows
+
+
+def _parse_mincit_zf_prefix(prefix: str) -> dict[str, str] | None:
+    for department, pattern in _MINCIT_ZF_DEPARTMENT_PATTERNS:
+        matches = list(pattern.finditer(prefix))
+        for dep_match in reversed(matches):
+            head = normalize_whitespace(prefix[: dep_match.start()])
+            class_matches = list(_MINCIT_ZF_CLASS_RE.finditer(head))
+            if not class_matches:
+                continue
+            municipality = normalize_whitespace(prefix[dep_match.end() :])
+            for class_match in reversed(class_matches):
+                name = normalize_whitespace(head[: class_match.start()])
+                zone_class = normalize_whitespace(class_match.group(1)).title()
+                user_type = normalize_whitespace(head[class_match.end() :])
+                if len(name) < 8 or not user_type or not municipality:
+                    continue
+                return {
+                    "zona_franca_name": name,
+                    "zone_class": zone_class,
+                    "class": zone_class,
+                    "user_type": user_type,
+                    "department": normalize_whitespace(department),
+                    "municipality": municipality,
+                }
+    return None
+
+
+def _parse_mincit_zf_row_body(nit: str, body: str) -> dict[str, str] | None:
+    ciiu_match = re.search(r"\s(?P<ciiu>\d{3,4})\s*$", body)
+    if not ciiu_match:
+        return None
+    ciiu = ciiu_match.group("ciiu").zfill(4)
+    without_ciiu = normalize_whitespace(body[: ciiu_match.start()])
+    resolution_matches = list(_MINCIT_ZF_RESOLUTION_RE.finditer(without_ciiu))
+    if not resolution_matches:
+        return None
+    first_resolution = resolution_matches[0]
+    fields = _parse_mincit_zf_prefix(
+        normalize_whitespace(without_ciiu[: first_resolution.start()])
+    )
+    if not fields:
+        return None
+    declaratory_resolution = normalize_whitespace(first_resolution.group(0))
+    extension_resolution = ""
+    if len(resolution_matches) > 1:
+        extension_resolution = normalize_whitespace(resolution_matches[1].group(0))
+    elif "Vacía" in without_ciiu[first_resolution.end() :]:
+        extension_resolution = "Vacía"
+    return {
+        "nit": nit,
+        **fields,
+        "declaratory_resolution": declaratory_resolution,
+        "extension_resolution": extension_resolution,
+        "ciiu": ciiu,
+    }
+
+
+def _mincit_zf_follow_up_sources(row: Mapping[str, str]) -> list[dict[str, str]]:
+    zone_name = row.get("zona_franca_name", "")
+    resolution = row.get("declaratory_resolution", "")
+    search_hint = normalize_whitespace(f"{zone_name} {resolution}")
+    return [
+        {
+            "source_id": "mincit_prensa",
+            "source_name": "MinCIT — Noticias",
+            "url": _MINCIT_PRESS_URL,
+            "search_hint": search_hint,
+            "purpose": "Check whether MinCIT published a public-interest note about the named zone.",
+        },
+        {
+            "source_id": "diario_oficial",
+            "source_name": "Diario Oficial — Imprenta Nacional",
+            "url": _MINCIT_DIARIO_OFICIAL_URL,
+            "search_hint": search_hint,
+            "purpose": "Verify official publication of the declaratory or extension resolution.",
+        },
+        {
+            "source_id": "suin_juriscol",
+            "source_name": "SUIN Juriscol",
+            "url": _SUIN_URL,
+            "search_hint": search_hint,
+            "purpose": "Search for the final legal act by resolution number and zone name.",
+        },
+        {
+            "source_id": "gestor_normativo_fp",
+            "source_name": "Función Pública — Gestor Normativo",
+            "url": _GESTOR_NORMATIVO_URL,
+            "search_hint": search_hint,
+            "purpose": "Secondary legal-resolution search by resolution number and zone name.",
+        },
+    ]
+
+
+def _extract_mincit_zonas_francas_approved_rows_from_text(
+    registry_item: RawItem,
+    text: str,
+) -> list[RawItem]:
+    normalized = _normalize_mincit_zf_text(text)
+    if "NIT NOMBRE" not in normalized or "ZONA FRANCA" not in normalized:
+        return []
+    snapshot_date = _mincit_zf_snapshot_date(normalized)
+    source_report_date = _mincit_zf_source_report_date(normalized)
+    published_at = registry_item.published_at or source_report_date or snapshot_date
+    rows: list[RawItem] = []
+    for index, (nit, body) in enumerate(_mincit_zf_row_slices(normalized), start=1):
+        parsed = _parse_mincit_zf_row_body(nit, body)
+        if not parsed:
+            continue
+        zone_name = parsed["zona_franca_name"]
+        title = (
+            "MinCIT Zonas Francas aprobadas — "
+            f"{zone_name} — {parsed['municipality']}, {parsed['department']}"
+        )
+        if parsed.get("declaratory_resolution"):
+            title = f"{title} — {parsed['declaratory_resolution']}"
+        entry_url = f"{registry_item.url}#zf-{index}"
+        follow_up_sources = _mincit_zf_follow_up_sources(parsed)
+        metadata = {
+            **dict(registry_item.metadata),
+            "extraction": "mincit_zonas_francas_approved_pdf_row",
+            "content_extraction": MINCIT_ZF_APPROVED_EXTRACTION,
+            "registry": MINCIT_ZF_APPROVED_REGISTRY,
+            "registry_row_type": "approved_zone",
+            "registry_key": nit,
+            "registry_pdf_url": registry_item.url,
+            "registry_pdf_title": registry_item.title,
+            "snapshot_date": snapshot_date,
+            "source_report_date": source_report_date,
+            "source_update_date": registry_item.published_at,
+            "follow_up_sources": follow_up_sources,
+            **parsed,
+        }
+        raw_text = (
+            f"{title}. Official MinCIT approved-zones registry row. "
+            f"Snapshot date: {(snapshot_date or '')[:10] or 'unknown'}. "
+            f"Class: {parsed['zone_class']}; user type: {parsed['user_type']}; "
+            f"NIT: {nit}; extension resolution: "
+            f"{parsed.get('extension_resolution') or 'not listed'}; "
+            f"CIIU: {parsed['ciiu']}."
+        )
+        rows.append(
+            RawItem(
+                id=_make_id(registry_item.source_id, entry_url, title),
+                source_id=registry_item.source_id,
+                source_name=registry_item.source_name,
+                source_type=registry_item.source_type,
+                url=entry_url,
+                title=title,
+                fetched_at=registry_item.fetched_at,
+                published_at=published_at,
+                raw_text=raw_text,
+                metadata=metadata,
+            )
+        )
+    return rows
+
+
+def _enrich_mincit_zonas_francas(
+    items: list[RawItem],
+    client: httpx.Client,
+) -> list[RawItem]:
+    enriched: list[RawItem] = []
+    generic_pdf_items: list[RawItem] = []
+    for item in items:
+        if not _mincit_zf_is_approved_pdf_item(item):
+            generic_pdf_items.append(item)
+            continue
+        metadata = dict(item.metadata)
+        try:
+            response = _http_get(client, item.url)
+            text = _extract_pdf_text_objects_text(
+                response.content,
+                max_chars=MINCIT_ZF_TEXT_MAX_CHARS,
+            )
+            rows = _extract_mincit_zonas_francas_approved_rows_from_text(item, text)
+        except Exception as exc:  # noqa: BLE001 - preserve link-level item
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            continue
+        if not rows:
+            metadata["content_extraction_error"] = "unable to parse approved-zones rows"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            continue
+        enriched.extend(rows)
+    if generic_pdf_items:
+        enriched.extend(_enrich_pdf_text(generic_pdf_items, client))
+    return enriched
+
+
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+_GACETA_PROJECT_RE = re.compile(
+    r"\bPROYECTO\s+DE\s+(?P<kind>LEY|ACTO\s+LEGISLATIVO)\s+"
+    r"N[ÚU]MERO\s+(?P<label>.{5,180}?)(?=\s+por\s+(?:la|el|medio)|"
+    r"\s+P[aá]gina|\s+Gaceta|\.|$)",
+    re.IGNORECASE,
+)
+_GACETA_TITLE_RE = re.compile(
+    r"\b(por\s+(?:la|el|medio)\s+(?:cual\s+)?(?:se\s+)?"
+    r".{24,280}?)(?:\.|\s+P[aá]gina|\s+Gaceta|$)",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ImprentaDownloadContext:
+    url: str
+    hidden_fields: dict[str, str]
+
+
+def _extract_imprenta_download_context(
+    html: str,
+    current_url: str,
+) -> ImprentaDownloadContext | None:
+    soup = BeautifulSoup(html, "html.parser")
+    form = (
+        soup.find("form", {"id": "formResumen"})
+        or soup.find("form", {"id": "frmConDiario"})
+        or soup.find("form")
+    )
+    if form is None:
+        return None
+    action = form.get("action") or current_url
+    hidden_fields: dict[str, str] = {}
+    for field in form.find_all("input"):
+        name = field.get("name")
+        if not name:
+            continue
+        field_type = (field.get("type") or "").lower()
+        if field_type == "hidden" or name == "javax.faces.ViewState":
+            hidden_fields[name] = field.get("value") or ""
+    form_id = str(form.get("id") or form.get("name") or "")
+    if form_id:
+        hidden_fields.setdefault(form_id, form_id)
+    if "javax.faces.ViewState" not in hidden_fields:
+        return None
+    return ImprentaDownloadContext(
+        url=urljoin(current_url, action),
+        hidden_fields=hidden_fields,
+    )
+
+
+def _http_post_form(
+    client: httpx.Client,
+    url: str,
+    data: Mapping[str, str],
+) -> httpx.Response:
+    last_exc: Exception | None = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response = client.post(url, data=data)
+        except httpx.TransportError as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES:
+                time.sleep(BACKOFF_SECONDS)
+                continue
+            raise
+        if response.status_code >= 500 and attempt < MAX_RETRIES:
+            time.sleep(BACKOFF_SECONDS)
+            continue
+        response.raise_for_status()
+        return response
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("unreachable")
+
+
+def _download_imprenta_pdf(
+    client: httpx.Client,
+    context: ImprentaDownloadContext,
+    button_name: str,
+) -> httpx.Response:
+    data = dict(context.hidden_fields)
+    data[button_name] = button_name
+    return _http_post_form(client, context.url, data=data)
+
+
+def _annotate_legal_identity_items(
+    items: list[RawItem],
+    *,
+    max_records: int = 30,
+) -> list[RawItem]:
+    annotated: list[RawItem] = []
+    for item in items:
+        metadata = annotate_legal_identity(
+            dict(item.metadata),
+            item.title,
+            item.raw_text,
+            max_records=max_records,
+        )
+        if metadata == item.metadata:
+            annotated.append(item)
+            continue
+        annotated.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=item.raw_text,
+                metadata=metadata,
+            )
+        )
+    return annotated
+
+
+def _parse_diario_oficial_pdf_text(text: str) -> dict[str, Any] | None:
+    clean_text = normalize_whitespace(text)
+    if len(clean_text) < PDF_TEXT_MIN_CHARS:
+        return None
+    records = parse_legal_act_records(clean_text, max_records=40)
+    if not records:
+        return None
+    return {
+        "legal_act_records": records,
+        "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
+    }
+
+
+def _extract_embedded_pdf_url(html_text: str, base_url: str) -> str | None:
+    soup = BeautifulSoup(html_text, "html.parser")
+    for tag_name, attr in (("object", "data"), ("embed", "src"), ("iframe", "src")):
+        for tag in soup.find_all(tag_name):
+            value = str(tag.get(attr) or "").strip()
+            if not value:
+                continue
+            folded = fold_accents(value.lower())
+            if "pdf" in folded or "dynamiccontent" in folded:
+                return urljoin(base_url, value)
+    return None
+
+
+def _enrich_diario_oficial_pdfs(
+    items: list[RawItem],
+    client: httpx.Client,
+    html: str,
+    current_url: str,
+    *,
+    max_items: int = PDF_TEXT_PARSE_LIMIT,
+) -> list[RawItem]:
+    context = _extract_imprenta_download_context(html, current_url)
+    if context is None:
+        return items
+    enriched: list[RawItem] = []
+    parsed_count = 0
+    for item in items:
+        button_name = item.metadata.get("download_button_name")
+        if (
+            parsed_count >= max_items
+            or item.source_id != "diario_oficial"
+            or not isinstance(button_name, str)
+            or not button_name
+        ):
+            enriched.append(item)
+            continue
+        metadata = dict(item.metadata)
+        try:
+            response = _download_imprenta_pdf(client, context, button_name)
+            content_type = response.headers.get("content-type", "")
+            if (
+                "pdf" not in content_type.lower()
+                and not response.content.startswith(b"%PDF")
+                and "html" in content_type.lower()
+            ):
+                embedded_url = _extract_embedded_pdf_url(
+                    response.text,
+                    str(response.url),
+                )
+                if embedded_url:
+                    metadata["pdf_viewer_url"] = str(response.url)
+                    metadata["pdf_embedded_url"] = embedded_url
+                    response = _http_get(client, embedded_url)
+                    content_type = response.headers.get("content-type", "")
+            if (
+                "pdf" not in content_type.lower()
+                and not response.content.startswith(b"%PDF")
+            ):
+                raise ValueError(f"download did not return a PDF: {content_type}")
+            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+        except Exception as exc:  # noqa: BLE001 - preserve edition-level row
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        parsed = _parse_diario_oficial_pdf_text(text)
+        if parsed is None:
+            metadata.update(
+                {
+                    "content_extraction_error": "no legal act identities found in Diario PDF",
+                    "pdf_text_chars": len(text),
+                }
+            )
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        metadata.update(
+            {
+                "content_extraction": "diario_oficial_pdf_text",
+                "legal_act_records": parsed["legal_act_records"],
+                "legal_act_record_count": len(parsed["legal_act_records"]),
+                "pdf_text_chars": len(text),
+            }
+        )
+        record_labels = ", ".join(
+            record["label"] for record in parsed["legal_act_records"][:5]
+        )
+        enriched.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=(
+                    f"{item.raw_text} Diario Oficial legal-act identities: "
+                    f"{record_labels}. PDF text excerpt: {parsed['excerpt']}"
+                ),
+                metadata=metadata,
+            )
+        )
+        parsed_count += 1
+    return enriched
+
+
+def _gaceta_action_type(text: str) -> str:
+    folded = fold_accents(text.lower())
+    if "conciliacion" in folded:
+        return "conciliacion"
+    if "comisiones conjuntas" in folded or "conjuntas de la camara" in folded:
+        return "comisiones conjuntas"
+    if "informe de ponencia" in folded or "ponencia" in folded:
+        return "ponencia"
+    if "texto aprobado" in folded:
+        return "texto aprobado"
+    return "publicacion de gaceta"
+
+
+def _normalize_gaceta_project_label(kind: str, label: str) -> str:
+    clean = normalize_whitespace(label)
+    clean = re.sub(r"\bC\s*[ÁA]\s*M\s*A\s*R\s*A\b", "Cámara", clean, flags=re.I)
+    clean = re.sub(r"\bS\s*E\s*N\s*A\s*D\s*O\b", "Senado", clean, flags=re.I)
+    clean = re.sub(r"\s+y\s+", " y ", clean, flags=re.I)
+    kind_clean = "Acto Legislativo" if "ACTO" in fold_accents(kind.upper()) else "Ley"
+    return f"Proyecto de {kind_clean} {clean}".strip()
+
+
+def _gaceta_project_records(project_label: str) -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    joint_match = re.search(
+        r"\b(\d{1,4})\s+DE\s+(\d{4})\s+C[ÁA]MARA\s+Y\s+SENADO\b",
+        project_label,
+        flags=re.IGNORECASE,
+    )
+    if joint_match:
+        return [
+            {
+                "number": joint_match.group(1),
+                "year": joint_match.group(2),
+                "chamber": "Cámara/Senado",
+            }
+        ]
+    for match in re.finditer(
+        r"\b(\d{1,4})\s+DE\s+(\d{4})\s+(C[ÁA]MARA|SENADO)\b",
+        project_label,
+        flags=re.IGNORECASE,
+    ):
+        records.append(
+            {
+                "number": match.group(1),
+                "year": match.group(2),
+                "chamber": _normalize_senado_chamber(match.group(3)),
+            }
+        )
+    return records
+
+
+def _has_usable_gaceta_identity(project_label: str, document_title: str) -> bool:
+    if not _gaceta_project_records(project_label):
+        return False
+    folded_label = fold_accents(project_label.lower())
+    if re.search(r"\bproyecto de (?:ley|acto legislativo)\s+de\s+\d{4}", folded_label):
+        return False
+    folded_title = fold_accents(document_title.lower()).strip()
+    if len(folded_title) < 24:
+        return False
+    if folded_title.endswith((" de", " del", " la", " el", " fiscal de")):
+        return False
+    return True
+
+
+def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
+    clean_text = normalize_whitespace(text)
+    if len(clean_text) < PDF_TEXT_MIN_CHARS:
+        return None
+    project_label = ""
+    project_match = _GACETA_PROJECT_RE.search(clean_text)
+    if project_match:
+        project_label = _normalize_gaceta_project_label(
+            project_match.group("kind"),
+            project_match.group("label"),
+        )
+    title_match = _GACETA_TITLE_RE.search(clean_text)
+    document_title = ""
+    if title_match:
+        document_title = normalize_whitespace(title_match.group(1)).strip(" .,:;-")
+    elif item.metadata.get("document_title"):
+        document_title = normalize_whitespace(str(item.metadata["document_title"]))
+
+    if not project_label and not document_title:
+        return None
+    if not _has_usable_gaceta_identity(project_label, document_title):
+        return None
+    return {
+        "project_label": project_label,
+        "project_records": _gaceta_project_records(project_label),
+        "document_title": document_title,
+        "action_type": _gaceta_action_type(clean_text[:1500]),
+        "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
+    }
+
+
+def _enrich_gaceta_pdfs(
+    items: list[RawItem],
+    client: httpx.Client,
+    html: str,
+    current_url: str,
+    *,
+    max_items: int = GACETA_PDF_PARSE_LIMIT,
+) -> list[RawItem]:
+    context = _extract_imprenta_download_context(html, current_url)
+    if context is None:
+        return items
+    enriched: list[RawItem] = []
+    parsed_count = 0
+    for item in items:
+        button_name = item.metadata.get("download_button_name")
+        if (
+            parsed_count >= max_items
+            or item.source_id != "gacetas_congreso"
+            or not isinstance(button_name, str)
+            or not button_name
+        ):
+            enriched.append(item)
+            continue
+        metadata = dict(item.metadata)
+        try:
+            response = _download_imprenta_pdf(client, context, button_name)
+            content_type = response.headers.get("content-type", "")
+            if (
+                "pdf" not in content_type.lower()
+                and not response.content.startswith(b"%PDF")
+            ):
+                raise ValueError(f"download did not return a PDF: {content_type}")
+            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+        except Exception as exc:  # noqa: BLE001 - preserve link-level row
+            metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        parsed = _parse_gaceta_pdf_text(item, text)
+        if parsed is None:
+            metadata.update(
+                {
+                    "content_extraction_error": "no usable Gaceta project/title text found",
+                    "pdf_text_chars": len(text),
+                }
+            )
+            enriched.append(
+                RawItem(
+                    id=item.id,
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=item.url,
+                    title=item.title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=item.raw_text,
+                    metadata=metadata,
+                )
+            )
+            parsed_count += 1
+            continue
+        title_parts = [item.title]
+        if parsed["project_label"]:
+            title_parts.append(parsed["project_label"])
+        if parsed["document_title"]:
+            title_parts.append(parsed["document_title"][:180])
+        title = " — ".join(title_parts)
+        metadata.update(
+            {
+                "content_extraction": "gaceta_pdf_text",
+                "document_title": parsed["document_title"],
+                "project_label": parsed["project_label"],
+                "project_records": parsed["project_records"],
+                "agenda_action_type": parsed["action_type"],
+                "matched_project_labels": [parsed["project_label"]]
+                if parsed["project_label"]
+                else [],
+                "pdf_text_chars": len(text),
+            }
+        )
+        enriched.append(
+            RawItem(
+                id=_make_id(item.source_id, item.url, title),
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=(
+                    f"{title}. Extracted from official Gaceta PDF. "
+                    f"PDF text excerpt: {parsed['excerpt']}"
+                ),
+                metadata=metadata,
+            )
+        )
+        parsed_count += 1
+    return enriched
 
 
 def _extract_imprenta_jsf_table(
@@ -1039,6 +2625,10 @@ def _extract_imprenta_jsf_table(
             "extraction": "imprenta_nacional_jsf_table",
             "edition_number": number,
         }
+        button = tr.find("button", attrs={"name": True})
+        if button is not None:
+            metadata["download_button_name"] = str(button.get("name"))
+            metadata["download_mechanism"] = "jsf_postback"
         if kind:
             metadata["entity_or_type"] = kind
         if document_title:
@@ -1076,6 +2666,60 @@ def _extract_corte_comunicados(
             if "comunicado" in fold_accents((it.title + " " + it.url).lower())
         ] or items
     return []
+
+
+_DIAN_REGULATORY_LINK_MARKERS = (
+    "agenda-reglamentaria",
+    "proyectosnormas",
+)
+
+
+def _extract_dian_regulatory_project_links(
+    html: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    for anchor in soup.find_all("a", href=True):
+        href = urljoin(base_url, str(anchor.get("href") or ""))
+        anchor_text = normalize_whitespace(anchor.get_text(" ", strip=True))
+        searchable = fold_accents(" ".join([anchor_text, href]).lower())
+        if not any(marker in searchable for marker in _DIAN_REGULATORY_LINK_MARKERS):
+            continue
+        canon = canonicalize_url(href)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        title_text = anchor_text or "DIAN regulatory project index"
+        title = f"DIAN regulatory project index — {title_text[:140]}"
+        metadata = {
+            "extraction": "dian_regulatory_project_index_link",
+            "parser_status": "dynamic_or_undated_index",
+            "target_url": href,
+        }
+        items.append(
+            RawItem(
+                id=_make_id(source.id, href, title),
+                source_id=source.id,
+                source_name=source.name,
+                source_type=source.type,
+                url=href,
+                title=title,
+                fetched_at=fetched_at,
+                published_at=None,
+                raw_text=(
+                    f"{title}. DIAN exposes this regulatory-project lead from "
+                    "the normativity landing page, but the static HTML does not "
+                    "include dated project rows. Treat as parser feasibility "
+                    "metadata, not rankable evidence."
+                ),
+                metadata=metadata,
+            )
+        )
+    return items
 
 
 def _http_get(
@@ -1282,6 +2926,489 @@ def fetch_api(source: Metasource, client: httpx.Client) -> list[RawItem]:
     return items
 
 
+def _field_key(label: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", fold_accents(label.lower())).strip("_")
+
+
+def _parse_detail_datetime_to_iso(value: str | None) -> str | None:
+    if not value:
+        return None
+    clean = normalize_whitespace(value)
+    try:
+        parsed = datetime.fromisoformat(clean.replace("Z", "+00:00"))
+    except ValueError:
+        return _parse_date_text_to_iso(clean)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _registry_year(value: str) -> str:
+    year = int(value)
+    if year < 100:
+        year += 2000
+    return str(year)
+
+
+_REGISTRY_PROJECT_RE = re.compile(
+    r"\b(?P<number>\d{1,4})\s*/\s*(?P<year>\d{2,4})(?:\s*(?P<suffix>[CS]))?",
+    re.IGNORECASE,
+)
+
+
+def _normalize_project_number(value: str) -> str:
+    stripped = value.lstrip("0")
+    return stripped or "0"
+
+
+def _registry_project_records(
+    *,
+    numero_senado: str | None = None,
+    numero_camara: str | None = None,
+) -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for text, default_chamber in (
+        (numero_senado or "", "Senado"),
+        (numero_camara or "", "Cámara"),
+    ):
+        for match in _REGISTRY_PROJECT_RE.finditer(text):
+            suffix = (match.group("suffix") or "").upper()
+            chamber = (
+                "Senado"
+                if suffix == "S"
+                else "Cámara"
+                if suffix == "C"
+                else default_chamber
+            )
+            record = {
+                "number": _normalize_project_number(match.group("number")),
+                "year": _registry_year(match.group("year")),
+                "chamber": chamber,
+            }
+            key = (record["number"], record["year"], record["chamber"])
+            if key in seen:
+                continue
+            seen.add(key)
+            records.append(record)
+    return records
+
+
+def _registry_project_kind(value: str | None) -> str:
+    folded = fold_accents((value or "").lower())
+    return "Acto Legislativo" if "acto legislativo" in folded else "Ley"
+
+
+def _registry_project_label(
+    records: list[dict[str, str]],
+    *,
+    kind: str = "Ley",
+) -> str:
+    if not records:
+        return ""
+    record = records[0]
+    return (
+        f"Proyecto de {kind} {record['number']} de {record['year']} "
+        f"{record['chamber']}"
+    )
+
+
+def _extract_detail_label_values(html_fragment: str) -> dict[str, str]:
+    soup = BeautifulSoup(html_fragment, "html.parser")
+    values: dict[str, str] = {}
+    for row in soup.find_all("tr"):
+        cells = [cell.get_text(" ", strip=True) for cell in row.find_all(["th", "td"])]
+        if len(cells) < 2:
+            continue
+        for idx in range(0, len(cells) - 1, 2):
+            label = normalize_whitespace(cells[idx]).rstrip(":")
+            value = normalize_whitespace(cells[idx + 1])
+            if label and value:
+                values[_field_key(label)] = value
+    return values
+
+
+def _extract_senado_publication_links(
+    html_fragment: str,
+    base_url: str,
+) -> list[dict[str, str]]:
+    soup = BeautifulSoup(html_fragment, "html.parser")
+    links: list[dict[str, str]] = []
+    for label_cell in soup.select("td.celda-etiqueta"):
+        value_cell = label_cell.find_next_sibling("td")
+        if value_cell is None:
+            continue
+        link = value_cell.find("a")
+        title = normalize_whitespace(
+            link.get_text(" ", strip=True) if link else value_cell.get_text(" ", strip=True)
+        )
+        if not title:
+            continue
+        label = normalize_whitespace(label_cell.get_text(" ", strip=True)).rstrip(":")
+        href = link.get("href") if link else ""
+        links.append(
+            {
+                "type": label,
+                "title": title,
+                "url": urljoin(base_url, href) if href else "",
+            }
+        )
+    return links
+
+
+def _extract_senado_text_radicado_url(html_fragment: str, base_url: str) -> str:
+    soup = BeautifulSoup(html_fragment, "html.parser")
+    button = soup.find(id="textoRadicadoBtn")
+    if button is None:
+        return ""
+    link = button.get("data-link") or ""
+    return urljoin(base_url, link) if link else ""
+
+
+def _senado_registry_row_to_item(
+    row: Mapping[str, Any],
+    detail_html: str,
+    *,
+    source: Metasource,
+    fetched_at: str,
+    detail_url: str,
+) -> RawItem | None:
+    title = normalize_whitespace(str(row.get("titulo") or ""))
+    numero_senado = normalize_whitespace(str(row.get("numero_senado") or ""))
+    numero_camara = normalize_whitespace(str(row.get("numero_camara") or ""))
+    if not title or not (numero_senado or numero_camara):
+        return None
+    fields = _extract_detail_label_values(detail_html)
+    kind = _registry_project_kind(fields.get("tipo_de_ley") or "Ley")
+    records = _registry_project_records(
+        numero_senado=numero_senado,
+        numero_camara=numero_camara,
+    )
+    project_label = _registry_project_label(records, kind=kind)
+    if not project_label:
+        return None
+    status = normalize_whitespace(
+        fields.get("estado") or str(row.get("estado") or "")
+    )
+    commission = normalize_whitespace(
+        fields.get("comision") or str(row.get("comision") or "")
+    )
+    filing_date = fields.get("fecha_de_presentacion")
+    published_at = _parse_date_text_to_iso(filing_date) if filing_date else None
+    publication_links = _extract_senado_publication_links(detail_html, source.url)
+    text_radicado_url = _extract_senado_text_radicado_url(detail_html, source.url)
+    evidence_parts = [
+        project_label,
+        title,
+        f"Estado: {status}" if status else "",
+        f"Comisión: {commission}" if commission else "",
+        f"Fecha de presentación: {filing_date}" if filing_date else "",
+    ]
+    if publication_links:
+        evidence_parts.append(
+            "Publicaciones: "
+            + "; ".join(link["title"] for link in publication_links[:4])
+        )
+    metadata: dict[str, Any] = {
+        "content_extraction": "senado_leyes_registry",
+        "parsed_content": True,
+        "legislative_registry": "senado_leyes",
+        "registry_detail_url": detail_url,
+        "project_label": project_label,
+        "project_records": records,
+        "project_identity_status": "clean",
+        "has_clean_project_identity": True,
+        "bill_title": title,
+        "status": status,
+        "commission": commission,
+        "author": normalize_whitespace(str(row.get("autor") or "")),
+        "legislature": fields.get("legislatura") or _current_legislature_label(),
+        "cuatrenio": fields.get("cuatrenio") or str(row.get("cuatrenio") or ""),
+        "source_row_id": str(row.get("id") or ""),
+    }
+    if publication_links:
+        metadata["publication_links"] = publication_links
+    if text_radicado_url:
+        metadata["text_radicado_url"] = text_radicado_url
+    return RawItem(
+        id=_make_id(source.id, detail_url, project_label),
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url=detail_url,
+        title=f"Senado registry — {project_label} — {title}",
+        fetched_at=fetched_at,
+        published_at=published_at,
+        raw_text=". ".join(part for part in evidence_parts if part),
+        metadata=metadata,
+    )
+
+
+def _fetch_senado_leyes_registry(
+    source: Metasource,
+    client: httpx.Client,
+    fetched_at: str,
+) -> list[RawItem]:
+    search_url = urljoin(source.url, "api/search_pdly.php")
+    detail_base = urljoin(source.url, "api/get_detalle_pdly.php")
+    response = _http_post_form(
+        client,
+        search_url,
+        {"legislatura": _current_legislature_label()},
+    )
+    payload = response.json()
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError("unexpected Senado registry payload")
+    limit = source.max_items or LEGISLATIVE_REGISTRY_DEFAULT_LIMIT
+    def row_sort_key(row: object) -> int:
+        if not isinstance(row, dict):
+            return -1
+        try:
+            return int(str(row.get("id") or "0"))
+        except ValueError:
+            return -1
+
+    items: list[RawItem] = []
+    for row in sorted(rows, key=row_sort_key, reverse=True)[:limit]:
+        if not isinstance(row, dict):
+            continue
+        row_id = row.get("id")
+        if row_id is None:
+            continue
+        detail_url = f"{detail_base}?id={row_id}"
+        detail = _http_get(client, detail_base, params={"id": str(row_id)})
+        item = _senado_registry_row_to_item(
+            row,
+            detail.text,
+            source=source,
+            fetched_at=fetched_at,
+            detail_url=detail_url,
+        )
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _extract_camara_pl_nonce(html_text: str) -> str:
+    match = re.search(r"PL_NONCE\s*:\s*['\"]([^'\"]+)['\"]", html_text)
+    return match.group(1) if match else ""
+
+
+def _extract_camara_legislature_id(html_text: str, label: str) -> str:
+    soup = BeautifulSoup(html_text, "html.parser")
+    select = soup.find("select", id="legislaturaField")
+    if select is None:
+        return "All"
+    for option in select.find_all("option"):
+        text = normalize_whitespace(option.get_text(" ", strip=True))
+        if text == label:
+            return option.get("value") or "All"
+    return "All"
+
+
+def _camara_pack_names(pack: str | None) -> str:
+    if not pack:
+        return ""
+    names: list[str] = []
+    for entry in str(pack).split("::"):
+        parts = entry.split("||")
+        if len(parts) >= 2 and parts[1].strip():
+            names.append(normalize_whitespace(parts[1]))
+    return ", ".join(names)
+
+
+def _extract_camara_detail_fields(html_text: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    fields: dict[str, Any] = {}
+    match = re.search(r'"datePublished"\s*:\s*"([^"]+)"', html_text)
+    if match:
+        fields["date_published"] = match.group(1)
+    for card in soup.select(".pl-card"):
+        title_el = card.select_one(".pl-title")
+        body_el = card.select_one(".pl-body")
+        if title_el is None or body_el is None:
+            continue
+        key = _field_key(title_el.get_text(" ", strip=True))
+        fields[key] = normalize_whitespace(body_el.get_text(" ", strip=True))
+        if key == "publicacion":
+            fields["publication_links"] = [
+                {
+                    "title": normalize_whitespace(a.get_text(" ", strip=True)),
+                    "url": a.get("href") or "",
+                }
+                for a in body_el.find_all("a")
+                if a.get("href")
+            ]
+    for title_el in soup.select(".pl-nums-title"):
+        if "fecha de radicacion" not in fold_accents(
+            title_el.get_text(" ", strip=True).lower()
+        ):
+            continue
+        parent = title_el.find_parent(class_="pl-nums-group")
+        if parent is None:
+            continue
+        for card in parent.select(".pl-kpi-card"):
+            label_el = card.select_one(".pl-kpi-label")
+            value_el = card.select_one(".pl-kpi-value")
+            if label_el is None or value_el is None:
+                continue
+            value = normalize_whitespace(value_el.get_text(" ", strip=True))
+            if value and value not in {"-", "—"}:
+                fields["fecha_de_radicacion"] = value
+                break
+    return fields
+
+
+def _camara_registry_row_to_item(
+    row: Mapping[str, Any],
+    detail_html: str,
+    *,
+    source: Metasource,
+    fetched_at: str,
+    detail_url: str,
+) -> RawItem | None:
+    title = normalize_whitespace(str(row.get("titulo") or ""))
+    short_title = normalize_whitespace(str(row.get("proyecto") or ""))
+    numero_senado = normalize_whitespace(str(row.get("nro_senado") or ""))
+    numero_camara = normalize_whitespace(str(row.get("nro_camara") or ""))
+    if not title or not (numero_senado or numero_camara):
+        return None
+    fields = _extract_camara_detail_fields(detail_html)
+    kind = _registry_project_kind(str(row.get("tipo") or fields.get("tipo_de_ley") or ""))
+    records = _registry_project_records(
+        numero_senado=numero_senado,
+        numero_camara=numero_camara,
+    )
+    project_label = _registry_project_label(records, kind=kind)
+    if not project_label:
+        return None
+    published_at = _parse_date_text_to_iso(str(fields.get("fecha_de_radicacion") or ""))
+    if not published_at:
+        published_at = _parse_detail_datetime_to_iso(str(fields.get("date_published") or ""))
+    status = normalize_whitespace(str(row.get("estado") or ""))
+    commission = _camara_pack_names(str(row.get("comisiones_pack") or ""))
+    authors = _camara_pack_names(str(row.get("autores_pack") or ""))
+    other_authors = normalize_whitespace(str(row.get("otros_autores") or ""))
+    object_text = normalize_whitespace(str(fields.get("objeto_del_proyecto") or ""))
+    publication_links = [
+        {
+            "title": str(link.get("title") or ""),
+            "url": urljoin(detail_url, str(link.get("url") or "")),
+        }
+        for link in (fields.get("publication_links") or [])
+        if isinstance(link, dict) and link.get("url")
+    ]
+    display_title = short_title or title
+    evidence_parts = [
+        project_label,
+        display_title,
+        title,
+        f"Estado: {status}" if status else "",
+        f"Comisión: {commission}" if commission else "",
+        f"Fecha de radicación: {fields.get('fecha_de_radicacion')}"
+        if fields.get("fecha_de_radicacion")
+        else "",
+        f"Objeto: {object_text}" if object_text else "",
+    ]
+    metadata: dict[str, Any] = {
+        "content_extraction": "camara_proyectos_ley_registry",
+        "parsed_content": True,
+        "legislative_registry": "camara_proyectos_ley",
+        "registry_detail_url": detail_url,
+        "project_label": project_label,
+        "project_records": records,
+        "project_identity_status": "clean",
+        "has_clean_project_identity": True,
+        "bill_title": title,
+        "short_title": short_title,
+        "status": status,
+        "commission": commission,
+        "authors": ", ".join(p for p in [authors, other_authors] if p),
+        "legislature": str(row.get("vigencia") or ""),
+        "origin": str(row.get("origen") or ""),
+        "bill_type": str(row.get("tipo") or ""),
+    }
+    if object_text:
+        metadata["object"] = object_text
+    if publication_links:
+        metadata["publication_links"] = publication_links
+    return RawItem(
+        id=_make_id(source.id, detail_url, project_label),
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url=detail_url,
+        title=f"Cámara registry — {project_label} — {display_title}",
+        fetched_at=fetched_at,
+        published_at=published_at,
+        raw_text=". ".join(part for part in evidence_parts if part),
+        metadata=metadata,
+    )
+
+
+def _fetch_camara_proyectos_ley_registry(
+    source: Metasource,
+    client: httpx.Client,
+    home_html: str,
+    fetched_at: str,
+) -> list[RawItem]:
+    nonce = _extract_camara_pl_nonce(home_html)
+    if not nonce:
+        raise ValueError("Camara proyectos page missing PL_NONCE")
+    legislature = _extract_camara_legislature_id(
+        home_html,
+        _current_legislature_label(),
+    )
+    limit = source.max_items or LEGISLATIVE_REGISTRY_DEFAULT_LIMIT
+    ajax_url = urljoin(source.url, "/wp-admin/admin-ajax.php")
+    response = _http_post_form(
+        client,
+        ajax_url,
+        {
+            "action": "get_proyectos_ley_page",
+            "_ajax_nonce": nonce,
+            "page": "1",
+            "per_page": str(limit),
+            "term": "",
+            "comision": "",
+            "tipo": "All",
+            "estado": "All",
+            "origen": "All",
+            "legislatura": legislature,
+            "ley_numero": "",
+            "ley_fecha": "",
+            "comision_adv": "All",
+        },
+    )
+    payload = response.json()
+    data = payload.get("data") if isinstance(payload, dict) else None
+    rows = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError("unexpected Camara proyectos payload")
+    items: list[RawItem] = []
+    for row in rows[:limit]:
+        if not isinstance(row, dict):
+            continue
+        link_web = normalize_whitespace(str(row.get("link_web") or ""))
+        if not link_web:
+            continue
+        split = urlsplit(source.url)
+        site_root = f"{split.scheme}://{split.netloc}/"
+        detail_url = urljoin(site_root, link_web)
+        detail = _http_get(client, detail_url)
+        item = _camara_registry_row_to_item(
+            row,
+            detail.text,
+            source=source,
+            fetched_at=fetched_at,
+            detail_url=detail_url,
+        )
+        if item is not None:
+            items.append(item)
+    return items
+
+
 class RssParseError(Exception):
     pass
 
@@ -1352,6 +3479,15 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             "page is a JS app shell with no static content; "
             "needs a headless renderer or a different URL"
         )
+    if source.id == "senado_leyes_registry":
+        return _fetch_senado_leyes_registry(source, client, fetched_at)
+    if source.id == "camara_proyectos_ley_registry":
+        return _fetch_camara_proyectos_ley_registry(
+            source,
+            client,
+            response.text,
+            fetched_at,
+        )
     if source.id == "dane_comunicados_prensa":
         items = _extract_dane_comunicados(
             response.text, str(response.url), source, fetched_at
@@ -1368,7 +3504,18 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             require_date=False,
         )
         if items:
-            return _enrich_pdf_text(items, client)
+            return _enrich_mincit_zonas_francas(items, client)
+    if source.id == "senado_agenda_legislativa":
+        items = _extract_dated_anchors(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+            "anchor",
+            require_date=False,
+        )
+        if items:
+            return _enrich_senado_agenda_pdfs(items, client)
     if source.id == "dane_icoced":
         items = _extract_dane_icoced(
             response.text, str(response.url), source, fetched_at
@@ -1385,6 +3532,12 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
         )
         if items:
             return items
+    if source.id == "dian_proyectos_normas":
+        items = _extract_dian_regulatory_project_links(
+            response.text, str(response.url), source, fetched_at
+        )
+        if items:
+            return items
     if source.id == "diario_oficial":
         items = _extract_imprenta_jsf_table(
             response.text,
@@ -1395,7 +3548,15 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             query_param="edicion",
         )
         if items:
-            return items
+            return _enrich_diario_oficial_pdfs(
+                items,
+                client,
+                response.text,
+                str(response.url),
+                max_items=source.max_items
+                if source.max_items is not None
+                else PDF_TEXT_PARSE_LIMIT,
+            )
     if source.id == "gacetas_congreso":
         items = _extract_imprenta_jsf_table(
             response.text,
@@ -1406,8 +3567,8 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             query_param="gaceta",
         )
         if items:
-            return items
-    return _extract_dated_anchors(
+            return _enrich_gaceta_pdfs(items, client, response.text, str(response.url))
+    items = _extract_dated_anchors(
         response.text,
         str(response.url),
         source,
@@ -1415,6 +3576,9 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
         "anchor",
         require_date=False,
     )
+    if source.id in {"gestor_normativo_fp", "suin_juriscol", "suin_juriscol_normas"}:
+        return _annotate_legal_identity_items(items)
+    return items
 
 
 def _cap_items(source: Metasource, items: list[RawItem]) -> list[RawItem]:

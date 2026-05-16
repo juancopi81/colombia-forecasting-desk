@@ -63,6 +63,7 @@ class CleanedItem:
     detected_topics: list[str] = field(default_factory=list)
     trust_role: str = ""
     priority: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +82,7 @@ class Cluster:
     member_titles: list[str] = field(default_factory=list)
     member_source_names: list[str] = field(default_factory=list)
     member_source_ids: list[str] = field(default_factory=list)
+    member_metadata: list[dict[str, Any]] = field(default_factory=list)
     priorities: list[str] = field(default_factory=list)
     detected_entities: list[str] = field(default_factory=list)
     detected_topics: list[str] = field(default_factory=list)

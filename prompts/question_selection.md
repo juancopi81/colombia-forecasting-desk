@@ -22,6 +22,27 @@ Prefer questions that are:
 - answerable with public, non-paywalled evidence
 - useful even before full automation exists
 
+Prefer public-interest hooks over merely clean indicator continuation. A
+question is more valuable when it has at least one of these shapes:
+
+- `decision_pending`: a permit, decree, reform, bill, court case, regulatory
+  approval, land-use decision, zona franca decision, or administrative act may
+  resolve by a date.
+- `cost_pressure`: materials, construction costs, cement, energy, fuel, TRM,
+  imports, logistics, or other input costs may rise enough to matter.
+- `contradiction`: two credible sources, indicators, or official narratives
+  point in different directions and a later source can clarify the gap.
+- `named_entity_path`: a company, municipality, project, bill, agency, court, or
+  regulator is tied to a clear next institutional step.
+- `public_consequence`: the outcome matters for households, firms, public
+  finances, elections, public services, or institutional credibility without
+  becoming personalized advice.
+
+Examples: "Will this project/land/company become a zona franca?", "Will
+construction or material costs increase again?", "Two official or credible
+sources appear to conflict; which one resolves, and what explains the gap?",
+"Will a named bill/decree/regulatory proposal advance before a deadline?"
+
 Reject questions that are:
 
 - vague, subjective, or framed as "will this matter?"
@@ -29,6 +50,8 @@ Reject questions that are:
 - mostly human-interest, curiosity, or isolated local crime items
 - dependent on private, paywalled, or login-required evidence
 - missing a plausible resolution source or deadline/window
+- a legislative agenda item without a clean project number, bill title, and
+  follow-up source for resolution
 - actually investment, trading, betting, or execution recommendations
 
 ## Scoring
@@ -42,6 +65,10 @@ Score each candidate from 1 to 5:
 - `risk_score`: legal, reputational, safety, or misuse risk; 5 is highest risk.
 
 Use the scores to select the top 1-3 questions for evidence-pack research.
+When two candidates have similar scores, prefer the one with a stronger
+public-interest hook and clearer "why should a reader care?" story. Avoid
+selecting another routine next-data-point forecast when a decision, cost
+pressure, contradiction, or named institutional path is available.
 High risk does not automatically reject a question, but explain the risk and
 only select it if the public-interest value is strong.
 

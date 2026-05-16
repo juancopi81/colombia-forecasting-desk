@@ -108,4 +108,5 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         detected_topics=detected_topics,
         trust_role=source.trust_role,
         priority=source.priority,
+        metadata=dict(raw.metadata or {}),
     )

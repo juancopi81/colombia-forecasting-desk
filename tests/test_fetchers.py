@@ -12,13 +12,23 @@ from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
     _enrich_dane_icoced_xlsx,
+    _enrich_diario_oficial_pdfs,
+    _enrich_gaceta_pdfs,
+    _enrich_mincit_zonas_francas,
     _enrich_pdf_text,
+    _enrich_senado_agenda_pdfs,
+    _annotate_legal_identity_items,
     _extract_anchors,
     _extract_corte_comunicados,
     _extract_dane_comunicados,
+    _extract_dian_regulatory_project_links,
     _extract_imprenta_jsf_table,
+    _extract_mincit_zonas_francas_approved_rows_from_text,
     _extract_pdf_text,
+    _extract_senado_agenda_entries_from_text,
     _cap_items,
+    _parse_diario_oficial_pdf_text,
+    _parse_gaceta_pdf_text,
     _parse_rss_entries,
     _parse_dane_icoced_xlsx,
     _parse_date_text_to_iso,
@@ -28,6 +38,7 @@ from colombia_forecasting_desk.fetchers import (
     _socrata_row_to_item,
     _struct_time_to_iso,
     fetch_api,
+    fetch_html,
 )
 from colombia_forecasting_desk.models import RawItem
 
@@ -133,6 +144,156 @@ def test_extract_anchors_filters_nav_and_short() -> None:
     assert not any(text.lower() in {"menú", "inicio"} for text, _ in anchors)
 
 
+def test_fetch_senado_leyes_registry_parses_search_and_detail(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="senado_leyes_registry",
+        name="Senado — Sección de Leyes / Proyectos de Ley",
+        type="legal",
+        url="https://leyes.senado.gov.co/",
+        fetch_method="html",
+        trust_role="agenda_signal",
+        max_items=1,
+    )
+    detail_html = """
+    <table><tbody>
+      <tr><td>Número Senado</td><td>001/25</td><td>Número Cámara</td><td></td></tr>
+      <tr><td>Cuatrenio</td><td>2022-2026</td><td>Legislatura</td><td>2025-2026</td></tr>
+      <tr><td>Comisión</td><td>SEPTIMA</td><td>Fecha de Presentación</td><td>20/07/2025</td></tr>
+      <tr><td>Estado</td><td>PENDIENTE DISCUTIR PONENCIA PARA PRIMER DEBATE EN SENADO</td></tr>
+    </tbody></table>
+    <table><tr>
+      <td class="celda-etiqueta">Primera Ponencia</td>
+      <td class="celda-dato"><a href="https://svrpubindc.imprenta.gov.co/senado/">Gaceta 1502/2025</a></td>
+    </tr></table>
+    <button id="textoRadicadoBtn" data-link="p-ley/2025-2026/PL 001-25.pdf"></button>
+    """
+    payload = {
+        "success": True,
+        "data": [
+            {
+                "id": 9540,
+                "numero_senado": "001/25",
+                "numero_camara": "",
+                "cuatrenio": "2022-2026",
+                "titulo": "POR MEDIO DE LA CUAL SE ESTABLECEN LINEAMIENTOS EN SALUD",
+                "autor": "H.S. LORENA RIOS CUELLAR.",
+                "comision": "SEPTIMA",
+                "estado": "PENDIENTE DISCUTIR PONENCIA PARA PRIMER DEBATE EN SENADO",
+                "type": "pdly",
+            }
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/":
+            return httpx.Response(200, text="<html>ok</html>")
+        if request.method == "POST" and request.url.path == "/api/search_pdly.php":
+            return httpx.Response(200, json=payload)
+        if request.method == "GET" and request.url.path == "/api/get_detalle_pdly.php":
+            return httpx.Response(200, text=detail_html)
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.published_at == "2025-07-20T00:00:00Z"
+    assert item.metadata["content_extraction"] == "senado_leyes_registry"
+    assert item.metadata["has_clean_project_identity"] is True
+    assert item.metadata["project_label"] == "Proyecto de Ley 1 de 2025 Senado"
+    assert item.metadata["project_records"] == [
+        {"number": "1", "year": "2025", "chamber": "Senado"}
+    ]
+    assert item.metadata["publication_links"][0]["title"] == "Gaceta 1502/2025"
+    assert item.metadata["text_radicado_url"].endswith("PL 001-25.pdf")
+    assert "PENDIENTE DISCUTIR PONENCIA" in item.raw_text
+
+
+def test_fetch_camara_proyectos_registry_parses_ajax_and_detail(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="camara_proyectos_ley_registry",
+        name="Cámara de Representantes — Proyectos de Ley",
+        type="legal",
+        url="https://www.camara.gov.co/proyectos-de-ley/",
+        fetch_method="html",
+        trust_role="agenda_signal",
+        max_items=1,
+    )
+    home_html = """
+    <script>window.PL_CFG = { AJAX_URL : "https://www.camara.gov.co/wp-admin/admin-ajax.php", PL_NONCE : "abc123" };</script>
+    <select id="legislaturaField">
+      <option value="13">2025-2026</option>
+    </select>
+    """
+    payload = {
+        "success": True,
+        "data": {
+            "items": [
+                {
+                    "nro_camara": "554/2026C",
+                    "nro_senado": None,
+                    "titulo": "POR LA CUAL SE MODIFICAN REGLAS DE PUBLICIDAD OFICIAL",
+                    "proyecto": "GESTORAS SOCIALES",
+                    "tipo": "Ley Ordinaria",
+                    "estado": "Trámite en Comisión",
+                    "origen": "Cámara",
+                    "vigencia": "2025-2026",
+                    "link_web": "gestoras-sociales",
+                    "comisiones_pack": "1||Comisión Primera||https://example.com/comision",
+                    "autores_pack": "95||Andrés Forero||representantes/andres-forero",
+                    "otros_autores": "Y otros.",
+                }
+            ],
+            "total": 1,
+            "total_pages": 1,
+        },
+    }
+    detail_html = """
+    <script type="application/ld+json">{"datePublished":"2026-05-14T11:27:48-05:00"}</script>
+    <div class="pl-nums-group">
+      <div class="pl-nums-title">Fecha de Radicación</div>
+      <div class="pl-kpi-card"><div class="pl-kpi-label">Cámara</div><div class="pl-kpi-value">12/5/2026</div></div>
+    </div>
+    <div class="pl-card"><div class="pl-title">Objeto del proyecto</div>
+      <div class="pl-body">Prohibir el uso de recursos públicos en publicidad oficial.</div>
+    </div>
+    <div class="pl-card"><div class="pl-title">Publicación</div>
+      <div class="pl-body"><a href="https://www.camara.gov.co/wp-content/uploads/proyecto.pdf">Ver Documento</a></div>
+    </div>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/proyectos-de-ley/":
+            return httpx.Response(200, text=home_html)
+        if request.method == "POST" and request.url.path == "/wp-admin/admin-ajax.php":
+            assert b"get_proyectos_ley_page" in request.content
+            assert b"legislatura=13" in request.content
+            return httpx.Response(200, json=payload)
+        if request.method == "GET" and request.url.path == "/gestoras-sociales":
+            return httpx.Response(200, text=detail_html)
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.published_at == "2026-05-12T00:00:00Z"
+    assert item.url == "https://www.camara.gov.co/gestoras-sociales"
+    assert item.metadata["content_extraction"] == "camara_proyectos_ley_registry"
+    assert item.metadata["project_label"] == "Proyecto de Ley 554 de 2026 Cámara"
+    assert item.metadata["project_records"] == [
+        {"number": "554", "year": "2026", "chamber": "Cámara"}
+    ]
+    assert item.metadata["publication_links"][0]["title"] == "Ver Documento"
+    assert "Prohibir el uso de recursos públicos" in item.raw_text
+
+
 def test_extract_anchors_caps_at_30() -> None:
     body = "".join(
         f'<a href="/n/{i}">Title number {i:03d} long enough to keep</a>'
@@ -192,8 +353,14 @@ def test_parse_dane_icoced_xlsx_extracts_headline_metrics() -> None:
 class _FakeBinaryResponse:
     status_code = 200
 
-    def __init__(self, content: bytes):
+    def __init__(self, content: bytes, headers=None, url: str = "https://example.com"):
         self.content = content
+        self.headers = headers or {}
+        self.url = url
+
+    @property
+    def text(self) -> str:
+        return self.content.decode("utf-8", errors="ignore")
 
     def raise_for_status(self) -> None:
         return None
@@ -209,6 +376,14 @@ def _minimal_text_pdf(text: str) -> bytes:
         b"%PDF-1.4\n1 0 obj\n<<>>\nstream\nBT\n("
         + text.encode("latin-1")
         + b") Tj\nET\nendstream\nendobj\n%%EOF"
+    )
+
+
+def _minimal_operator_pdf(operator_stream: bytes) -> bytes:
+    return (
+        b"%PDF-1.4\n1 0 obj\n<<>>\nstream\n"
+        + operator_stream
+        + b"\nendstream\nendobj\n%%EOF"
     )
 
 
@@ -244,6 +419,34 @@ def test_extract_pdf_text_reads_literal_text_stream() -> None:
     assert "Censo Economico Nacional" in _extract_pdf_text(_minimal_text_pdf(text))
 
 
+def test_extract_pdf_text_reads_split_tj_fragments() -> None:
+    pdf = _minimal_operator_pdf(
+        b"BT\n"
+        b"[(El )4(Proyecto de Ley No. )-3(312 del 2025 Senado )"
+        b"(sera discutido en primer debate por la comision.)] TJ\n"
+        b"[(La agenda contiene informacion suficiente para el analista.)] TJ\n"
+        b"ET"
+    )
+
+    text = _extract_pdf_text(pdf)
+
+    assert "Proyecto de Ley No. 312 del 2025 Senado" in text
+    assert "primer debate" in text
+
+
+def test_extract_pdf_text_decodes_octal_escapes() -> None:
+    text = _extract_pdf_text(
+        _minimal_text_pdf(
+            "Gaceta del Congreso. PROYECTO DE LEY N\\332MERO 550 DE 2026 "
+            "C\\301MARA Y SENADO por la cual se adiciona el Presupuesto "
+            "General de la Naci\\363n."
+        )
+    )
+
+    assert "NÚMERO 550 DE 2026 CÁMARA Y SENADO" in text
+    assert "Nación" in text
+
+
 class _FakePdfClient:
     def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
         text = (
@@ -274,6 +477,136 @@ def test_enrich_pdf_text_marks_pdf_item_as_parsed_content() -> None:
     assert "resultados economicos nacionales" in enriched.raw_text
 
 
+def test_extract_senado_agenda_entries_from_pdf_text() -> None:
+    item = RawItem(
+        id="senado-agenda-1",
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        source_type="calendar",
+        url=(
+            "https://www.senado.gov.co/index.php/documentos/senado-prensa/"
+            "agenda-legislativa-actual/9373-agenda-legislativa-del-11-al-15-"
+            "de-mayo-de-2026/file"
+        ),
+        title="Agenda Legislativa del 11 al 15 de mayo de 2026 ( pdf, 944 KB )",
+        fetched_at="2026-05-15T15:10:00Z",
+        published_at="2026-05-11T00:00:00Z",
+        raw_text="Agenda Legislativa del 11 al 15 de mayo de 2026",
+        metadata={"extraction": "anchor"},
+    )
+    text = (
+        "MARTES 12 de mayo TEMA: la presentacion en primer debate del "
+        "Proyecto de Ley No. 312 del 2025 Senado 463 del 2025 Camara, "
+        "\"POR MEDIO DE LA CUAL SE MODIFICA EL REGIMEN TRIBUTARIO\". "
+        "Autores: Ministro de Hacienda. "
+        "MIERCOLES 13 de mayo TEMA: ponencia del Proyecto de Ley No. "
+        "550 de 2026 Camara, 369 de 2026 Senado."
+    )
+
+    entries = _extract_senado_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 2
+    assert entries[0].published_at == "2026-05-12T00:00:00Z"
+    assert "Proyecto de Ley 312 de 2025 Senado" in entries[0].title
+    assert entries[0].metadata["content_extraction"] == "senado_agenda_pdf"
+    assert entries[0].metadata["scheduled_date"] == "2026-05-12T00:00:00Z"
+    assert entries[0].metadata["agenda_action_type"] == "primer debate"
+    assert entries[0].metadata["project_records"] == [
+        {
+            "kind": "Ley",
+            "number": "312",
+            "year": "2025",
+            "chamber": "Senado",
+        },
+        {
+            "kind": "Ley",
+            "number": "463",
+            "year": "2025",
+            "chamber": "Cámara",
+        },
+    ]
+    assert entries[0].metadata["document_title"] == (
+        "POR MEDIO DE LA CUAL SE MODIFICA EL REGIMEN TRIBUTARIO"
+    )
+    assert entries[0].metadata["project_identity_status"] == "clean_project_identity"
+    assert entries[0].metadata["has_clean_project_identity"] is True
+    assert entries[0].metadata["follow_up_sources"][0]["source_id"] == (
+        "gacetas_congreso"
+    )
+    assert entries[0].url.endswith("#project-1")
+    assert "official Senado agenda PDF" in entries[0].raw_text
+    assert "Follow-up sources: Gacetas del Congreso" in entries[0].raw_text
+
+
+def test_extract_senado_agenda_keeps_loose_title_as_research_lead() -> None:
+    item = RawItem(
+        id="senado-agenda-1",
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        source_type="calendar",
+        url="https://www.senado.gov.co/index.php/documentos/agenda/file",
+        title="Agenda Legislativa del 11 al 15 de mayo de 2026 ( pdf, 944 KB )",
+        fetched_at="2026-05-15T15:10:00Z",
+        published_at="2026-05-11T00:00:00Z",
+        raw_text="Agenda Legislativa del 11 al 15 de mayo de 2026",
+        metadata={"extraction": "anchor"},
+    )
+    text = (
+        "LUNES 11 de mayo TEMA: ponencia: Proyecto de Ley Senado "
+        "elacual se modificael articulo de laleydeyse Dictan "
+        "otrasdisposiciones. Autores: Senadores."
+    )
+
+    entries = _extract_senado_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 1
+    assert "el cual se modifica el articulo" in entries[0].title
+    assert entries[0].metadata["project_label"] == "Proyecto de Ley Senado"
+    assert entries[0].metadata["project_records"] == []
+    assert entries[0].metadata["project_identity_status"] == "missing_project_number"
+    assert entries[0].metadata["has_clean_project_identity"] is False
+    assert entries[0].metadata["follow_up_sources"][0]["source_id"] == (
+        "gacetas_congreso"
+    )
+
+
+class _FakeSenadoPdfClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        text = (
+            "MARTES 12 de mayo TEMA: la presentacion en primer debate del "
+            "Proyecto de Ley No. 312 del 2025 Senado 463 del 2025 Camara, "
+            "POR MEDIO DE LA CUAL SE MODIFICA EL REGIMEN TRIBUTARIO. "
+            "Autores: Ministro de Hacienda. La agenda contiene informacion "
+            "suficiente para el analista."
+        )
+        return _FakeBinaryResponse(_minimal_text_pdf(text))
+
+
+def test_enrich_senado_agenda_pdfs_replaces_pdf_link_with_entries() -> None:
+    item = RawItem(
+        id="senado-agenda-1",
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        source_type="calendar",
+        url="https://www.senado.gov.co/index.php/documentos/agenda/file",
+        title="Agenda Legislativa del 11 al 15 de mayo de 2026 ( pdf, 944 KB )",
+        fetched_at="2026-05-15T15:10:00Z",
+        published_at="2026-05-11T00:00:00Z",
+        raw_text="Agenda Legislativa del 11 al 15 de mayo de 2026",
+        metadata={"extraction": "anchor"},
+    )
+
+    enriched = _enrich_senado_agenda_pdfs(
+        [item], _FakeSenadoPdfClient(), max_items=1
+    )
+
+    assert len(enriched) == 1
+    assert enriched[0].metadata["extraction"] == "senado_agenda_pdf_entry"
+    assert enriched[0].metadata["content_extraction"] == "senado_agenda_pdf"
+    assert enriched[0].url.endswith("#project-1")
+    assert "Agenda Legislativa" not in enriched[0].title
+
+
 def test_enrich_pdf_text_handles_pdf_aspx_attachment_urls() -> None:
     item = RawItem(
         id="mincit-pdf-1",
@@ -292,6 +625,125 @@ def test_enrich_pdf_text_handles_pdf_aspx_attachment_urls() -> None:
 
     assert enriched.metadata["content_extraction"] == "pdf_text_best_effort"
     assert "PDF text excerpt" in enriched.raw_text
+
+
+MINCIT_ZF_SAMPLE_TEXT = (
+    "ZONAS FRANCAS FECHA: 31 DE DICIEMBRE DE 2025 "
+    "Fuente: Ministerio de Industria, Comercio y Turismo - DPC 29/01/2026 "
+    "NIT NOMBRE ZONA FRANCA CLASE DE ZONA FRANCA TIPO DE USUARIO "
+    "DEPARTAMENTO MUNICIPIO Resolución de declaratoria Resolución de prorroga CIIU "
+    "800178052 Zona Franca Industrial de Bienes y Servicios La Candelaria "
+    "Permanente Usuario Operador Bolívar Cartagena "
+    "Res. 95 de 10 de febrero de 1993 Res. 1311 de 1 de diciembre de 2021 7020 "
+    "90191119 3 Zona Franca Permanente Especial De Servicios Rionegro MRO "
+    "Permanente especial Servicios Antioquia Rionegro "
+    "Res. No. 2118 del 26 de diciembre de 2025 Vacía 3315"
+)
+
+
+def _mincit_zf_item() -> RawItem:
+    return RawItem(
+        id="mincit-zf-approved",
+        source_id="mincit_zonas_francas",
+        source_name="MinCIT — Zonas Francas (Estadísticas)",
+        source_type="regulatory",
+        url="https://zf.mincit.gov.co/getattachment/estadisticas/zonas.pdf.aspx",
+        title="Zonas Francas aprobadas",
+        fetched_at="2026-05-15T15:10:00Z",
+        published_at="2026-02-18T00:00:00Z",
+        raw_text="Zonas Francas aprobadas Fecha de actualización: 18 de febrero de 2026",
+        metadata={"extraction": "anchor"},
+    )
+
+
+def test_extract_mincit_zonas_francas_approved_rows_from_pdf_text() -> None:
+    rows = _extract_mincit_zonas_francas_approved_rows_from_text(
+        _mincit_zf_item(),
+        MINCIT_ZF_SAMPLE_TEXT,
+    )
+
+    assert len(rows) == 2
+    first = rows[0].metadata
+    assert first["registry"] == "mincit_zonas_francas_aprobadas"
+    assert first["content_extraction"] == "mincit_zonas_francas_approved_pdf"
+    assert first["nit"] == "800178052"
+    assert first["zona_franca_name"] == (
+        "Zona Franca Industrial de Bienes y Servicios La Candelaria"
+    )
+    assert first["zone_class"] == "Permanente"
+    assert first["user_type"] == "Usuario Operador"
+    assert first["department"] == "Bolívar"
+    assert first["municipality"] == "Cartagena"
+    assert first["declaratory_resolution"] == "Res. 95 de 10 de febrero de 1993"
+    assert first["extension_resolution"] == (
+        "Res. 1311 de 1 de diciembre de 2021"
+    )
+    assert first["ciiu"] == "7020"
+    assert first["snapshot_date"] == "2025-12-31T00:00:00Z"
+    assert first["source_report_date"] == "2026-01-29T00:00:00Z"
+    assert first["follow_up_sources"][1]["source_id"] == "diario_oficial"
+
+    second = rows[1].metadata
+    assert second["nit"] == "901911193"
+    assert second["zone_class"] == "Permanente Especial"
+    assert second["extension_resolution"] == "Vacía"
+
+
+def test_extract_mincit_zonas_francas_handles_repeated_location_terms() -> None:
+    text = (
+        "ZONAS FRANCAS FECHA: 31 DE DICIEMBRE DE 2025 "
+        "NIT NOMBRE ZONA FRANCA CLASE DE ZONA FRANCA TIPO DE USUARIO "
+        "DEPARTAMENTO MUNICIPIO Resolución de declaratoria Resolución de prorroga CIIU "
+        "800185347 Zona Franca de Bogotá Permanente Usuario Operador Bogotá Bogotá "
+        "Res. 934 de 06 de agosto de 1993 Res. 888 de 26 de agosto de 2020 7020 "
+        "900162578 Zona Franca de Las Américas S.A.S. Permanente Permanente "
+        "Magdalena Santa Marta Res. 5657 de 27 de Junio de 2008 "
+        "Res. 232 de 9 de febrero de 2022 6820 "
+        "90191119 3 Zona Franca Permanente Especial De Servicios Rionegro MRO "
+        "Permanente especial Servicios Antioquia Rionegro "
+        "Res. No. 2118 del 26 de diciembre de 2025 Vacía 3315 "
+        "RESUMEN ZONAS FRANCAS."
+    )
+
+    rows = _extract_mincit_zonas_francas_approved_rows_from_text(
+        _mincit_zf_item(),
+        text,
+    )
+
+    assert len(rows) == 3
+    assert rows[0].metadata["department"] == "Bogotá"
+    assert rows[0].metadata["municipality"] == "Bogotá"
+    assert rows[1].metadata["user_type"] == "Permanente"
+    assert rows[1].metadata["department"] == "Magdalena"
+    assert rows[2].metadata["registry_key"] == "901911193"
+
+
+class _FakeMinCITPdfClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        return _FakeBinaryResponse(
+            _minimal_operator_pdf(
+                b"BT\n("
+                + MINCIT_ZF_SAMPLE_TEXT.encode("latin-1")
+                + b") Tj\nET"
+            )
+        )
+
+
+def test_enrich_mincit_zonas_francas_expands_approved_pdf_to_registry_rows() -> None:
+    enriched = _enrich_mincit_zonas_francas(
+        [_mincit_zf_item()],
+        _FakeMinCITPdfClient(),
+    )
+
+    assert [item.metadata["registry_key"] for item in enriched] == [
+        "800178052",
+        "901911193",
+    ]
+    assert all(
+        item.metadata["content_extraction"] == "mincit_zonas_francas_approved_pdf"
+        for item in enriched
+    )
+    assert "MinCIT Zonas Francas aprobadas" in enriched[0].title
 
 
 def test_extract_corte_comunicados_reads_dated_links(sample_source) -> None:
@@ -343,6 +795,306 @@ def test_extract_imprenta_table_includes_document_title_when_available(sample_so
     assert len(items) == 1
     assert "reforma laboral" in items[0].title
     assert items[0].metadata["document_title"].startswith("Informe de ponencia")
+
+
+def test_extract_dian_regulatory_project_links_filters_navigation(sample_source) -> None:
+    source = replace(sample_source, id="dian_proyectos_normas", type="regulatory")
+    html = """
+    <nav>
+      <a href="/Paginas/Inicio.aspx">Portal DIAN</a>
+      <a href="/normatividad/Paginas/Agenda-reglamentaria.aspx">
+        Agenda Reglamentaria DIAN
+      </a>
+      <a href="/normatividad/Paginas/ProyectosNormas.aspx">
+        Proyectos de Normas
+      </a>
+      <a href="/atencionciudadano/Paginas/Inicio.aspx">Atención</a>
+    </nav>
+    """
+
+    items = _extract_dian_regulatory_project_links(
+        html,
+        "https://www.dian.gov.co/normatividad/Paginas/Inicio.aspx",
+        source,
+        "2026-05-15T12:00:00Z",
+    )
+
+    assert [item.title for item in items] == [
+        "DIAN regulatory project index — Agenda Reglamentaria DIAN",
+        "DIAN regulatory project index — Proyectos de Normas",
+    ]
+    assert items[0].published_at is None
+    assert items[0].metadata["parser_status"] == "dynamic_or_undated_index"
+
+
+def test_extract_imprenta_table_records_download_button(sample_source) -> None:
+    source = replace(sample_source, id="gacetas_congreso", type="legal")
+    html = """
+    <table>
+      <tr>
+        <td>476</td>
+        <td>Senado de la República</td>
+        <td>14/05/2026</td>
+        <td></td>
+        <td><button name="formResumen:dataTableResumen:0:btnDescargarPdf">
+          ui-button
+        </button></td>
+      </tr>
+    </table>
+    """
+
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-05-15T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+
+    assert items[0].metadata["download_button_name"] == (
+        "formResumen:dataTableResumen:0:btnDescargarPdf"
+    )
+    assert items[0].metadata["download_mechanism"] == "jsf_postback"
+
+
+class _FakeGacetaPdfClient:
+    def __init__(self):
+        self.posts = []
+
+    def post(self, url, data=None):  # noqa: ANN001 - mirrors httpx.Client.post
+        self.posts.append((url, data))
+        text = (
+            "Gaceta del Congreso 476. AL PROYECTO DE LEY NÚMERO 550 DE "
+            "2026 CÁMARA Y SENADO por la cual se adiciona el Presupuesto "
+            "General de la Nación de la vigencia fiscal de 2026. Página 1"
+        )
+        return _FakeBinaryResponse(
+            _minimal_text_pdf(text),
+            headers={"content-type": "application/pdf"},
+        )
+
+
+class _FakeDiarioPdfClient:
+    def __init__(self):
+        self.posts = []
+        self.gets = []
+
+    def post(self, url, data=None):  # noqa: ANN001 - mirrors httpx.Client.post
+        self.posts.append((url, data))
+        html = """
+        <html><body>
+          <object type="application/pdf"
+            data="/diario/javax.faces.resource/dynamiccontent.properties.xhtml?ln=primefaces&amp;pfdrid=abc">
+          </object>
+        </body></html>
+        """
+        return _FakeBinaryResponse(
+            html.encode("utf-8"),
+            headers={"content-type": "text/html;charset=UTF-8"},
+            url="https://svrpubindc.imprenta.gov.co/diario/view/detallesPdf.xhtml",
+        )
+
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        self.gets.append((url, params))
+        text = (
+            "Diario Oficial 53.490. Ministerio de Comercio, Industria y "
+            "Turismo. Resolución 2118 de 2025 por la cual se declara la "
+            "Zona Franca Permanente Especial De Servicios Rionegro MRO. "
+            "Decreto 123 de 2026. Página 1"
+        )
+        return _FakeBinaryResponse(
+            _minimal_text_pdf(text),
+            headers={"content-type": "application/pdf"},
+            url=url,
+        )
+
+
+def test_parse_diario_oficial_pdf_text_extracts_legal_act_identities() -> None:
+    parsed = _parse_diario_oficial_pdf_text(
+        "Diario Oficial. Ministerio de Comercio, Industria y Turismo. "
+        "Resolución No. 2118 del 26 de diciembre de 2025 por la cual se "
+        "declara la Zona Franca Permanente Especial De Servicios Rionegro MRO."
+    )
+
+    assert parsed is not None
+    assert parsed["legal_act_records"][0]["label"] == "Resolución 2118 de 2025"
+
+
+def test_annotate_legal_identity_items_marks_gestor_normativo_anchor() -> None:
+    item = RawItem(
+        id="gestor-1",
+        source_id="gestor_normativo_fp",
+        source_name="Gestor Normativo",
+        source_type="legal",
+        url="https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=1",
+        title="Resolución 110 de 2016",
+        fetched_at="2026-05-15T00:00:00Z",
+        raw_text="Resolución 110 de 2016 establece lineamientos.",
+        metadata={"extraction": "anchor"},
+    )
+
+    annotated = _annotate_legal_identity_items([item])
+
+    assert annotated[0].metadata["legal_act_records"][0]["label"] == (
+        "Resolución 110 de 2016"
+    )
+
+
+def test_enrich_diario_oficial_pdfs_marks_pdf_as_parsed_legal_acts(
+    sample_source,
+) -> None:
+    source = replace(sample_source, id="diario_oficial", type="legal")
+    html = """
+    <form id="frmConDiario" action="/diario/index.xhtml" method="post">
+      <input type="hidden" name="frmConDiario" value="frmConDiario" />
+      <input type="hidden" name="javax.faces.ViewState" value="view-state-2" />
+      <table>
+        <tr>
+          <td>53.490</td>
+          <td>Ordinaria</td>
+          <td>14/05/2026</td>
+          <td><button name="dtbDiariosOficiales:0:j_idt34">ui-button</button></td>
+        </tr>
+      </table>
+    </form>
+    """
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/diario/",
+        source,
+        "2026-05-15T00:00:00Z",
+        edition_label="Diario Oficial",
+        query_param="edicion",
+    )
+    client = _FakeDiarioPdfClient()
+
+    enriched = _enrich_diario_oficial_pdfs(
+        items,
+        client,
+        html,
+        "https://svrpubindc.imprenta.gov.co/diario/",
+        max_items=1,
+    )
+
+    assert enriched[0].metadata["content_extraction"] == "diario_oficial_pdf_text"
+    assert enriched[0].metadata["legal_act_records"][0]["label"] == (
+        "Resolución 2118 de 2025"
+    )
+    assert "Rionegro MRO" in enriched[0].raw_text
+    assert client.posts[0][1]["javax.faces.ViewState"] == "view-state-2"
+    assert client.posts[0][1]["frmConDiario"] == "frmConDiario"
+    assert "dynamiccontent.properties.xhtml" in client.gets[0][0]
+    assert enriched[0].metadata["pdf_embedded_url"].endswith("pfdrid=abc")
+
+
+def test_parse_gaceta_pdf_text_extracts_project_identity(sample_source) -> None:
+    item = RawItem(
+        id="gaceta-476",
+        source_id="gacetas_congreso",
+        source_name="Gacetas del Congreso",
+        source_type="legal",
+        url="https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=476",
+        title="Gaceta del Congreso 476 — Senado de la República",
+        fetched_at="2026-05-15T00:00:00Z",
+        published_at="2026-05-14T00:00:00Z",
+        raw_text="476 | Senado de la República | 14/05/2026",
+        metadata={"extraction": "imprenta_nacional_jsf_table"},
+    )
+    parsed = _parse_gaceta_pdf_text(
+        item,
+        (
+            "Gaceta del Congreso 476. AL PROYECTO DE LEY NÚMERO 550 DE "
+            "2026 CÁMARA Y SENADO por la cual se adiciona el Presupuesto "
+            "General de la Nación de la vigencia fiscal de 2026. Página 1"
+        ),
+    )
+
+    assert parsed is not None
+    assert parsed["project_label"] == (
+        "Proyecto de Ley 550 DE 2026 Cámara y Senado"
+    )
+    assert parsed["project_records"] == [
+        {"number": "550", "year": "2026", "chamber": "Cámara/Senado"}
+    ]
+    assert parsed["document_title"].startswith("por la cual se adiciona")
+
+
+def test_parse_gaceta_pdf_text_rejects_lossy_project_identity() -> None:
+    item = RawItem(
+        id="gaceta-476",
+        source_id="gacetas_congreso",
+        source_name="Gacetas del Congreso",
+        source_type="legal",
+        url="https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=476",
+        title="Gaceta del Congreso 476 — Senado de la República",
+        fetched_at="2026-05-15T00:00:00Z",
+        published_at="2026-05-14T00:00:00Z",
+        raw_text="476 | Senado de la República | 14/05/2026",
+        metadata={"extraction": "imprenta_nacional_jsf_table"},
+    )
+
+    parsed = _parse_gaceta_pdf_text(
+        item,
+        (
+            "AL PROYECTO DE LEY NÚMERO DE 2026 CÁMARA Y SENADO "
+            "por la cual se adiciona el Presupuesto General de la Nación "
+            "de la vigencia fiscal de"
+        ),
+    )
+
+    assert parsed is None
+
+
+def test_enrich_gaceta_pdfs_marks_pdf_as_parsed_followup(sample_source) -> None:
+    source = replace(sample_source, id="gacetas_congreso", type="legal")
+    html = """
+    <form id="formResumen" action="/gacetas/index.xhtml" method="post">
+      <input type="hidden" name="formResumen" value="formResumen" />
+      <input type="hidden" name="javax.faces.ViewState" value="view-state-1" />
+      <table>
+        <tr>
+          <td>476</td>
+          <td>Senado de la República</td>
+          <td>14/05/2026</td>
+          <td></td>
+          <td><button name="formResumen:dataTableResumen:0:btnDescargarPdf">
+            ui-button
+          </button></td>
+        </tr>
+      </table>
+    </form>
+    """
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-05-15T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+    client = _FakeGacetaPdfClient()
+
+    enriched = _enrich_gaceta_pdfs(
+        items,
+        client,
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        max_items=1,
+    )
+
+    assert enriched[0].metadata["content_extraction"] == "gaceta_pdf_text"
+    assert enriched[0].metadata["project_label"] == (
+        "Proyecto de Ley 550 DE 2026 Cámara y Senado"
+    )
+    assert enriched[0].metadata["matched_project_labels"] == [
+        "Proyecto de Ley 550 DE 2026 Cámara y Senado"
+    ]
+    assert "Presupuesto General de la Nación" in enriched[0].raw_text
+    assert client.posts[0][1]["javax.faces.ViewState"] == "view-state-1"
+    assert (
+        "formResumen:dataTableResumen:0:btnDescargarPdf" in client.posts[0][1]
+    )
 
 
 class _FakeFeed:

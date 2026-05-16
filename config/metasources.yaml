@@ -87,6 +87,36 @@ metasources:
     onboarding_status: needs_parser
     notes: "Useful for legislative agenda and reform tracking. The /agenda-consolidada/ URL is a navigation hub (links to Excel/PDF agendas on sub-pages) with no inline dates. Needs a sub-URL strategy or a different agenda endpoint."
 
+  - id: senado_leyes_registry
+    name: Senado — Sección de Leyes / Proyectos de Ley
+    url: https://leyes.senado.gov.co/
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 20
+    notes: "Primary structured legislative registry. Uses Senado's public search endpoint plus detail fragments to extract clean project number, chamber, title, status, commission, filing date, Gaceta/publication references, and filed-text links. Replaces agenda PDFs as the primary bill-identity source; agenda/Gacetas remain follow-up and fallback evidence."
+
+  - id: camara_proyectos_ley_registry
+    name: Cámara de Representantes — Proyectos de Ley
+    url: https://www.camara.gov.co/proyectos-de-ley/
+    type: legal
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 20
+    notes: "Primary structured Cámara registry. Uses the public Proyectos de Ley AJAX table and project detail pages to extract project number, chamber, title, status, authors, commission, legislature, filing/publication dates, object text, and publication PDFs. Cross-checks Senado-origin records and reduces dependence on brittle PDF-first parsing."
+
   - id: senado_agenda_legislativa
     name: Senado — Agenda Legislativa Actual
     url: https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual
@@ -99,7 +129,7 @@ metasources:
     trust_role: agenda_signal
     parsing_difficulty: hard
     enabled: true
-    notes: "Often PDF-based; useful but may be harder to parse."
+    notes: "PDF-based weekly legislative agenda. M1.16 adds fail-closed PDF text-operator extraction plus source-specific expansion into parsed, named bill/action agenda entries with content_extraction=senado_agenda_pdf. M1.17 adds project-number/title/action metadata and follow-up source hints; entries without a clean project number and bill title remain research leads and must not become rankable forecast candidates."
 
   - id: registraduria_noticias
     name: Registraduría — Noticias
@@ -310,7 +340,7 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    notes: "Final publication of national norms (laws, decrees, administrative acts). M1.4 added a PrimeFaces-table parser that extracts the latest 10 editions per fetch (Número | Tipo | Fecha). The download buttons are JSF postbacks, so per-edition URLs are synthesized as ?edicion=NNN.NNN; rows still dedupe distinctly."
+    notes: "Final publication of national norms (laws, decrees, administrative acts). M1.4 added a PrimeFaces-table parser that extracts the latest 10 editions per fetch (Número | Tipo | Fecha). M1.22 posts the official JSF PDF download for recent editions and marks content_extraction=diario_oficial_pdf_text only when the PDF yields normalized legal-act identities; downloaded PDFs with no extractable text remain document_unparsed/document_links_only. The download buttons are JSF postbacks, so per-edition URLs are synthesized as ?edicion=NNN.NNN; rows still dedupe distinctly."
 
   - id: gacetas_congreso
     name: Gacetas del Congreso — Imprenta Nacional
@@ -324,7 +354,7 @@ metasources:
     trust_role: agenda_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Best source for legislative bills, ponencias, and text changes before final approval. M1.4 added the shared Imprenta Nacional PrimeFaces-table parser; extracts the latest 10 gacetas per fetch (Número | Entidad | Fecha). Per-gaceta URLs are synthesized as ?gaceta=NNN."
+    notes: "Best source for legislative bills, ponencias, and text changes before final approval. M1.4 added the shared Imprenta Nacional PrimeFaces-table parser; extracts the latest 10 gacetas per fetch (Número | Entidad | Fecha). M1.18 follows the official JSF PDF download for the first rows and marks content_extraction=gaceta_pdf_text only when a usable project label or document title is parsed; opaque rows remain document-link coverage. M1.19 links parsed Gaceta project records to clean Senado agenda records by project number/year/chamber."
 
   - id: suin_juriscol
     name: SUIN-Juriscol
@@ -340,7 +370,7 @@ metasources:
     enabled: true
     verify_ssl: false
     onboarding_status: needs_parser
-    notes: "Legal-discovery layer: laws, decrees, jurisprudence, and novedades normativas. TLS verification disabled because the live certificate chain fails in this runtime. Sandbox: 200 OK but the index page is a portal landing — generic extractor finds 0 dated anchors. Try the novedades or normatividad sub-page in M1.4."
+    notes: "Legal-discovery layer: laws, decrees, jurisprudence, and novedades normativas. TLS verification disabled because the live certificate chain fails in this runtime. Sandbox: 200 OK but the index page is a portal landing — generic extractor finds 0 dated anchors. M1.22 annotates any extracted rows with normalized legal-act identities for official-resolution matching, but the current index still needs a better novedades/normatividad entry point."
 
   - id: gestor_normativo_fp
     name: Gestor Normativo — Función Pública
@@ -356,7 +386,7 @@ metasources:
     enabled: true
     verify_ssl: false
     onboarding_status: needs_parser
-    notes: "Thematic norm/concept browser. M1.4 investigation: the page lists ~107 norms with year embedded in the title (Ley 1474 de 2011 ...), parseable via regex, but the listed norms are mostly 1990s-2010s reference standards rather than fresh additions — using the year as published_at would mean almost everything fails the 14-day age window. Worth more value as a context source than a daily-signal source; revisit when we have an evidence-pack flow that reads context layers on demand."
+    notes: "Thematic norm/concept browser. M1.4 investigation: the page lists ~107 norms with year embedded in the title (Ley 1474 de 2011 ...), parseable via regex, but the listed norms are mostly 1990s-2010s reference standards rather than fresh additions — using the year as published_at would mean almost everything fails the 14-day age window. M1.22 keeps this as context/resolution evidence by annotating legal-act identities without treating old act years as fresh publication dates."
 
   - id: dian_proyectos_normas
     name: DIAN — Proyectos de Normas y Agenda Reglamentaria
@@ -371,7 +401,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     onboarding_status: needs_parser
-    notes: "Early signal for tax, customs, and exchange-control changes. M1.4 investigation: the SharePoint landing exposes a single sub-link to /Paginas/ProyectosNormas.aspx, but that sub-page itself is also dynamic (51 anchors, 0 dated items, no static project list). Both pages require a headless browser or a different DIAN endpoint (e.g., the agenda-reglamentaria RSS if one exists)."
+    notes: "Early signal for tax, customs, and exchange-control changes. M1.19 filters the SharePoint landing down to Agenda Reglamentaria / Proyectos de Normas leads instead of broad navigation, but those leads remain undated parser-feasibility records. A rendered page or structured endpoint is still required before DIAN regulatory proposals can become rankable candidates."
 
   - id: minhacienda_proyectos_decreto
     name: MinHacienda — Proyectos de Decreto
@@ -445,7 +475,7 @@ metasources:
     trust_role: regulatory_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Official MinCIT zonas francas statistics page. Sandbox: extracts the three core PDFs (Zonas Francas aprobadas, Usuarios calificados Vigentes, Plan de internacionalización) with proper Fecha de actualización dates. Source publishes infrequently, so most days the 14-day age filter drops everything; new updates pass through automatically."
+    notes: "Official MinCIT zonas francas statistics page. M1.21 parses the Zonas Francas aprobadas PDF into structured approved-registry rows with NIT, zone name, class, user type, location, declaratory/prorroga resolutions, CIIU, snapshot date, and legal follow-up sources. Rows are historical snapshot evidence; registry_changes promotes only new/changed rows across structured snapshots as fresh decision signals. Source publishes infrequently, so most days the 14-day age filter drops unchanged historical rows."
 
   - id: dane_icoced
     name: DANE — Índice de Costos de la Construcción de Edificaciones (ICOCED)

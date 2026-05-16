@@ -27,6 +27,7 @@ ERROR_MSG_TRUNCATE = 200
 INDICATOR_LIMIT = 12
 ANALYST_ATTENTION_LIMIT = 8
 SOURCE_ACTION_LIMIT = 8
+HIGH_VALUE_UNDERCOVERED_SOURCES = frozenset({"dian_proyectos_normas"})
 MONTHLY_LAG_WARNING_DAYS = 120
 FORECASTABLE_SIGNAL_LIMIT = 8
 REJECTED_SIGNAL_LIMIT = 6
@@ -809,29 +810,51 @@ def _render_handoff_instructions() -> str:
 def _render_source_caveats(source_health: list[SourceHealth]) -> str:
     if not source_health:
         return "- No source-health report was available."
-    lines = []
+    caveats: list[tuple[int, int, str]] = []
     by_id = {health.source_id: health for health in source_health}
     if "eltiempo_colombia" in by_id:
-        lines.append(
-            "- `eltiempo_colombia` is a rolling RSS media pulse, not guaranteed "
-            "full-day coverage unless a local cache/scheduler is running."
-        )
-    for health in source_health:
-        if health.failure_count:
-            lines.append(
-                f"- `{health.source_id}` failed during this run; absence of "
-                "signals from it is not evidence of no activity."
+        caveats.append(
+            (
+                4,
+                0,
+                "- `eltiempo_colombia` is a rolling RSS media pulse, not guaranteed "
+                "full-day coverage unless a local cache/scheduler is running.",
             )
-        elif health.content_mode in {"pdf_links_only", "document_links_only"}:
-            lines.append(
-                f"- `{health.source_id}` is link-only in this run; M2 should "
-                "ask for document contents before relying on the signal."
+        )
+    for index, health in enumerate(source_health):
+        if health.failure_count:
+            caveats.append(
+                (
+                    0,
+                    index,
+                    f"- `{health.source_id}` failed during this run; absence of "
+                    "signals from it is not evidence of no activity.",
+                )
+            )
+        elif health.document_link_count and health.parsed_content_count == 0:
+            caveats.append(
+                (
+                    1,
+                    index,
+                    f"- `{health.source_id}` is link-only in this run; M2 should "
+                    "ask for document contents before relying on the signal.",
+                )
             )
         elif health.status in {"no_raw", "no_rankable"} and health.onboarding_status == "needs_parser":
-            lines.append(
-                f"- `{health.source_id}` is undercovered (`{health.status}`); "
-                "treat silence from this domain as unknown."
+            priority = (
+                2
+                if health.source_id in HIGH_VALUE_UNDERCOVERED_SOURCES
+                else 3
             )
+            caveats.append(
+                (
+                    priority,
+                    index,
+                    f"- `{health.source_id}` is undercovered (`{health.status}`); "
+                    "treat silence from this domain as unknown.",
+                )
+            )
+    lines = [line for _, _, line in sorted(caveats)]
     return "\n".join(lines[:SOURCE_ACTION_LIMIT]) if lines else "- No major caveats."
 
 

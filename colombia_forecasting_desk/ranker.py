@@ -31,6 +31,7 @@ _STRATEGIC_TERMS = {
     "inflacion",
     "jep",
     "minhacienda",
+    "mincit",
     "ministerio",
     "petro",
     "presidente",
@@ -38,6 +39,8 @@ _STRATEGIC_TERMS = {
     "secop",
     "tasa",
     "trm",
+    "zona",
+    "franca",
 }
 _LOCAL_INCIDENT_TERMS = {
     "accidente",

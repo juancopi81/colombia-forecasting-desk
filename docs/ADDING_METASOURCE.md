@@ -154,6 +154,35 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
 
 - `_extract_dane_comunicados` — table with date column.
 - `_extract_corte_comunicados` — anchor-only listing filtered by keyword.
+- `_enrich_senado_agenda_pdfs` — follows official agenda PDFs and emits
+  bill-level, dated agenda entries with parsed-content metadata. Senado entries
+  are M2-ready only when they have a clean project number and bill title; loose
+  title-only extracts should remain research leads.
+- `_enrich_gaceta_pdfs` — posts the official Imprenta/Gacetas JSF download
+  button, extracts PDF text, and emits parsed Gaceta project/title metadata only
+  when the downloaded PDF exposes usable legislative text.
+- `_enrich_diario_oficial_pdfs` — posts the official Imprenta/Diario JSF
+  download button, extracts PDF text, and records normalized legal-act
+  identities such as `Resolución 2118 de 2025` when the official PDF exposes
+  enough text.
+- `_fetch_senado_leyes_registry` and `_fetch_camara_proyectos_ley_registry` —
+  use the official public registry endpoints/pages as the primary legislative
+  bill-identity/status layer, emitting parsed project number, chamber, title,
+  status, date, and follow-up publication metadata before falling back to
+  agenda/Gaceta document parsing.
+- `_enrich_mincit_zonas_francas` — follows MinCIT's official approved-zones
+  PDF and emits one structured registry row per approved zona franca. Rows are
+  historical snapshot evidence; `registry_changes` promotes only new or changed
+  rows across structured snapshots into fresh M1 decision signals.
+- `_extract_dian_regulatory_project_links` — filters DIAN's normativity
+  landing page down to Agenda Reglamentaria / Proyectos de Normas leads so the
+  source-health report shows a precise parser gap instead of generic navigation
+  noise.
+- `legal_identity.parse_legal_act_records` plus
+  `decision_records.link_official_legal_records` — reusable bridge for Diario
+  Oficial, SUIN, Gestor Normativo, and MinCIT rows. Use this for official
+  resolution matching, but keep it conservative: a shared resolution number/year
+  is not enough unless the source also contains MinCIT or named-entity context.
 
 Wire a new extractor in `fetch_html` by source id, and prefer it to fall back
 to `_extract_dated_anchors` when it returns nothing.
@@ -179,9 +208,31 @@ For a document parser to count as parsed content, set either
 `RawItem`. Prefer adding one document parser at a time and keeping the original
 attachment URL in `RawItem.url`.
 
+For document-heavy sources, the proof loop is:
+
+1. Add a small source-specific parser or enrichment function in `fetchers.py`.
+2. Emit named raw items, not just a generic document title, when the document
+   contains multiple actionable records.
+3. Set `metadata.content_extraction` only after the parser extracts usable
+   text/title/record content; leave `content_extraction_error` when it cannot.
+4. Add a parser unit test with a realistic HTML/PDF/spreadsheet fixture shape.
+5. Add a candidate-contract test when the parsed item should become M2-ready.
+6. Run a live strict scan or single-source probe and inspect `raw_items.json`,
+   `source_health.json`, and `m1_candidates.json`.
+
 For M1.15, link-only document sources can remain enabled for source-health
 visibility, but they must not be promoted into `m1_candidates.json` as
 forecastable candidates unless the item has a document title, parsed body text,
 or another deterministic evidence excerpt. `acceptance_report.json` and
 `--strict` catch this as an error when a candidate depends on a link-only
 source.
+
+For JSF/download-button sources like Gacetas, store the button name as metadata
+but do not treat that as parsed evidence. Only mark `content_extraction` after
+the download succeeds and the document body yields a project label, bill title,
+or other usable text.
+
+When a parsed source can corroborate another parsed source, keep the match
+deterministic. For legislative records, `link_legislative_followups` only links
+clean Senado agenda entries to parsed Gaceta rows when project number, year, and
+chamber agree.

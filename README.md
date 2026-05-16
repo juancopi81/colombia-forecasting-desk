@@ -2,6 +2,13 @@
 
 Experimental agent-assisted forecasting project focused on Colombian political, economic, regulatory, and institutional events. See [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for the full vision and milestones.
 
+Current editorial bias: prefer public-interest forecast hooks over merely clean
+indicator continuation. Strong M2/M3 candidates usually involve a pending
+decision, cost/input pressure, a contradiction between credible sources, or a
+named entity with a clear institutional path, for example a zona franca
+decision, material-cost increase, regulatory proposal, bill, court decision, or
+official-data tension.
+
 ## Quickstart
 
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
@@ -54,4 +61,20 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.15 — deterministic candidate DB + quality gates**. See [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question discovery, M3 evidence packs, M4 public X experiment).
+Currently at **M1.22 — official legal-resolution bridge**, building on the
+M1.20 legislative registry pipeline and M1.21 MinCIT zonas-francas parser. The
+official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
+provide primary structured bill identity/status records; Senado agenda PDFs and
+Gacetas remain fallback/follow-up evidence. The MinCIT zonas francas source
+parses the official approved-zones PDF into named registry rows with NIT,
+location, declaratory/prórroga resolutions, and legal follow-up sources, while
+promoting only future new/changed snapshot rows as current decision signals.
+Diario Oficial PDFs, SUIN/Gestor legal rows, and MinCIT rows now share
+normalized legal-act identities so official resolution matches can be attached
+only when the act number/year and MinCIT or zone-name context agree. DIAN
+regulatory-project coverage is source-specific instead of broad site
+navigation, but still marked as parser feasibility rather than rankable
+evidence. See
+[`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
+detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones
+(M2 question discovery, M3 evidence packs, M4 public X experiment).

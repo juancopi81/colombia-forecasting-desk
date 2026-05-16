@@ -98,6 +98,18 @@ def test_cluster_aggregates_detected_tags(make_cleaned) -> None:
     assert grouped.detected_topics == ["monetary_policy", "inflation"]
 
 
+def test_cluster_preserves_member_metadata(make_cleaned) -> None:
+    item = make_cleaned(
+        id="senado-1",
+        source_id="senado_agenda_legislativa",
+        metadata={"official_followup_match_count": 1},
+    )
+
+    [grouped] = cluster([item])
+
+    assert grouped.member_metadata == [{"official_followup_match_count": 1}]
+
+
 def test_clusters_cross_source_strong_shared_tags_when_titles_differ(
     make_cleaned,
 ) -> None:

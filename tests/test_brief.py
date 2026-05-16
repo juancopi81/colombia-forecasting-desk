@@ -358,3 +358,186 @@ def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
     assert "Required M2 Output Schema" in out
     assert "rolling RSS media pulse" in out
     assert "Will the official TRM remain" in out
+
+
+def test_m2_handoff_prioritizes_document_caveats_before_cap() -> None:
+    summary = RunSummary(
+        run_date="2026-05-15",
+        started_at="2026-05-15T12:00:00Z",
+        finished_at="2026-05-15T12:00:30Z",
+        sources_checked=10,
+        sources_failed=3,
+        raw_items=100,
+        cleaned_items=90,
+        clusters=8,
+    )
+
+    def health(
+        source_id: str,
+        *,
+        status: str = "ok",
+        content_mode: str = "html_or_api",
+        failure_count: int = 0,
+        onboarding_status: str = "working",
+        document_link_count: int = 0,
+        parsed_content_count: int = 0,
+    ) -> SourceHealth:
+        return SourceHealth(
+            source_id=source_id,
+            source_name=source_id,
+            url=f"https://example.com/{source_id}",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=failure_count,
+            onboarding_status=onboarding_status,
+            status=status,
+            content_mode=content_mode,
+            document_link_count=document_link_count,
+            parsed_content_count=parsed_content_count,
+        )
+
+    source_health = [
+        health("eltiempo_colombia"),
+        health("banrep_junta_comunicados", status="failed", content_mode="failed", failure_count=1),
+        health("registraduria_noticias", status="failed", content_mode="failed", failure_count=1),
+        health("minhacienda_proyectos_decreto", status="failed", content_mode="failed", failure_count=1),
+        health("corte_constitucional_comunicados", status="no_raw", onboarding_status="needs_parser"),
+        health("presidencia_noticias", status="no_raw", onboarding_status="needs_parser"),
+        health("centro_nacional_consultoria", status="no_raw", onboarding_status="needs_parser"),
+        health("diario_oficial", content_mode="document_links_only", document_link_count=10),
+        health("gacetas_congreso", content_mode="document_links_only", document_link_count=10),
+        SourceHealth(
+            source_id="dian_proyectos_normas",
+            source_name="DIAN proyectos normas",
+            url="https://example.com/dian",
+            raw_count=28,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=0,
+            onboarding_status="needs_parser",
+            status="no_rankable",
+            content_mode="mixed_document_and_html_links",
+            document_link_count=5,
+            parsed_content_count=0,
+        ),
+    ]
+
+    out = render_m2_handoff(
+        summary,
+        [],
+        [],
+        [],
+        source_health=source_health,
+    )
+
+    assert "`gacetas_congreso` is link-only" in out
+    assert "`dian_proyectos_normas` is link-only" in out
+
+
+def test_m2_handoff_keeps_high_value_undercovered_sources_visible() -> None:
+    summary = RunSummary(
+        run_date="2026-05-15",
+        started_at="2026-05-15T12:00:00Z",
+        finished_at="2026-05-15T12:00:30Z",
+        sources_checked=10,
+        sources_failed=3,
+        raw_items=100,
+        cleaned_items=90,
+        clusters=8,
+    )
+
+    def health(source_id: str, *, status: str = "no_raw") -> SourceHealth:
+        return SourceHealth(
+            source_id=source_id,
+            source_name=source_id,
+            url=f"https://example.com/{source_id}",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=0,
+            onboarding_status="needs_parser",
+            status=status,
+            content_mode="no_items",
+        )
+
+    source_health = [
+        SourceHealth(
+            source_id="banrep_junta_comunicados",
+            source_name="BanRep",
+            url="https://example.com/banrep",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=1,
+            status="failed",
+            content_mode="failed",
+        ),
+        SourceHealth(
+            source_id="registraduria_noticias",
+            source_name="Registraduria",
+            url="https://example.com/registraduria",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=1,
+            status="failed",
+            content_mode="failed",
+        ),
+        SourceHealth(
+            source_id="minhacienda_proyectos_decreto",
+            source_name="MinHacienda",
+            url="https://example.com/minhacienda",
+            raw_count=0,
+            cleaned_count=0,
+            dated_count=0,
+            rankable_count=0,
+            failure_count=1,
+            status="failed",
+            content_mode="failed",
+        ),
+        SourceHealth(
+            source_id="diario_oficial",
+            source_name="Diario Oficial",
+            url="https://example.com/diario",
+            raw_count=10,
+            cleaned_count=10,
+            dated_count=10,
+            rankable_count=0,
+            failure_count=0,
+            content_mode="document_links_only",
+            document_link_count=10,
+        ),
+        SourceHealth(
+            source_id="gacetas_congreso",
+            source_name="Gacetas",
+            url="https://example.com/gacetas",
+            raw_count=10,
+            cleaned_count=10,
+            dated_count=10,
+            rankable_count=0,
+            failure_count=0,
+            content_mode="document_links_only",
+            document_link_count=10,
+        ),
+        health("camara_agenda_consolidada", status="no_rankable"),
+        health("corte_constitucional_comunicados"),
+        health("presidencia_noticias"),
+        health("centro_nacional_consultoria"),
+        health("dian_proyectos_normas", status="no_rankable"),
+    ]
+
+    out = render_m2_handoff(
+        summary,
+        [],
+        [],
+        [],
+        source_health=source_health,
+    )
+
+    assert "`dian_proyectos_normas` is undercovered" in out

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import date
 from typing import Any
 
@@ -31,6 +32,24 @@ DEFAULT_MISSING_EVIDENCE = [
 ]
 INDICATOR_SEED_LIMIT = 8
 MONTHLY_LAG_WARNING_DAYS = 120
+GACETAS_CONGRESO_URL = "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml"
+SENADO_LEYES_REGISTRY_URL = "https://leyes.senado.gov.co/"
+CAMARA_PROYECTOS_LEY_URL = "https://www.camara.gov.co/proyectos-de-ley/"
+MINCIT_ZONAS_FRANCAS_URL = "https://zf.mincit.gov.co/estadisticas"
+SENADO_AGENDA_URL = (
+    "https://www.senado.gov.co/index.php/documentos/senado-prensa/"
+    "agenda-legislativa-actual"
+)
+LEGISLATIVE_REGISTRY_SOURCE_IDS = {
+    "senado_leyes_registry",
+    "camara_proyectos_ley_registry",
+}
+_SENADO_PROJECT_LABEL_RE = re.compile(
+    r"\bProyecto\s+de\s+(?:Ley|Acto\s+Legislativo)\s+"
+    r"\d{1,4}\s+de\s+\d{4}\s+(?:Senado|C[aá]mara)"
+    r"(?:\s*/\s*\d{1,4}\s+de\s+\d{4}\s+(?:Senado|C[aá]mara))?",
+    re.IGNORECASE,
+)
 
 
 def build_m1_candidates(
@@ -101,7 +120,8 @@ def _event_candidate(
     )
     resolution = resolution_hint(cluster)
     deadline = deadline_hint(cluster)
-    return {
+    follow_up_sources = _follow_up_sources(cluster)
+    candidate = {
         "candidate_id": _candidate_id(
             "event", run_summary.run_date, cluster.cluster_id, question
         ),
@@ -144,6 +164,10 @@ def _event_candidate(
         },
         "decision_hint": "candidate",
     }
+    if follow_up_sources:
+        candidate["follow_up_sources"] = follow_up_sources
+        candidate["evidence"]["follow_up_sources"] = follow_up_sources
+    return candidate
 
 
 def _rejected_cluster(
@@ -433,6 +457,232 @@ def _indicator_candidates(
     return candidates
 
 
+def _follow_up_sources(cluster: Cluster) -> list[dict[str, str]]:
+    cluster_sources = set(cluster.member_source_ids)
+    if "mincit_zonas_francas" in cluster_sources:
+        matched = _matched_resolution_follow_up_sources(cluster)
+        if matched:
+            return matched + _mincit_follow_up_sources(cluster)
+        return _mincit_follow_up_sources(cluster)
+    if not (
+        "senado_agenda_legislativa" in cluster_sources
+        or cluster_sources & LEGISLATIVE_REGISTRY_SOURCE_IDS
+    ):
+        return []
+    matched = _matched_follow_up_sources(cluster)
+    if matched:
+        return matched
+    search_hint = _senado_project_search_hint(cluster)
+    registry_sources = _registry_follow_up_sources(cluster, search_hint)
+    fallback_sources = [
+        {
+            "source_id": "gacetas_congreso",
+            "source_name": "Gacetas del Congreso — Imprenta Nacional",
+            "url": GACETAS_CONGRESO_URL,
+            "search_hint": search_hint,
+            "purpose": "Find the ponencia, bill text, and subsequent official publication records.",
+        },
+        {
+            "source_id": "senado_agenda_legislativa",
+            "source_name": "Senado — Agenda Legislativa Actual",
+            "url": SENADO_AGENDA_URL,
+            "search_hint": search_hint,
+            "purpose": "Check later agenda windows for committee or plenary movement.",
+        },
+        {
+            "source_id": "congreso_manual_resolution_check",
+            "source_name": "Congreso final vote / procedural record",
+            "url": SENADO_AGENDA_URL,
+            "search_hint": search_hint,
+            "purpose": "Resolve whether the named item advanced, stalled, or was superseded.",
+        },
+    ]
+    return registry_sources + fallback_sources
+
+
+def _mincit_follow_up_sources(cluster: Cluster) -> list[dict[str, str]]:
+    sources: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for metadata in cluster.member_metadata:
+        for source in metadata.get("follow_up_sources") or []:
+            if not isinstance(source, dict):
+                continue
+            source_id = str(source.get("source_id") or "")
+            url = str(source.get("url") or "")
+            if not source_id or not url or (source_id, url) in seen:
+                continue
+            seen.add((source_id, url))
+            sources.append(
+                {
+                    "source_id": source_id,
+                    "source_name": str(source.get("source_name") or source_id),
+                    "url": url,
+                    "search_hint": str(
+                        source.get("search_hint")
+                        or metadata.get("zona_franca_name")
+                        or cluster.title[:160]
+                    ),
+                    "purpose": str(
+                        source.get("purpose")
+                        or "Verify the zona-franca decision in official follow-up records."
+                    ),
+                }
+            )
+    if sources:
+        return sources
+    return [
+        {
+            "source_id": "mincit_zonas_francas",
+            "source_name": "MinCIT — Zonas Francas (Estadísticas)",
+            "url": MINCIT_ZONAS_FRANCAS_URL,
+            "search_hint": cluster.title[:160],
+            "purpose": "Track the next official approved-zones snapshot.",
+        }
+    ]
+
+
+def _matched_resolution_follow_up_sources(cluster: Cluster) -> list[dict[str, str]]:
+    matches: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for metadata in cluster.member_metadata:
+        for match in metadata.get("official_resolution_matches") or []:
+            if not isinstance(match, dict):
+                continue
+            source_id = str(match.get("source_id") or "")
+            url = str(match.get("url") or "")
+            if not source_id or not url or (source_id, url) in seen:
+                continue
+            seen.add((source_id, url))
+            legal_label = str(match.get("legal_act_label") or "").strip()
+            title = str(match.get("title") or "").strip()
+            matches.append(
+                {
+                    "source_id": source_id,
+                    "source_name": str(match.get("source_name") or source_id),
+                    "url": url,
+                    "search_hint": legal_label or title or cluster.title[:160],
+                    "purpose": (
+                        "Official legal-resolution match by act number/year "
+                        "and MinCIT or zone-name context."
+                    ),
+                    "match_basis": str(
+                        match.get("match_basis") or "legal_act_identity"
+                    ),
+                }
+            )
+    return matches
+
+
+def _registry_follow_up_sources(
+    cluster: Cluster,
+    search_hint: str,
+) -> list[dict[str, str]]:
+    sources: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for metadata in cluster.member_metadata:
+        registry = str(metadata.get("legislative_registry") or "")
+        if not registry:
+            continue
+        detail_url = str(metadata.get("registry_detail_url") or "")
+        source_id = (
+            "senado_leyes_registry"
+            if registry == "senado_leyes"
+            else "camara_proyectos_ley_registry"
+            if registry == "camara_proyectos_ley"
+            else ""
+        )
+        source_name = (
+            "Senado — Sección de Leyes / Proyectos de Ley"
+            if source_id == "senado_leyes_registry"
+            else "Cámara de Representantes — Proyectos de Ley"
+        )
+        if source_id and detail_url and (source_id, detail_url) not in seen:
+            seen.add((source_id, detail_url))
+            sources.append(
+                {
+                    "source_id": source_id,
+                    "source_name": source_name,
+                    "url": detail_url,
+                    "search_hint": str(metadata.get("project_label") or search_hint),
+                    "purpose": "Track the official registry status and next formal stage.",
+                }
+            )
+        text_url = str(metadata.get("text_radicado_url") or "")
+        if text_url and ("senado_text_radicado", text_url) not in seen:
+            seen.add(("senado_text_radicado", text_url))
+            sources.append(
+                {
+                    "source_id": "senado_text_radicado",
+                    "source_name": "Senado filed bill text",
+                    "url": text_url,
+                    "search_hint": str(metadata.get("project_label") or search_hint),
+                    "purpose": "Verify the filed text and exact scope of the bill.",
+                }
+            )
+        for link in metadata.get("publication_links") or []:
+            if not isinstance(link, dict):
+                continue
+            url = str(link.get("url") or "")
+            if not url or ("legislative_publication", url) in seen:
+                continue
+            seen.add(("legislative_publication", url))
+            sources.append(
+                {
+                    "source_id": "legislative_publication",
+                    "source_name": str(link.get("type") or "Legislative publication"),
+                    "url": url,
+                    "search_hint": str(link.get("title") or search_hint),
+                    "purpose": "Verify official publication or ponencia evidence.",
+                }
+            )
+    return sources
+
+
+def _senado_project_search_hint(cluster: Cluster) -> str:
+    texts = [cluster.title, cluster.summary, *cluster.member_titles]
+    for text in texts:
+        match = _SENADO_PROJECT_LABEL_RE.search(text)
+        if match:
+            return re.sub(r"\s+", " ", match.group(0)).strip()
+    return cluster.title[:160]
+
+
+def _matched_follow_up_sources(cluster: Cluster) -> list[dict[str, str]]:
+    matches: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for metadata in cluster.member_metadata:
+        for match in metadata.get("official_followup_matches") or []:
+            if not isinstance(match, dict):
+                continue
+            source_id = str(match.get("source_id") or "")
+            url = str(match.get("url") or "")
+            if not source_id or not url:
+                continue
+            key = (source_id, url)
+            if key in seen:
+                continue
+            seen.add(key)
+            gaceta_number = str(match.get("gaceta_number") or "").strip()
+            title = str(match.get("title") or "").strip()
+            search_hint = str(match.get("project_label") or title).strip()
+            purpose = "Official follow-up matched by project number/year/chamber."
+            if gaceta_number:
+                purpose = f"{purpose} Gaceta {gaceta_number}."
+            matches.append(
+                {
+                    "source_id": source_id,
+                    "source_name": str(match.get("source_name") or source_id),
+                    "url": url,
+                    "search_hint": search_hint or cluster.title[:160],
+                    "purpose": purpose,
+                    "match_basis": str(
+                        match.get("match_basis") or "project_identity"
+                    ),
+                }
+            )
+    return matches
+
+
 def _link_only_source_ids(source_health: list[SourceHealth]) -> set[str]:
     return {
         health.source_id
@@ -520,7 +770,7 @@ def _source_caveats(
                 source_name=health.source_name,
                 failure_count=health.failure_count,
             )
-        if health.content_mode in {"pdf_links_only", "document_links_only"}:
+        if health.document_link_count and health.parsed_content_count == 0:
             append(
                 health.source_id,
                 "warning",

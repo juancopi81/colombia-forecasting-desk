@@ -224,19 +224,39 @@ def test_source_caveats_include_failures_and_link_only_sources() -> None:
         content_mode="pdf_links_only",
         document_link_count=3,
     )
+    mixed_health = SourceHealth(
+        source_id="dian_proyectos_normas",
+        source_name="DIAN — Proyectos de Normas",
+        url="https://www.dian.gov.co/normatividad/Paginas/Inicio.aspx",
+        raw_count=28,
+        cleaned_count=0,
+        dated_count=0,
+        rankable_count=0,
+        failure_count=0,
+        content_mode="mixed_document_and_html_links",
+        document_link_count=5,
+        parsed_content_count=0,
+    )
 
     out = build_m1_candidates(
         _summary(),
         [],
         [failure],
         topic_keywords=[],
-        source_health=[health],
+        source_health=[health, mixed_health],
         generated_at="2026-05-06T12:00:31Z",
     )
 
     reasons = {caveat["reason"] for caveat in out["source_caveats"]}
     assert "source failed during this run; silence is not evidence of no activity" in reasons
     assert "link-only source; ask for document contents before relying on it" in reasons
+    link_only_ids = {
+        caveat["source_id"]
+        for caveat in out["source_caveats"]
+        if caveat["reason"]
+        == "link-only source; ask for document contents before relying on it"
+    }
+    assert "dian_proyectos_normas" in link_only_ids
 
 
 def test_link_only_source_cluster_is_rejected_even_when_forecastable() -> None:
@@ -314,3 +334,445 @@ def test_mixed_document_and_html_source_cluster_is_not_rejected_as_link_only() -
 
     assert len(out["candidates"]) == 1
     assert out["rejected"] == []
+
+
+def test_parsed_senado_agenda_entry_is_m2_ready_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-agenda-project",
+        title=(
+            "Senado agenda 2026-05-12 — primer debate: Proyecto de Ley "
+            "312 de 2025 Senado / 463 de 2025 Camara — POR MEDIO DE "
+            "LA CUAL SE MODIFICA EL REGIMEN TRIBUTARIO"
+        ),
+        summary=(
+            "Extracted from official Senado agenda PDF. Agenda excerpt: "
+            "presentacion en primer debate del Proyecto de Ley No. 312 del "
+            "2025 Senado 463 del 2025 Camara, POR MEDIO DE LA CUAL SE "
+            "MODIFICA EL REGIMEN TRIBUTARIO."
+        ),
+        source_types=["calendar"],
+        signal_types=["calendar_event"],
+        member_source_ids=["senado_agenda_legislativa"],
+        member_source_names=["Senado — Agenda Legislativa Actual"],
+        member_titles=[
+            "Senado agenda 2026-05-12 — primer debate: Proyecto de Ley "
+            "312 de 2025 Senado / 463 de 2025 Camara — POR MEDIO DE "
+            "LA CUAL SE MODIFICA EL REGIMEN TRIBUTARIO"
+        ],
+        member_urls=[
+            "https://www.senado.gov.co/index.php/documentos/agenda/file#project-1"
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+    health = SourceHealth(
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        url="https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    assert len(out["candidates"]) == 1
+    candidate = out["candidates"][0]
+    assert candidate["question_seed"] == (
+        "Will the referenced legislative item advance to its next formal stage "
+        "within the next 30-60 days?"
+    )
+    assert candidate["resolution_source"] == (
+        "Congreso agenda, Gacetas del Congreso, and final legislative votes."
+    )
+    assert candidate["source_ids"] == ["senado_agenda_legislativa"]
+    assert candidate["actor"] == "congreso"
+    assert candidate["topic"] == "legislative"
+    assert candidate["follow_up_sources"][0]["source_id"] == "gacetas_congreso"
+    assert candidate["follow_up_sources"][0]["search_hint"] == (
+        "Proyecto de Ley 312 de 2025 Senado / 463 de 2025 Camara"
+    )
+    assert out["rejected"] == []
+
+
+def test_senado_candidate_uses_matched_gaceta_followup_source() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-agenda-project-linked",
+        title=(
+            "Senado agenda 2026-05-12 — primer debate: Proyecto de Ley "
+            "550 de 2026 Senado — POR MEDIO DE LA CUAL SE ADOPTA UNA REFORMA"
+        ),
+        summary="Extracted from official Senado agenda PDF with a matched Gaceta.",
+        source_types=["calendar"],
+        signal_types=["calendar_event"],
+        member_source_ids=["senado_agenda_legislativa"],
+        member_source_names=["Senado — Agenda Legislativa Actual"],
+        member_titles=[
+            "Senado agenda 2026-05-12 — primer debate: Proyecto de Ley "
+            "550 de 2026 Senado — POR MEDIO DE LA CUAL SE ADOPTA UNA REFORMA"
+        ],
+        member_urls=[
+            "https://www.senado.gov.co/index.php/documentos/agenda/file#project-1"
+        ],
+        member_metadata=[
+            {
+                "official_followup_match_count": 1,
+                "official_followup_matches": [
+                    {
+                        "source_id": "gacetas_congreso",
+                        "source_name": "Gacetas del Congreso — Imprenta Nacional",
+                        "url": "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=476",
+                        "title": "Gaceta del Congreso 476 — Proyecto de Ley 550 DE 2026 Cámara y Senado",
+                        "gaceta_number": "476",
+                        "project_label": "Proyecto de Ley 550 DE 2026 Cámara y Senado",
+                        "match_basis": "project_number_year_chamber",
+                    }
+                ],
+            }
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+    health = SourceHealth(
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        url="https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    candidate = out["candidates"][0]
+    assert "official follow-up matched" in candidate["reasons"]
+    assert candidate["follow_up_sources"] == [
+        {
+            "source_id": "gacetas_congreso",
+            "source_name": "Gacetas del Congreso — Imprenta Nacional",
+            "url": "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=476",
+            "search_hint": "Proyecto de Ley 550 DE 2026 Cámara y Senado",
+            "purpose": (
+                "Official follow-up matched by project number/year/chamber. "
+                "Gaceta 476."
+            ),
+            "match_basis": "project_number_year_chamber",
+        }
+    ]
+
+
+def test_registry_candidate_carries_registry_and_publication_followups() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-registry-project",
+        title=(
+            "Senado registry — Proyecto de Ley 1 de 2025 Senado — "
+            "POR MEDIO DE LA CUAL SE ESTABLECEN LINEAMIENTOS EN SALUD"
+        ),
+        summary="Estado: pendiente discutir ponencia para primer debate en Senado.",
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["senado_leyes_registry"],
+        member_source_names=["Senado — Sección de Leyes / Proyectos de Ley"],
+        member_titles=[
+            "Senado registry — Proyecto de Ley 1 de 2025 Senado — salud"
+        ],
+        member_urls=["https://leyes.senado.gov.co/api/get_detalle_pdly.php?id=9540"],
+        member_metadata=[
+            {
+                "legislative_registry": "senado_leyes",
+                "registry_detail_url": "https://leyes.senado.gov.co/api/get_detalle_pdly.php?id=9540",
+                "project_label": "Proyecto de Ley 1 de 2025 Senado",
+                "text_radicado_url": "https://leyes.senado.gov.co/p-ley/2025-2026/PL-001.pdf",
+                "publication_links": [
+                    {
+                        "type": "Primera Ponencia",
+                        "title": "Gaceta 1502/2025",
+                        "url": "https://svrpubindc.imprenta.gov.co/senado/",
+                    }
+                ],
+            }
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+    health = SourceHealth(
+        source_id="senado_leyes_registry",
+        source_name="Senado — Sección de Leyes / Proyectos de Ley",
+        url="https://leyes.senado.gov.co/",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    candidate = out["candidates"][0]
+    follow_up_ids = [item["source_id"] for item in candidate["follow_up_sources"]]
+    assert follow_up_ids[:3] == [
+        "senado_leyes_registry",
+        "senado_text_radicado",
+        "legislative_publication",
+    ]
+    assert "gacetas_congreso" in follow_up_ids
+
+
+def test_senado_agenda_entry_without_clean_identity_is_research_only() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-lossy-agenda-project",
+        title=(
+            "Senado agenda 2026-05-11 — ponencia: Proyecto de Ley Senado — "
+            "el cual se modifica el articulo de la ley de y se Dictan otras disposiciones"
+        ),
+        summary=(
+            "Extracted from official Senado agenda PDF. Agenda excerpt: ponencia "
+            "Proyecto de Ley Senado elacual se modificael articulo de laleydeyse "
+            "Dictan otrasdisposiciones."
+        ),
+        source_types=["calendar"],
+        signal_types=["calendar_event"],
+        member_source_ids=["senado_agenda_legislativa"],
+        member_source_names=["Senado — Agenda Legislativa Actual"],
+        member_titles=[
+            "Senado agenda 2026-05-11 — ponencia: Proyecto de Ley Senado — "
+            "el cual se modifica el articulo de la ley de y se Dictan otras disposiciones"
+        ],
+        member_urls=[
+            "https://www.senado.gov.co/index.php/documentos/agenda/file#project-1"
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+    health = SourceHealth(
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        url="https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    assert out["candidates"] == []
+    assert out["rejected"][0]["reason"] == (
+        "Senado agenda entry lacks a clean project number or bill title"
+    )
+
+
+def test_mincit_zona_franca_candidate_carries_legal_followups() -> None:
+    cluster = _cluster(
+        cluster_id="c-mincit-zf-change",
+        title=(
+            "MinCIT zona franca registry change — Zona Franca Permanente "
+            "Especial De Servicios Rionegro MRO"
+        ),
+        summary=(
+            "Official MinCIT approved-zones registry shows an updated "
+            "resolution for a named zona franca."
+        ),
+        source_types=["regulatory"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["mincit_zonas_francas"],
+        member_source_names=["MinCIT — Zonas Francas (Estadísticas)"],
+        member_titles=[
+            "MinCIT zona franca registry change — Rionegro MRO"
+        ],
+        member_urls=["https://zf.mincit.gov.co/estadisticas#zf-1"],
+        member_metadata=[
+            {
+                "registry": "mincit_zonas_francas_aprobadas",
+                "registry_change_type": "updated_registry_row",
+                "zona_franca_name": (
+                    "Zona Franca Permanente Especial De Servicios Rionegro MRO"
+                ),
+                "declaratory_resolution": (
+                    "Res. No. 2118 del 26 de diciembre de 2025"
+                ),
+                "follow_up_sources": [
+                    {
+                        "source_id": "diario_oficial",
+                        "source_name": "Diario Oficial — Imprenta Nacional",
+                        "url": "https://svrpubindc.imprenta.gov.co/diario/index.xhtml",
+                        "search_hint": "Rionegro MRO Res. No. 2118",
+                        "purpose": "Verify official publication.",
+                    }
+                ],
+            }
+        ],
+        detected_entities=["mincit"],
+        detected_topics=["regulatory"],
+    )
+    health = SourceHealth(
+        source_id="mincit_zonas_francas",
+        source_name="MinCIT — Zonas Francas (Estadísticas)",
+        url="https://zf.mincit.gov.co/estadisticas",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    candidate = out["candidates"][0]
+    assert candidate["question_seed"] == (
+        "Will the named zona-franca declaration or extension be confirmed "
+        "in the next official follow-up window?"
+    )
+    assert candidate["resolution_source"] == (
+        "MinCIT approved-zones registry, Diario Oficial, SUIN, or Gestor Normativo."
+    )
+    assert candidate["follow_up_sources"][0]["source_id"] == "diario_oficial"
+
+
+def test_mincit_candidate_prefers_matched_official_resolution_followup() -> None:
+    cluster = _cluster(
+        cluster_id="c-mincit-zf-official-match",
+        title="MinCIT zona franca registry change — Rionegro MRO",
+        summary="Official MinCIT registry change has a Diario Oficial match.",
+        source_types=["regulatory"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["mincit_zonas_francas"],
+        member_source_names=["MinCIT — Zonas Francas (Estadísticas)"],
+        member_titles=["MinCIT zona franca registry change — Rionegro MRO"],
+        member_urls=["https://zf.mincit.gov.co/estadisticas#zf-1"],
+        member_metadata=[
+            {
+                "registry": "mincit_zonas_francas_aprobadas",
+                "registry_change_type": "new_registry_row",
+                "zona_franca_name": (
+                    "Zona Franca Permanente Especial De Servicios Rionegro MRO"
+                ),
+                "declaratory_resolution": (
+                    "Res. No. 2118 del 26 de diciembre de 2025"
+                ),
+                "official_resolution_matches": [
+                    {
+                        "source_id": "diario_oficial",
+                        "source_name": "Diario Oficial — Imprenta Nacional",
+                        "url": "https://svrpubindc.imprenta.gov.co/diario?edicion=53.490",
+                        "title": "Diario Oficial 53.490",
+                        "legal_act_label": "Resolución 2118 de 2025",
+                        "match_basis": (
+                            "legal_act_number_year_with_mincit_context"
+                        ),
+                    }
+                ],
+            }
+        ],
+        detected_entities=["mincit"],
+        detected_topics=["regulatory"],
+    )
+    health = SourceHealth(
+        source_id="mincit_zonas_francas",
+        source_name="MinCIT — Zonas Francas (Estadísticas)",
+        url="https://zf.mincit.gov.co/estadisticas",
+        raw_count=1,
+        cleaned_count=1,
+        dated_count=1,
+        rankable_count=1,
+        failure_count=0,
+        content_mode="parsed_content",
+        parsed_content_count=1,
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        source_health=[health],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    follow_up = out["candidates"][0]["follow_up_sources"][0]
+    assert follow_up["source_id"] == "diario_oficial"
+    assert follow_up["search_hint"] == "Resolución 2118 de 2025"
+    assert follow_up["match_basis"] == "legal_act_number_year_with_mincit_context"
+
+
+def test_generic_senado_agenda_pdf_is_not_m2_ready_without_entry_parse() -> None:
+    cluster = _cluster(
+        cluster_id="c-senado-generic-agenda",
+        title="Agenda Legislativa del 4 al 8 de mayo de 2026 ( pdf, 1.03 MB )",
+        summary="Agenda Legislativa del 4 al 8 de mayo de 2026",
+        source_types=["calendar"],
+        signal_types=["calendar_event"],
+        member_source_ids=["senado_agenda_legislativa"],
+        member_source_names=["Senado — Agenda Legislativa Actual"],
+        member_titles=[
+            "Agenda Legislativa del 4 al 8 de mayo de 2026 ( pdf, 1.03 MB )"
+        ],
+        member_urls=[
+            "https://www.senado.gov.co/index.php/documentos/agenda/file"
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative"],
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=[],
+        generated_at="2026-05-15T15:10:31Z",
+    )
+
+    assert out["candidates"] == []
+    assert out["rejected"][0]["reason"] == (
+        "Senado agenda PDF lacks a parsed bill/action entry"
+    )

@@ -16,6 +16,7 @@ from .cluster import cluster as cluster_items
 from .cluster import topic_keywords
 from .config_loader import load_metasources
 from .dedupe import dedupe
+from .decision_records import link_legislative_followups, link_official_legal_records
 from .fetchers import fetch_all
 from .indicator_watch import (
     build_indicator_watch,
@@ -32,6 +33,7 @@ from .models import (
     SourceHealth,
 )
 from .ranker import parse_iso, rank
+from .registry_changes import add_mincit_zonas_francas_change_events
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +416,14 @@ def run(
     logger.info("Loaded %d enabled sources from %s", len(sources), config_path)
 
     raw_items, failures = fetch_all(sources)
+    raw_items = add_mincit_zonas_francas_change_events(
+        raw_items,
+        runs_root=runs_root,
+        run_date=run_date,
+        now=current,
+    )
+    raw_items = link_legislative_followups(raw_items)
+    raw_items = link_official_legal_records(raw_items)
     logger.info(
         "Fetched %d raw items; %d source failures", len(raw_items), len(failures)
     )
