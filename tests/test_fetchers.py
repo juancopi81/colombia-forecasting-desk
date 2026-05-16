@@ -12,6 +12,7 @@ from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
     _enrich_dane_icoced_xlsx,
+    _enrich_banrep_minutas_html,
     _enrich_diario_oficial_pdfs,
     _enrich_gaceta_pdfs,
     _enrich_mincit_zonas_francas,
@@ -19,6 +20,7 @@ from colombia_forecasting_desk.fetchers import (
     _enrich_senado_agenda_pdfs,
     _annotate_legal_identity_items,
     _extract_anchors,
+    _extract_banrep_minutas_metadata,
     _extract_corte_comunicados,
     _extract_dane_comunicados,
     _extract_dian_regulatory_project_links,
@@ -302,6 +304,187 @@ def test_extract_anchors_caps_at_30() -> None:
     html = f"<html><body><main>{body}</main></body></html>"
     anchors = _extract_anchors(html, "https://example.com/")
     assert len(anchors) == 30
+
+
+BANREP_MINUTAS_DETAIL_HTML = """
+<html><body><main>
+  <h1>Minutas BanRep: La Junta Directiva del Banco de la República decidió por
+  mayoría incrementar en 100 puntos básicos (pbs) la tasa de interés de política
+  monetaria a 11,25%</h1>
+  <a href="/es/print/pdf/node/65818">View PDF</a>
+  <h2>Adjuntos</h2>
+  <a href="https://d1b4gd4m8561gs.cloudfront.net/sites/default/files/anexo.pdf">
+    Anexo estadístico
+  </a>
+  <p>Cuatro directores votaron a favor de esta decisión, dos por una reducción
+  de 50 pbs y uno por mantenerla inalterada.</p>
+  <p>Fecha de publicación: Martes, 07 de abril de 2026 19:44</p>
+  <ul>
+    <li>La inflación total en enero y febrero se situó en 5,4% y 5,3%,
+    respectivamente, por encima del nivel observado al cierre de 2025.</li>
+    <li>Las expectativas de inflación total continúan elevadas y alejadas de la
+    meta, aunque las encuestas a analistas mostraron ligeras reducciones.</li>
+  </ul>
+  <p>El grupo mayoritario que votó por incrementar la tasa de interés de
+  política en 100 pbs recordó que la decisión de enero no era suficiente. Los
+  miembros de este grupo subrayaron el comportamiento de la inflación total y
+  básica.</p>
+  <p>Los directores que votaron por una reducción de 50 pbs de la tasa de
+  interés de política destacaron que la inflación observada responde más a
+  choques de oferta.</p>
+  <p>El miembro de la Junta que votó por mantener inalterada la tasa de interés
+  de política señaló que el ciclo de crisis provocado por la pandemia aún no se
+  estabiliza.</p>
+  <p>Próximas reuniones, minutas, informes y presentaciones ABR 30 Reunión tasa
+  de interés de intervención.</p>
+</main></body></html>
+"""
+
+BANREP_MINUTAS_DRUPAL_DETAIL_HTML = """
+<html><body>
+  <div class="block-page-title-block">
+    <h1>Minutas BanRep: La Junta Directiva del Banco de la República decidió por
+    unanimidad mantener inalterada la tasa de interés de política monetaria en
+    11,25%</h1>
+  </div>
+  <div data-history-node-id="65916" class="node node--type-noticias">
+    <div class="field--name-field-file">
+      <a href="//d1b4gd4m8561gs.cloudfront.net/sites/default/files/paginas/anexo-estadistico-abril-2026.pdf">
+        Anexo estadístico
+      </a>
+    </div>
+    <div class="field-label">Fecha de publicación:</div>
+    Miércoles, 06 de mayo de 2026
+    <div class="body field-node--body">
+      <p>La Junta Directiva tuvo en cuenta los siguientes elementos:</p>
+      <ul>
+        <li>En marzo la inflación total se situó en 5,6% superando en 46 pbs el
+        dato de diciembre.</li>
+        <li>El mercado laboral continúa dinámico, con niveles de desempleo
+        históricamente bajos y tendencias crecientes en el empleo asalariado.</li>
+      </ul>
+      <p>La decisión adoptada por unanimidad de mantener inalterada la tasa de
+      interés de política envía un mensaje de consenso entre los miembros de la
+      Junta Directiva.</p>
+      <p>Un grupo de cuatro directores manifestó su preocupación por el
+      incremento que se ha venido observando en la inflación total y básica, y
+      en sus expectativas. Subrayaron la persistencia inflacionaria.</p>
+      <p>Los dos directores que abogan por una postura de política monetaria más
+      relajada sostienen que la inflación anual ha descendido sustancialmente y
+      que sus incrementos recientes obedecen a choques de oferta.</p>
+      <p>Otro miembro de la Junta analiza que la inflación en marzo estuvo
+      explicada por diversos factores entre los que predominan los choques de
+      oferta.</p>
+      <p>Asimismo, resaltaron que, en la sesión de Junta del próximo 30 de
+      junio, se contará con información adicional valiosa.</p>
+    </div>
+  </div>
+</body></html>
+"""
+
+
+def test_extract_banrep_minutas_metadata_reads_policy_body() -> None:
+    metadata = _extract_banrep_minutas_metadata(
+        BANREP_MINUTAS_DETAIL_HTML,
+        "https://www.banrep.gov.co/es/noticias/minutas-banrep-marzo-2026",
+    )
+
+    assert metadata["content_extraction"] == "banrep_minutas_html"
+    assert metadata["decision_action"] == "hike"
+    assert metadata["rate_change_bps"] == 100
+    assert metadata["policy_rate_pct"] == "11.25"
+    assert metadata["publication_date"] == "2026-04-07T00:00:00Z"
+    assert metadata["vote_result"] == "majority"
+    assert "Cuatro directores votaron" in metadata["vote_summary"]
+    assert len(metadata["key_bullets"]) == 2
+    assert "incrementar la tasa" in metadata["board_blocs"]["majority"]
+    assert "reducción de 50 pbs" in metadata["board_blocs"]["rate_cut_bloc"]
+    assert "mantener inalterada" in metadata["board_blocs"]["hold_bloc"]
+    assert metadata["official_links"][0]["url"].endswith("/es/print/pdf/node/65818")
+    assert "ABR 30" in metadata["next_meeting_context"]
+
+
+def test_extract_banrep_minutas_metadata_reads_drupal_node_body() -> None:
+    metadata = _extract_banrep_minutas_metadata(
+        BANREP_MINUTAS_DRUPAL_DETAIL_HTML,
+        "https://www.banrep.gov.co/es/noticias/minutas-banrep-abril-2026",
+    )
+
+    assert metadata["content_extraction"] == "banrep_minutas_html"
+    assert metadata["decision_action"] == "hold"
+    assert metadata["policy_rate_pct"] == "11.25"
+    assert metadata["publication_date"] == "2026-05-06T00:00:00Z"
+    assert metadata["vote_result"] == "unanimous"
+    assert "consenso" in metadata["vote_summary"]
+    assert len(metadata["key_bullets"]) == 2
+    assert "cuatro directores" in metadata["board_blocs"]["hawkish_bloc"]
+    assert "dos directores" in metadata["board_blocs"]["dovish_bloc"]
+    assert "Otro miembro" in metadata["board_blocs"]["single_member_bloc"]
+    assert "30 de junio" in metadata["next_meeting_context"]
+    assert metadata["official_links"][0]["url"].startswith(
+        "https://d1b4gd4m8561gs.cloudfront.net/"
+    )
+
+
+class _FakeBanrepMinutasClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        if "minutas-banrep-marzo-2026" in url:
+            return _FakeBinaryResponse(
+                BANREP_MINUTAS_DETAIL_HTML.encode("utf-8"),
+                url=url,
+            )
+        raise httpx.TransportError("detail unavailable")
+
+
+def test_enrich_banrep_minutas_html_keeps_listing_item_on_detail_failure() -> None:
+    minutas = RawItem(
+        id="banrep-minutas-1",
+        source_id="banrep_junta_comunicados",
+        source_name="BanRep Junta",
+        source_type="official_updates",
+        url="https://www.banrep.gov.co/es/noticias/minutas-banrep-marzo-2026",
+        title="Minutas BanRep: decisión de política monetaria",
+        fetched_at="2026-04-29T00:00:00Z",
+        published_at="2026-04-07T00:00:00Z",
+        raw_text="07/04/2026 Minutas BanRep",
+        metadata={"extraction": "anchor"},
+    )
+    comunicado = RawItem(
+        id="banrep-comunicado-1",
+        source_id="banrep_junta_comunicados",
+        source_name="BanRep Junta",
+        source_type="official_updates",
+        url="https://www.banrep.gov.co/es/noticias/junta-directiva-marzo-2026",
+        title="La Junta Directiva decidió incrementar la tasa",
+        fetched_at="2026-04-29T00:00:00Z",
+        published_at="2026-03-31T00:00:00Z",
+        raw_text="31/03/2026 Comunicado Junta",
+        metadata={"extraction": "anchor"},
+    )
+    missing = RawItem(
+        id="banrep-minutas-2",
+        source_id="banrep_junta_comunicados",
+        source_name="BanRep Junta",
+        source_type="official_updates",
+        url="https://www.banrep.gov.co/es/noticias/minutas-banrep-enero-2026",
+        title="Minutas BanRep: decisión anterior",
+        fetched_at="2026-04-29T00:00:00Z",
+        published_at="2026-02-04T00:00:00Z",
+        raw_text="04/02/2026 Minutas BanRep",
+        metadata={"extraction": "anchor"},
+    )
+
+    enriched = _enrich_banrep_minutas_html(
+        [minutas, comunicado, missing],
+        _FakeBanrepMinutasClient(),
+        max_items=3,
+    )
+
+    assert enriched[0].metadata["content_extraction"] == "banrep_minutas_html"
+    assert "BanRep minutas detail" in enriched[0].raw_text
+    assert enriched[1] == comunicado
+    assert enriched[2] == missing
+    assert enriched[2].metadata == {"extraction": "anchor"}
 
 
 def test_extract_dane_comunicados_reads_dated_table(sample_source) -> None:

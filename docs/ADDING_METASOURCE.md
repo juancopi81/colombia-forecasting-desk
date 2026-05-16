@@ -178,6 +178,10 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
   landing page down to Agenda Reglamentaria / Proyectos de Normas leads so the
   source-health report shows a precise parser gap instead of generic navigation
   noise.
+- `_enrich_banrep_minutas_html` — keeps BanRep Junta/minutas under the existing
+  `banrep_junta_comunicados` source, follows recent minutas detail pages, and
+  adds parsed monetary-policy body metadata only when the official HTML exposes
+  useful decision, vote, reasoning, or attachment context.
 - `legal_identity.parse_legal_act_records` plus
   `decision_records.link_official_legal_records` — reusable bridge for Diario
   Oficial, SUIN, Gestor Normativo, and MinCIT rows. Use this for official
