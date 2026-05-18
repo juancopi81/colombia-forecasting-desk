@@ -250,4 +250,7 @@ or other usable text.
 When a parsed source can corroborate another parsed source, keep the match
 deterministic. For legislative records, `link_legislative_followups` only links
 clean Senado agenda entries to parsed Gaceta rows when project number, year, and
-chamber agree.
+chamber agree. Before expanding this into broader bill-status reconciliation,
+use the dedicated
+[`Legislative Reconciler Contract`](LEGISLATIVE_RECONCILER_CONTRACT.md) as the
+target output shape and promotion gate.

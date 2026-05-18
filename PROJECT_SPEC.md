@@ -344,6 +344,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Add official Senado and Cámara legislative registry sources as the primary
       structured bill-identity/status layer, leaving agenda PDFs and Gacetas as
       fallback or follow-up evidence.
+- [x] Define the legislative reconciler contract for clean bill identity,
+      status, latest movement, contradiction handling, and M2 readiness.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.
@@ -356,6 +358,11 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 ### M2 — Question Discovery
 
 Goal: identify potentially forecastable questions from the daily brief.
+
+Near-term prerequisite: implement the
+[Legislative Reconciler Contract](docs/LEGISLATIVE_RECONCILER_CONTRACT.md) so
+bill signals from Senado, Cámara, Gacetas, and legal-resolution sources become
+one clean bill-status record before M2 ranks them.
 
 - [ ] Read daily brief.
 - [ ] Generate candidate questions.

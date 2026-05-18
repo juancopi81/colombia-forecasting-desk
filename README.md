@@ -34,6 +34,11 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `source_health.json` — per-source raw, dated, rankable, tag, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
 
+For legislative sources, the next implementation target is the
+[`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md):
+one clean bill-status record per bill, with linked Cámara/Senado identities,
+latest movement, contradiction handling, and M2 readiness.
+
 ### Optional flags
 
 ```bash
@@ -80,5 +85,8 @@ cards, including PIB sector drivers and current-release official document
 links, so GDP/ISE releases can become M2-ready activity seeds instead of only
 appearing as indirect context. See
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
-detailed plan and [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones
-(M2 question discovery, M3 evidence packs, M4 public X experiment).
+detailed plan, the
+[`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md)
+for the next legislative hardening milestone, and
+[`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question
+discovery, M3 evidence packs, M4 public X experiment).
