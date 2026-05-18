@@ -36,6 +36,7 @@ from .models import (
     SourceFailure,
     SourceHealth,
 )
+from .observability import RunTrace
 from .ranker import parse_iso, rank
 from .registry_changes import add_mincit_zonas_francas_change_events
 
@@ -66,6 +67,7 @@ class PipelineResult:
     m1_candidates: dict
     acceptance_report: dict
     run_manifest: dict
+    run_trace: dict
     summary: RunSummary
 
 
@@ -333,26 +335,56 @@ def run_single_source(
     started_at = _now_iso()
     current = _run_clock(date)
     run_date = date or current.strftime("%Y-%m-%d")
+    trace = RunTrace(
+        run_date=run_date,
+        mode="sandbox",
+        metadata={
+            "config_path": str(config_path),
+            "source_id": source_id,
+            "strict_requested": strict_requested,
+        },
+    )
 
-    sources = load_metasources(config_path)
-    source = _select_source(sources, source_id)
+    with trace.span("load_metasources") as span:
+        sources = load_metasources(config_path)
+        source = _select_source(sources, source_id)
+        span.set_counts(enabled_sources=len(sources))
     logger.info("Sandbox run for source: %s", source.id)
 
-    raw_items, failures = fetch_all([source])
-    legislative_reconciliations = build_legislative_reconciliations(raw_items)
+    with trace.span("fetch_sources", metadata={"source_count": 1}) as span:
+        raw_items, failures = fetch_all([source], trace=trace)
+        span.set_counts(raw_items=len(raw_items), source_failures=len(failures))
+    with trace.span("build_legislative_reconciliations") as span:
+        legislative_reconciliations = build_legislative_reconciliations(raw_items)
+        span.set_counts(records=len(legislative_reconciliations))
 
-    cleaned = [clean(raw, source) for raw in raw_items]
-    cleaned = _drop_empty(cleaned)
-    cleaned = _drop_too_old(cleaned, now=current)
-    cleaned = dedupe(cleaned)
-    rankable = _rankable_items(cleaned)
-    clusters = cluster_items(rankable)
-    ranked = rank(clusters, now=current)
+    with trace.span("clean_and_rank_items") as span:
+        cleaned = [clean(raw, source) for raw in raw_items]
+        cleaned = _drop_empty(cleaned)
+        cleaned = _drop_too_old(cleaned, now=current)
+        cleaned = dedupe(cleaned)
+        rankable = _rankable_items(cleaned)
+        clusters = cluster_items(rankable)
+        ranked = rank(clusters, now=current)
+        span.set_counts(
+            cleaned_items=len(cleaned),
+            rankable_items=len(rankable),
+            clusters=len(ranked),
+        )
 
-    source_health = build_source_health(
-        [source], raw_items, cleaned, rankable, failures
-    )
-    indicator_watch = build_indicator_watch(raw_items, cleaned, now=current)
+    with trace.span("build_source_health") as span:
+        source_health = build_source_health(
+            [source], raw_items, cleaned, rankable, failures
+        )
+        span.set_counts(source_health_records=len(source_health))
+    with trace.span("build_indicator_watch") as span:
+        indicator_watch = build_indicator_watch(raw_items, cleaned, now=current)
+        span.set_counts(
+            indicators=len(indicator_watch),
+            observed_indicators=sum(
+                1 for indicator in indicator_watch if indicator.status == "observed"
+            ),
+        )
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -366,60 +398,86 @@ def run_single_source(
         clusters=len(ranked),
     )
     keywords = topic_keywords(rankable, top_n=5)
-    m1_candidates = build_m1_candidates(
-        summary,
-        ranked,
-        failures,
-        keywords,
-        source_health=source_health,
-        indicator_watch=indicator_watch,
-        legislative_reconciliations=legislative_reconciliations,
-    )
-    m2_ranked_questions = build_legislative_m2_ranking(
-        legislative_reconciliations,
-        summary,
-        generated_at=finished_at,
-    )
-    m2_review_packet = build_m2_review_packet(
-        summary,
-        raw_items,
-        cleaned,
-        m1_candidates,
-        m2_ranked_questions,
-        legislative_reconciliations,
-        source_health,
-        indicator_watch,
-        generated_at=finished_at,
-    )
-    acceptance_report = build_acceptance_report(
-        summary,
-        m1_candidates,
-        source_health,
-        failures,
-        cleaned,
-        indicator_watch,
-    )
+    with trace.span("build_m1_candidates") as span:
+        m1_candidates = build_m1_candidates(
+            summary,
+            ranked,
+            failures,
+            keywords,
+            source_health=source_health,
+            indicator_watch=indicator_watch,
+            legislative_reconciliations=legislative_reconciliations,
+        )
+        span.set_counts(
+            candidates=len(m1_candidates.get("candidates") or []),
+            rejected=len(m1_candidates.get("rejected") or []),
+            source_caveats=len(m1_candidates.get("source_caveats") or []),
+        )
+    with trace.span("build_m2_artifacts") as span:
+        m2_ranked_questions = build_legislative_m2_ranking(
+            legislative_reconciliations,
+            summary,
+            generated_at=finished_at,
+        )
+        m2_review_packet = build_m2_review_packet(
+            summary,
+            raw_items,
+            cleaned,
+            m1_candidates,
+            m2_ranked_questions,
+            legislative_reconciliations,
+            source_health,
+            indicator_watch,
+            generated_at=finished_at,
+        )
+        span.set_counts(
+            ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
+            review_items=len(m2_review_packet.get("review_items") or []),
+        )
+    with trace.span("build_acceptance_report") as span:
+        acceptance_report = build_acceptance_report(
+            summary,
+            m1_candidates,
+            source_health,
+            failures,
+            cleaned,
+            indicator_watch,
+        )
+        span.set_metadata(
+            acceptance_status=acceptance_report.get("status"),
+            strict_pass=acceptance_report.get("strict_pass"),
+        )
+        span.set_counts(
+            errors=acceptance_report.get("error_count"),
+            warnings=acceptance_report.get("warning_count"),
+        )
 
     run_dir = Path(runs_root) / SANDBOX_DIR_NAME / source.id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
-    _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
-    _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
-    _write_json(
-        run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
-    )
-    _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
-    _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
-    _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
-    _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
-    _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
-    (run_dir / "m2_review_packet.md").write_text(
-        render_m2_review_packet(m2_review_packet),
-        encoding="utf-8",
-    )
-    _write_json(run_dir / "m1_candidates.json", m1_candidates)
-    _write_json(run_dir / "acceptance_report.json", acceptance_report)
-    _write_json(run_dir / "run_summary.json", asdict(summary))
+    with trace.span("write_artifacts", metadata={"run_dir": str(run_dir)}) as span:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
+        _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
+        _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
+        _write_json(
+            run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
+        )
+        _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
+        _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+        _write_json(
+            run_dir / "legislative_reconciler.json", legislative_reconciliations
+        )
+        _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
+        _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
+        (run_dir / "m2_review_packet.md").write_text(
+            render_m2_review_packet(m2_review_packet),
+            encoding="utf-8",
+        )
+        _write_json(run_dir / "m1_candidates.json", m1_candidates)
+        _write_json(run_dir / "acceptance_report.json", acceptance_report)
+        _write_json(run_dir / "run_summary.json", asdict(summary))
+        span.set_counts(artifacts_written=13)
+    run_trace = trace.to_dict()
+    _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
         run_dir,
         summary,
@@ -448,6 +506,7 @@ def run_single_source(
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,
+        run_trace=run_trace,
         summary=summary,
     )
 
@@ -462,50 +521,81 @@ def run(
     started_at = _now_iso()
     current = _run_clock(date)
     run_date = date or current.strftime("%Y-%m-%d")
+    trace = RunTrace(
+        run_date=run_date,
+        mode="daily",
+        metadata={
+            "config_path": str(config_path),
+            "strict_requested": strict_requested,
+        },
+    )
 
-    sources: list[Metasource] = load_metasources(config_path)
+    with trace.span("load_metasources") as span:
+        sources: list[Metasource] = load_metasources(config_path)
+        span.set_counts(enabled_sources=len(sources))
     logger.info("Loaded %d enabled sources from %s", len(sources), config_path)
 
-    raw_items, failures = fetch_all(sources)
-    raw_items = add_mincit_zonas_francas_change_events(
-        raw_items,
-        runs_root=runs_root,
-        run_date=run_date,
-        now=current,
-    )
-    raw_items = link_legislative_followups(raw_items)
-    raw_items = link_official_legal_records(raw_items)
-    legislative_reconciliations = build_legislative_reconciliations(raw_items)
+    with trace.span("fetch_sources", metadata={"source_count": len(sources)}) as span:
+        raw_items, failures = fetch_all(sources, trace=trace)
+        span.set_counts(raw_items=len(raw_items), source_failures=len(failures))
+    with trace.span("enrich_raw_items") as span:
+        raw_items = add_mincit_zonas_francas_change_events(
+            raw_items,
+            runs_root=runs_root,
+            run_date=run_date,
+            now=current,
+        )
+        raw_items = link_legislative_followups(raw_items)
+        raw_items = link_official_legal_records(raw_items)
+        span.set_counts(raw_items=len(raw_items))
+    with trace.span("build_legislative_reconciliations") as span:
+        legislative_reconciliations = build_legislative_reconciliations(raw_items)
+        span.set_counts(records=len(legislative_reconciliations))
     logger.info(
         "Fetched %d raw items; %d source failures", len(raw_items), len(failures)
     )
 
-    by_source: dict[str, Metasource] = {s.id: s for s in sources}
-    cleaned: list[CleanedItem] = []
-    for raw in raw_items:
-        source = by_source.get(raw.source_id)
-        if source is None:
-            continue
-        cleaned.append(clean(raw, source))
+    with trace.span("clean_and_rank_items") as span:
+        by_source: dict[str, Metasource] = {s.id: s for s in sources}
+        cleaned: list[CleanedItem] = []
+        for raw in raw_items:
+            source = by_source.get(raw.source_id)
+            if source is None:
+                continue
+            cleaned.append(clean(raw, source))
 
-    cleaned = _drop_empty(cleaned)
-    cleaned = _drop_too_old(cleaned, now=current)
-    cleaned = dedupe(cleaned)
-    logger.info("Retained %d cleaned items after filter+dedupe", len(cleaned))
+        cleaned = _drop_empty(cleaned)
+        cleaned = _drop_too_old(cleaned, now=current)
+        cleaned = dedupe(cleaned)
+        logger.info("Retained %d cleaned items after filter+dedupe", len(cleaned))
 
-    rankable = _rankable_items(cleaned)
-    clusters = cluster_items(rankable)
-    ranked = rank(clusters, now=current)
+        rankable = _rankable_items(cleaned)
+        clusters = cluster_items(rankable)
+        ranked = rank(clusters, now=current)
+        span.set_counts(
+            cleaned_items=len(cleaned),
+            rankable_items=len(rankable),
+            clusters=len(ranked),
+        )
     logger.info("Built %d clusters", len(ranked))
 
     keywords = topic_keywords(rankable, top_n=5)
-    source_health = build_source_health(
-        sources, raw_items, cleaned, rankable, failures
-    )
-    structured_indicators = fetch_structured_indicator_observations()
-    indicator_watch = build_indicator_watch(
-        raw_items, cleaned, structured_indicators, now=current
-    )
+    with trace.span("build_source_health") as span:
+        source_health = build_source_health(
+            sources, raw_items, cleaned, rankable, failures
+        )
+        span.set_counts(source_health_records=len(source_health))
+    with trace.span("build_indicator_watch") as span:
+        structured_indicators = fetch_structured_indicator_observations()
+        indicator_watch = build_indicator_watch(
+            raw_items, cleaned, structured_indicators, now=current
+        )
+        span.set_counts(
+            indicators=len(indicator_watch),
+            observed_indicators=sum(
+                1 for indicator in indicator_watch if indicator.status == "observed"
+            ),
+        )
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -518,89 +608,115 @@ def run(
         cleaned_items=len(cleaned),
         clusters=len(ranked),
     )
-    m1_candidates = build_m1_candidates(
-        summary,
-        ranked,
-        failures,
-        keywords,
-        source_health=source_health,
-        indicator_watch=indicator_watch,
-        legislative_reconciliations=legislative_reconciliations,
-    )
-    m2_ranked_questions = build_legislative_m2_ranking(
-        legislative_reconciliations,
-        summary,
-        generated_at=finished_at,
-    )
-    m2_review_packet = build_m2_review_packet(
-        summary,
-        raw_items,
-        cleaned,
-        m1_candidates,
-        m2_ranked_questions,
-        legislative_reconciliations,
-        source_health,
-        indicator_watch,
-        generated_at=finished_at,
-    )
-    acceptance_report = build_acceptance_report(
-        summary,
-        m1_candidates,
-        source_health,
-        failures,
-        cleaned,
-        indicator_watch,
-    )
+    with trace.span("build_m1_candidates") as span:
+        m1_candidates = build_m1_candidates(
+            summary,
+            ranked,
+            failures,
+            keywords,
+            source_health=source_health,
+            indicator_watch=indicator_watch,
+            legislative_reconciliations=legislative_reconciliations,
+        )
+        span.set_counts(
+            candidates=len(m1_candidates.get("candidates") or []),
+            rejected=len(m1_candidates.get("rejected") or []),
+            source_caveats=len(m1_candidates.get("source_caveats") or []),
+        )
+    with trace.span("build_m2_artifacts") as span:
+        m2_ranked_questions = build_legislative_m2_ranking(
+            legislative_reconciliations,
+            summary,
+            generated_at=finished_at,
+        )
+        m2_review_packet = build_m2_review_packet(
+            summary,
+            raw_items,
+            cleaned,
+            m1_candidates,
+            m2_ranked_questions,
+            legislative_reconciliations,
+            source_health,
+            indicator_watch,
+            generated_at=finished_at,
+        )
+        span.set_counts(
+            ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
+            review_items=len(m2_review_packet.get("review_items") or []),
+        )
+    with trace.span("build_acceptance_report") as span:
+        acceptance_report = build_acceptance_report(
+            summary,
+            m1_candidates,
+            source_health,
+            failures,
+            cleaned,
+            indicator_watch,
+        )
+        span.set_metadata(
+            acceptance_status=acceptance_report.get("status"),
+            strict_pass=acceptance_report.get("strict_pass"),
+        )
+        span.set_counts(
+            errors=acceptance_report.get("error_count"),
+            warnings=acceptance_report.get("warning_count"),
+        )
 
     run_dir = Path(runs_root) / run_date
-    run_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
-    _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
-    _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
-    _write_json(
-        run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
-    )
-    _write_json(
-        run_dir / "source_failures.json", [asdict(f) for f in failures]
-    )
-    _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
-    _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
-    _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
-    _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
-    (run_dir / "m2_review_packet.md").write_text(
-        render_m2_review_packet(m2_review_packet),
-        encoding="utf-8",
-    )
-    _write_json(run_dir / "m1_candidates.json", m1_candidates)
-    _write_json(run_dir / "acceptance_report.json", acceptance_report)
-    brief_text = render_brief(
-        summary,
-        ranked,
-        failures,
-        cleaned,
-        keywords,
-        source_health=source_health,
-        indicator_watch=indicator_watch,
-        m1_candidates=m1_candidates,
-        acceptance_report=acceptance_report,
-        m2_ranked_questions=m2_ranked_questions,
-        m2_review_packet=m2_review_packet,
-    )
-    (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
-    handoff_text = render_m2_handoff(
-        summary,
-        ranked,
-        failures,
-        keywords,
-        source_health=source_health,
-        indicator_watch=indicator_watch,
-        m1_candidates=m1_candidates,
-        acceptance_report=acceptance_report,
-        m2_ranked_questions=m2_ranked_questions,
-        m2_review_packet=m2_review_packet,
-    )
-    (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
-    _write_json(run_dir / "run_summary.json", asdict(summary))
+    with trace.span("write_artifacts", metadata={"run_dir": str(run_dir)}) as span:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(run_dir / "raw_items.json", [asdict(r) for r in raw_items])
+        _write_json(run_dir / "cleaned_items.json", [asdict(c) for c in cleaned])
+        _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
+        _write_json(
+            run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
+        )
+        _write_json(
+            run_dir / "source_failures.json", [asdict(f) for f in failures]
+        )
+        _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+        _write_json(
+            run_dir / "legislative_reconciler.json", legislative_reconciliations
+        )
+        _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
+        _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
+        (run_dir / "m2_review_packet.md").write_text(
+            render_m2_review_packet(m2_review_packet),
+            encoding="utf-8",
+        )
+        _write_json(run_dir / "m1_candidates.json", m1_candidates)
+        _write_json(run_dir / "acceptance_report.json", acceptance_report)
+        brief_text = render_brief(
+            summary,
+            ranked,
+            failures,
+            cleaned,
+            keywords,
+            source_health=source_health,
+            indicator_watch=indicator_watch,
+            m1_candidates=m1_candidates,
+            acceptance_report=acceptance_report,
+            m2_ranked_questions=m2_ranked_questions,
+            m2_review_packet=m2_review_packet,
+        )
+        (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
+        handoff_text = render_m2_handoff(
+            summary,
+            ranked,
+            failures,
+            keywords,
+            source_health=source_health,
+            indicator_watch=indicator_watch,
+            m1_candidates=m1_candidates,
+            acceptance_report=acceptance_report,
+            m2_ranked_questions=m2_ranked_questions,
+            m2_review_packet=m2_review_packet,
+        )
+        (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
+        _write_json(run_dir / "run_summary.json", asdict(summary))
+        span.set_counts(artifacts_written=15)
+    run_trace = trace.to_dict()
+    _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
         run_dir,
         summary,
@@ -629,5 +745,6 @@ def run(
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,
+        run_trace=run_trace,
         summary=summary,
     )

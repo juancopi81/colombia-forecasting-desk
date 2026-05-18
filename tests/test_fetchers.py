@@ -50,6 +50,7 @@ from colombia_forecasting_desk.fetchers import (
     fetch_rss,
 )
 from colombia_forecasting_desk.models import RawItem
+from colombia_forecasting_desk.observability import RunTrace
 
 
 def _xlsx_cell(ref: str, value: str | float | int) -> str:
@@ -1954,6 +1955,66 @@ def test_fetch_eltiempo_rss_augments_with_section_cards(sample_source) -> None:
         "https://www.eltiempo.com/colombia/otras-ciudades/older-story-456"
     )
     assert items[1].metadata["extraction"] == "eltiempo_colombia_section_html"
+
+
+def test_fetch_all_records_source_trace_events(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="trace_rss",
+        name="Trace RSS",
+        url="https://example.com/rss.xml",
+        fetch_method="rss",
+    )
+    rss = """
+    <rss><channel>
+      <item>
+        <title>Banco de la Republica anuncia nueva decision de tasas</title>
+        <link>https://example.com/item-1</link>
+        <pubDate>Mon, 18 May 2026 11:34:48 -0500</pubDate>
+        <description>Comunicado con suficiente texto para trazabilidad.</description>
+      </item>
+    </channel></rss>
+    """
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=rss, request=request)
+    )
+    trace = RunTrace(run_date="2026-05-18", mode="daily")
+
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items, failures = fetchers.fetch_all([source], client=client, trace=trace)
+
+    assert len(items) == 1
+    assert failures == []
+    source_events = [
+        event
+        for event in trace.to_dict()["events"]
+        if event["name"] == "fetch_source"
+    ]
+    assert len(source_events) == 1
+    event = source_events[0]
+    assert event["status"] == "ok"
+    assert event["metadata"]["source_id"] == "trace_rss"
+    assert event["metadata"]["fetch_method"] == "rss"
+    assert event["counts"]["raw_items"] == 1
+
+
+def test_fetch_all_records_failed_source_trace_event(sample_source) -> None:
+    source = replace(sample_source, id="bad_source", fetch_method="unsupported")
+    trace = RunTrace(run_date="2026-05-18", mode="daily")
+
+    items, failures = fetchers.fetch_all([source], trace=trace)
+
+    assert items == []
+    assert len(failures) == 1
+    source_events = [
+        event
+        for event in trace.to_dict()["events"]
+        if event["name"] == "fetch_source"
+    ]
+    assert source_events[0]["status"] == "error"
+    assert source_events[0]["metadata"]["source_id"] == "bad_source"
+    assert source_events[0]["error_class"] == "ValueError"
 
 
 def test_parse_socrata_date_handles_iso_with_millis() -> None:

@@ -34,6 +34,7 @@ metasources.yaml
 → rank clusters
 → build an indicator watch for durable latest-known stats
 → write a daily metasource brief
+→ write a diagnostic run trace and manifest
 ```
 
 The public fetcher import path is still `colombia_forecasting_desk.fetchers`.
@@ -43,6 +44,7 @@ daily workflow command and existing import snippets. `core.py` owns the fetch
 dispatchers, `common.py` owns shared HTTP/date/anchor helpers, and parser-heavy
 logic is split into source-family modules such as `dane.py`, `imprenta.py`,
 `minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, and `socrata.py`.
+`observability.py` owns the lightweight `run_trace.json` event schema.
 
 ## Non-Goals
 
@@ -78,7 +80,11 @@ runs/YYYY-MM-DD/m1_candidates.json
 runs/YYYY-MM-DD/metasource_brief.md
 runs/YYYY-MM-DD/m2_handoff.md
 runs/YYYY-MM-DD/acceptance_report.json
+runs/YYYY-MM-DD/source_failures.json
 runs/YYYY-MM-DD/source_health.json
+runs/YYYY-MM-DD/run_summary.json
+runs/YYYY-MM-DD/run_trace.json
+runs/YYYY-MM-DD/run_manifest.json
 ```
 
 Optional output:
@@ -104,6 +110,16 @@ The primary structured M1-to-M2 contract is:
 ```text
 runs/YYYY-MM-DD/m1_candidates.json
 ```
+
+The diagnostic run trace for humans and AI agents is:
+
+```text
+runs/YYYY-MM-DD/run_trace.json
+```
+
+`run_trace.json` records stage/source durations, counts, metadata, and caught
+source errors. It is observability only; it does not change ranking, acceptance,
+or M2 selection logic.
 
 ## Raw Item Shape
 
@@ -810,6 +826,8 @@ M1 is complete when:
 - [x] `m2_handoff.md` is generated.
 - [x] `m1_candidates.json` is generated.
 - [x] `acceptance_report.json` is generated.
+- [x] `run_trace.json` is generated.
+- [x] `run_manifest.json` is generated.
 - [x] Source failures are logged but do not crash the full run.
 - [x] The daily brief is useful enough for an LLM or human to decide what to inspect next.
 - [x] The M2 handoff is useful enough to paste into an AI for candidate question selection.

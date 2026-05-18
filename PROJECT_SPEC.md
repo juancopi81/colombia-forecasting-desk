@@ -144,6 +144,7 @@ colombia-forecasting-desk/
 
   colombia_forecasting_desk/
     fetchers.py
+    observability.py
     source_fetching/
 
   data/
@@ -164,7 +165,10 @@ colombia-forecasting-desk/
       metasource_brief.md
       m2_handoff.md
       acceptance_report.json
+      source_failures.json
       source_health.json
+      run_summary.json
+      run_trace.json
       run_manifest.json
       candidate_questions.md
       evidence_packs/
@@ -360,6 +364,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       bill-status record per reconciled legislative identity before M2 ranking.
 - [x] Generate `run_manifest.json` so historical daily runs can be compared
       without pretending all parser capabilities existed on every date.
+- [x] Generate `run_trace.json` so humans and AI agents can inspect stage/source
+      timing, counts, and caught errors without changing forecast logic.
 - [x] Generate advisory `m2_ranked_questions.json` from legislative reconciler
       records with transparent score reasons, review buckets, and heuristic-risk
       audit flags.

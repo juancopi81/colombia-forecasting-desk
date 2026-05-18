@@ -71,7 +71,8 @@ What to look at:
 - **`parsed>0`** → at least some raw items came from a parser that read document
   content and set `metadata.content_extraction` or `metadata.parsed_content`.
 - **`failures>0`** → the fetcher raised. Check `source_failures.json` for
-  the message. Common cases: bot-block (Radware/Cloudflare), 403, timeout.
+  the message and `run_trace.json` for the failing `fetch_source` event.
+  Common cases: bot-block (Radware/Cloudflare), 403, timeout.
 - **Bot-block detected** → the fetcher will now raise a `BotBlockError`
   rather than return 0 silent items. The default headers
   (`colombia_forecasting_desk.fetchers.DEFAULT_HEADERS`) include a Chrome-like
@@ -241,7 +242,7 @@ For document-heavy sources, the proof loop is:
 4. Add a parser unit test with a realistic HTML/PDF/spreadsheet fixture shape.
 5. Add a candidate-contract test when the parsed item should become M2-ready.
 6. Run a live strict scan or single-source probe and inspect `raw_items.json`,
-   `source_health.json`, and `m1_candidates.json`.
+   `source_health.json`, `run_trace.json`, and `m1_candidates.json`.
 
 For M1.15, link-only document sources can remain enabled for source-health
 visibility, but they must not be promoted into `m1_candidates.json` as

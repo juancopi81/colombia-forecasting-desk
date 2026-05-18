@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import RunSummary
+from .observability import SCHEMA_VERSION as RUN_TRACE_SCHEMA_VERSION
 
 SCHEMA_VERSION = "run_manifest.v1"
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -70,6 +71,7 @@ def build_run_manifest(
             "acceptance_report.json": str(
                 acceptance_report.get("schema_version") or "unknown"
             ),
+            "run_trace.json": RUN_TRACE_SCHEMA_VERSION,
         },
         "artifacts": _artifact_inventory(run_dir),
         "comparison_note": (
@@ -131,6 +133,7 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "metasource_brief.md",
         "m2_handoff.md",
         "run_summary.json",
+        "run_trace.json",
         "run_manifest.json",
     ]
     artifacts: list[dict[str, Any]] = []

@@ -82,7 +82,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     ]
 
     monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
-    monkeypatch.setattr(pipeline, "fetch_all", lambda _: (items, []))
+    monkeypatch.setattr(pipeline, "fetch_all", lambda _, trace=None: (items, []))
 
     result = pipeline.run(date="2026-04-27", runs_root=tmp_path)
 
@@ -112,12 +112,29 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "m2_review_packet.md").exists()
     assert (result.run_dir / "m1_candidates.json").exists()
     assert (result.run_dir / "acceptance_report.json").exists()
+    assert (result.run_dir / "run_trace.json").exists()
     assert (result.run_dir / "run_manifest.json").exists()
     assert result.m2_ranked_questions["schema_version"] == "m2_legislative_ranking.v1"
     assert result.m2_review_packet["schema_version"] == "m2_review_packet.v1"
+    assert result.run_trace["schema_version"] == "run_trace.v1"
+    assert result.run_trace["mode"] == "daily"
+    assert result.run_trace["metadata"]["strict_requested"] is False
+    trace_events = {event["name"]: event for event in result.run_trace["events"]}
+    assert trace_events["fetch_sources"]["counts"]["raw_items"] == 5
+    assert trace_events["clean_and_rank_items"]["counts"]["cleaned_items"] == 3
+    assert (
+        trace_events["build_acceptance_report"]["metadata"]["acceptance_status"]
+        == result.acceptance_report["status"]
+    )
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
+    assert result.run_manifest["artifact_schemas"]["run_trace.json"] == "run_trace.v1"
     assert result.run_manifest["capabilities"]["legislative_m2_ranking"] is True
     assert result.run_manifest["capabilities"]["m2_review_packet"] is True
+    manifest_artifacts = {
+        artifact["path"]: artifact["exists"]
+        for artifact in result.run_manifest["artifacts"]
+    }
+    assert manifest_artifacts["run_trace.json"] is True
 
 
 def test_run_keeps_future_calendar_items_inside_planning_window(
@@ -155,7 +172,7 @@ def test_run_keeps_future_calendar_items_inside_planning_window(
     ]
 
     monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
-    monkeypatch.setattr(pipeline, "fetch_all", lambda _: (items, []))
+    monkeypatch.setattr(pipeline, "fetch_all", lambda _, trace=None: (items, []))
 
     result = pipeline.run(date="2026-05-06", runs_root=tmp_path)
 
@@ -176,8 +193,9 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
 
     captured: dict = {}
 
-    def fake_fetch_all(sources):
+    def fake_fetch_all(sources, trace=None):
         captured["sources"] = sources
+        captured["trace"] = trace
         return items, []
 
     monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
@@ -200,7 +218,12 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert (result.run_dir / "m2_review_packet.md").exists()
     assert (result.run_dir / "m1_candidates.json").exists()
     assert (result.run_dir / "acceptance_report.json").exists()
+    assert (result.run_dir / "run_trace.json").exists()
     assert (result.run_dir / "run_manifest.json").exists()
+    assert captured["trace"] is not None
+    assert result.run_trace["schema_version"] == "run_trace.v1"
+    assert result.run_trace["mode"] == "sandbox"
+    assert result.run_trace["metadata"]["source_id"] == "test_source"
 
 
 def test_run_single_source_unknown_id_raises(monkeypatch, tmp_path) -> None:
@@ -302,7 +325,7 @@ def test_source_health_propagates_onboarding_status(monkeypatch, tmp_path) -> No
     source = _source()
     object.__setattr__(source, "onboarding_status", "needs_parser")
     monkeypatch.setattr(pipeline, "load_metasources", lambda _: [source])
-    monkeypatch.setattr(pipeline, "fetch_all", lambda _: ([], []))
+    monkeypatch.setattr(pipeline, "fetch_all", lambda _, trace=None: ([], []))
 
     result = pipeline.run(date="2026-04-27", runs_root=tmp_path)
 

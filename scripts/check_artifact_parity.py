@@ -1,7 +1,8 @@
 """Compare two generated run folders for stable artifact parity.
 
-This is a refactor guard. It intentionally ignores volatile timestamps and git
-metadata while comparing the artifacts that carry M1/M2 behavior.
+This is a refactor guard. It intentionally ignores volatile timestamps, timings,
+and git metadata while comparing the artifacts that carry M1/M2 behavior plus
+the diagnostic run trace.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ DEFAULT_ARTIFACTS = (
     "m1_candidates.json",
     "acceptance_report.json",
     "run_summary.json",
+    "run_trace.json",
     "run_manifest.json",
     "metasource_brief.md",
     "m2_handoff.md",
@@ -38,6 +40,7 @@ VOLATILE_KEYS = {
     "generated_at",
     "occurred_at",
     "started_at",
+    "duration_ms",
 }
 REDACTED = "<volatile>"
 ISO_Z_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")

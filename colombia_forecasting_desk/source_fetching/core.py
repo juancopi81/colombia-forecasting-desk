@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ..observability import RunTrace
 from .common import *
 from .dane import *
 from .html import *
@@ -11,6 +12,7 @@ from .registries import *
 from .rss import *
 from .senado import *
 from .socrata import *
+
 
 def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
@@ -189,6 +191,7 @@ def _fetch_one(source: Metasource, client: httpx.Client) -> list[RawItem]:
 def fetch_all(
     sources: list[Metasource],
     client: httpx.Client | None = None,
+    trace: RunTrace | None = None,
 ) -> tuple[list[RawItem], list[SourceFailure]]:
     items: list[RawItem] = []
     failures: list[SourceFailure] = []
@@ -214,7 +217,23 @@ def fetch_all(
                 )
                 source_owns_client = True
             try:
-                fetched = _cap_items(source, _fetch_one(source, source_client))
+                if trace is None:
+                    fetched = _cap_items(source, _fetch_one(source, source_client))
+                else:
+                    with trace.span(
+                        "fetch_source",
+                        category="source_fetch",
+                        metadata={
+                            "source_id": source.id,
+                            "source_name": source.name,
+                            "fetch_method": source.fetch_method,
+                            "trust_role": source.trust_role,
+                            "priority": source.priority,
+                            "verify_ssl": source.verify_ssl,
+                        },
+                    ) as span:
+                        fetched = _cap_items(source, _fetch_one(source, source_client))
+                        span.set_counts(raw_items=len(fetched))
                 items.extend(fetched)
                 logger.info("Fetched %d items from %s", len(fetched), source.id)
             except Exception as exc:  # noqa: BLE001 — boundary catch by design

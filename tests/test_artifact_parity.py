@@ -45,6 +45,64 @@ def test_artifact_parity_ignores_volatile_run_metadata(tmp_path: Path) -> None:
     ) == []
 
 
+def test_artifact_parity_ignores_volatile_run_trace_timing(tmp_path: Path) -> None:
+    baseline = tmp_path / "baseline"
+    candidate = tmp_path / "candidate"
+    baseline.mkdir()
+    candidate.mkdir()
+    common = {
+        "schema_version": "run_trace.v1",
+        "run_date": "2026-05-18",
+        "mode": "daily",
+        "events": [
+            {
+                "name": "fetch_sources",
+                "category": "pipeline",
+                "status": "ok",
+                "counts": {"raw_items": 10},
+            }
+        ],
+    }
+    _write_json(
+        baseline / "run_trace.json",
+        {
+            **common,
+            "started_at": "2026-05-18T10:00:00Z",
+            "finished_at": "2026-05-18T10:01:00Z",
+            "duration_ms": 10.1,
+            "events": [
+                {
+                    **common["events"][0],
+                    "started_at": "2026-05-18T10:00:01Z",
+                    "finished_at": "2026-05-18T10:00:02Z",
+                    "duration_ms": 1.2,
+                }
+            ],
+        },
+    )
+    _write_json(
+        candidate / "run_trace.json",
+        {
+            **common,
+            "started_at": "2026-05-18T11:00:00Z",
+            "finished_at": "2026-05-18T11:01:00Z",
+            "duration_ms": 20.2,
+            "events": [
+                {
+                    **common["events"][0],
+                    "started_at": "2026-05-18T11:00:01Z",
+                    "finished_at": "2026-05-18T11:00:02Z",
+                    "duration_ms": 2.3,
+                }
+            ],
+        },
+    )
+
+    assert parity.check_parity(
+        baseline, candidate, artifacts=("run_trace.json",)
+    ) == []
+
+
 def test_artifact_parity_reports_stable_content_drift(tmp_path: Path) -> None:
     baseline = tmp_path / "baseline"
     candidate = tmp_path / "candidate"

@@ -44,6 +44,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `source_failures.json` — per-source errors (run never crashes on a single source)
 - `source_health.json` — per-source raw, dated, rankable, tag, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
+- `run_trace.json` — diagnostic stage/source trace with durations, counts, metadata, and caught errors for debugging and AI-agent handoffs
 - `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
 
 For legislative sources, `legislative_reconciler.json` is the broad case-file
@@ -51,6 +52,8 @@ artifact, while `m2_ranked_questions.json` is only an advisory triage layer.
 `m2_review_packet.json` / `.md` are the content-first M2 inputs: they package
 source excerpts and structured context so low-ranked items can still be sampled
 by a human or LLM when the evidence suggests possible heuristic blind spots.
+`run_trace.json` is diagnostic only; it helps explain how a run executed, but it
+does not feed candidate ranking, acceptance gates, or M2 question selection.
 
 ### Optional flags
 
@@ -70,6 +73,7 @@ high-impact source failures.
 ```
 colombia_forecasting_desk/   # core package (config, cleaner, dedupe, cluster, ranker, brief, pipeline)
   fetchers.py                # compatibility import path for source fetching
+  observability.py           # run_trace.json stage/source diagnostics
   source_fetching/           # source fetching and source-specific parser internals
 config/metasources.yaml      # registry of public sources (enabled/disabled, fetch_method, priority, trust_role)
 scripts/scan_metasources.py  # M1 entry point
