@@ -56,6 +56,7 @@ PDF_TEXT_PARSE_LIMIT = 5
 PDF_TEXT_MAX_BYTES = 2_000_000
 PDF_TEXT_EXCERPT_CHARS = 1_200
 PDF_TEXT_FULL_CHARS = 20_000
+IMPRENTA_PDF_TEXT_FULL_CHARS = 60_000
 PDF_TEXT_MIN_CHARS = 80
 MINHACIENDA_TES_PARSE_LIMIT = 5
 MINHACIENDA_TES_TEXT_MAX_CHARS = 60_000
@@ -76,7 +77,7 @@ def _minhacienda_tes_title_slug(title: str) -> str | None:
     return slug or None
 SENADO_AGENDA_PARSE_LIMIT = 2
 SENADO_AGENDA_ENTRY_LIMIT = 10
-GACETA_PDF_PARSE_LIMIT = 2
+GACETA_PDF_PARSE_LIMIT = 5
 LEGISLATIVE_REGISTRY_DEFAULT_LIMIT = 20
 BANREP_MINUTAS_PARSE_LIMIT = 2
 BANREP_MINUTAS_BODY_CHARS = 4_000
@@ -2037,11 +2038,14 @@ def _extract_pdf_text_with_pdfplumber(
         return _extract_pdf_text_objects_text(content, max_chars=max_chars)
 
     pages: list[str] = []
-    with pdfplumber.open(io.BytesIO(content)) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text(layout=True) or page.extract_text() or ""
-            if page_text:
-                pages.append(page_text)
+    try:
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text(layout=True) or page.extract_text() or ""
+                if page_text:
+                    pages.append(page_text)
+    except Exception:  # noqa: BLE001 - keep best-effort PDF extraction fail-closed
+        return _extract_pdf_text_objects_text(content, max_chars=max_chars)
     return "\n".join(pages)[:max_chars]
 
 
@@ -3171,6 +3175,11 @@ _GACETA_PROJECT_RE = re.compile(
     r"\s+P[aá]gina|\s+Gaceta|\.|$)",
     re.IGNORECASE,
 )
+_GACETA_PROJECT_RECORD_RE = re.compile(
+    r"\b(?:N(?:o|ro)?\.?\s*)?(?P<number>\d{1,4})\s+de\s+"
+    r"(?P<year>\d{4})\s+(?P<chamber>C[ÁA]MARA|CAMARA|SENADO)\b",
+    re.IGNORECASE,
+)
 _GACETA_TITLE_RE = re.compile(
     r"\b(por\s+(?:la|el|medio)\s+(?:cual\s+)?(?:se\s+)?"
     r".{24,280}?)(?:\.|\s+P[aá]gina|\s+Gaceta|$)",
@@ -3289,12 +3298,110 @@ def _parse_diario_oficial_pdf_text(text: str) -> dict[str, Any] | None:
     if len(clean_text) < PDF_TEXT_MIN_CHARS:
         return None
     records = parse_legal_act_records(clean_text, max_records=40)
-    if not records:
-        return None
     return {
         "legal_act_records": records,
         "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
+        "parse_status": "legal_act_identities_found"
+        if records
+        else "parsed_no_legal_act_identities",
     }
+
+
+def _imprenta_fragment(prefix: str, *parts: str) -> str:
+    text = " ".join(part for part in parts if part)
+    slug = re.sub(r"[^a-z0-9]+", "-", fold_accents(text.lower())).strip("-")
+    if not slug:
+        return prefix
+    return f"{prefix}-{slug[:90].strip('-')}"
+
+
+def _diario_publication_year(item: RawItem) -> str:
+    return (item.published_at or item.fetched_at or "")[:4]
+
+
+def _is_diario_published_act(
+    record: dict[str, str],
+    *,
+    publication_year: str,
+) -> bool:
+    if not publication_year or str(record.get("year") or "") != publication_year:
+        return False
+    matched = str(record.get("matched_text") or "")
+    letters = [ch for ch in matched if ch.isalpha()]
+    if not letters:
+        return False
+    uppercase_ratio = sum(1 for ch in letters if ch.isupper()) / len(letters)
+    return uppercase_ratio >= 0.8
+
+
+def _diario_act_excerpt(text: str, record: dict[str, str]) -> str:
+    matched = str(record.get("matched_text") or "")
+    start = text.find(matched)
+    if start < 0:
+        label = str(record.get("label") or "")
+        start = text.find(label)
+    if start < 0:
+        return text[:PDF_TEXT_EXCERPT_CHARS]
+    context_start = max(0, start - 180)
+    context_end = min(len(text), start + PDF_TEXT_EXCERPT_CHARS)
+    return text[context_start:context_end]
+
+
+def _diario_act_items(
+    item: RawItem,
+    metadata: dict[str, Any],
+    parsed: dict[str, Any],
+    text: str,
+) -> list[RawItem]:
+    clean_text = normalize_whitespace(text)
+    records = [
+        record
+        for record in parsed["legal_act_records"]
+        if _is_diario_published_act(
+            record,
+            publication_year=_diario_publication_year(item),
+        )
+    ]
+    if not records:
+        return []
+
+    rows: list[RawItem] = []
+    for index, record in enumerate(records, start=1):
+        label = str(record.get("label") or "").strip()
+        fragment = _imprenta_fragment("act", label or str(index))
+        row_url = f"{item.url}#{fragment}"
+        title = f"{item.title} — {label}" if label else item.title
+        row_metadata = {
+            **metadata,
+            "document_row_type": "diario_legal_act",
+            "parent_edition_url": item.url,
+            "parent_item_id": item.id,
+            "legal_act_record": record,
+            "legal_act_records": [record],
+            "legal_act_record_count": 1,
+            "published_legal_act_record_count": len(records),
+            "referenced_legal_act_records": parsed["legal_act_records"],
+            "referenced_legal_act_record_count": len(parsed["legal_act_records"]),
+        }
+        excerpt = _diario_act_excerpt(clean_text, record)
+        rows.append(
+            RawItem(
+                id=_make_id(item.source_id, row_url, title),
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=row_url,
+                title=title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=(
+                    f"{title}. Published in {item.title}. "
+                    f"Official Diario act excerpt: {excerpt}"
+                ),
+                metadata=row_metadata,
+            )
+        )
+    return rows
 
 
 def _extract_embedded_pdf_url(html_text: str, base_url: str) -> str | None:
@@ -3356,7 +3463,10 @@ def _enrich_diario_oficial_pdfs(
                 and not response.content.startswith(b"%PDF")
             ):
                 raise ValueError(f"download did not return a PDF: {content_type}")
-            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+            text = _extract_pdf_text_with_pdfplumber(
+                response.content,
+                max_chars=IMPRENTA_PDF_TEXT_FULL_CHARS,
+            )
         except Exception as exc:  # noqa: BLE001 - preserve edition-level row
             metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
             enriched.append(
@@ -3379,7 +3489,7 @@ def _enrich_diario_oficial_pdfs(
         if parsed is None:
             metadata.update(
                 {
-                    "content_extraction_error": "no legal act identities found in Diario PDF",
+                    "content_extraction_error": "no readable Diario PDF text found",
                     "pdf_text_chars": len(text),
                 }
             )
@@ -3404,11 +3514,35 @@ def _enrich_diario_oficial_pdfs(
                 "content_extraction": "diario_oficial_pdf_text",
                 "legal_act_records": parsed["legal_act_records"],
                 "legal_act_record_count": len(parsed["legal_act_records"]),
+                "pdf_parse_status": parsed["parse_status"],
                 "pdf_text_chars": len(text),
             }
         )
         record_labels = ", ".join(
             record["label"] for record in parsed["legal_act_records"][:5]
+        )
+        act_rows = _diario_act_items(item, metadata, parsed, text)
+        if act_rows:
+            enriched.extend(act_rows)
+            parsed_count += 1
+            continue
+        if parsed["legal_act_records"]:
+            metadata.update(
+                {
+                    "legal_act_records": [],
+                    "legal_act_record_count": 0,
+                    "referenced_legal_act_records": parsed["legal_act_records"],
+                    "referenced_legal_act_record_count": len(
+                        parsed["legal_act_records"]
+                    ),
+                    "pdf_parse_status": "parsed_no_published_legal_act_headings",
+                }
+            )
+            record_labels = ""
+        identity_text = (
+            f"Diario Oficial legal-act identities: {record_labels}. "
+            if record_labels
+            else "Diario Oficial PDF parsed; no legal-act identities found. "
         )
         enriched.append(
             RawItem(
@@ -3421,8 +3555,8 @@ def _enrich_diario_oficial_pdfs(
                 fetched_at=item.fetched_at,
                 published_at=item.published_at,
                 raw_text=(
-                    f"{item.raw_text} Diario Oficial legal-act identities: "
-                    f"{record_labels}. PDF text excerpt: {parsed['excerpt']}"
+                    f"{item.raw_text} {identity_text}"
+                    f"PDF text excerpt: {parsed['excerpt']}"
                 ),
                 metadata=metadata,
             )
@@ -3444,6 +3578,37 @@ def _gaceta_action_type(text: str) -> str:
     return "publicacion de gaceta"
 
 
+def _normalize_gaceta_identity_text(text: str) -> str:
+    clean = normalize_whitespace(text)
+    replacements = (
+        (r"\bDELEY\b", "DE LEY"),
+        (r"\bDEACTOLEGISLATIVO\b", "DE ACTO LEGISLATIVO"),
+        (r"\bN[ÚU]MERO\s*DELEY\b", "NÚMERO DE LEY"),
+        (r"\bDESENADO\b", "DE SENADO"),
+        (r"\bDEC[ÁA]MARA\b", "DE CÁMARA"),
+        (r"\bSENADODE\b", "SENADO DE"),
+        (r"\bC[ÁA]MARAPOR\b", "CÁMARA por"),
+        (r"\bSENADOPOR\b", "SENADO por"),
+        (r"\bp\s+or\b", "por"),
+        (r"\bdelacual\b", "de la cual"),
+    )
+    for pattern, replacement in replacements:
+        clean = re.sub(pattern, replacement, clean, flags=re.IGNORECASE)
+    clean = re.sub(
+        r"\b(20\d{2})(Senado|C[áa]mara|Camara)\b",
+        r"\1 \2",
+        clean,
+        flags=re.IGNORECASE,
+    )
+    clean = re.sub(
+        r"\b(Senado|C[áa]mara|Camara)(por)\b",
+        r"\1 \2",
+        clean,
+        flags=re.IGNORECASE,
+    )
+    return normalize_whitespace(clean)
+
+
 def _normalize_gaceta_project_label(kind: str, label: str) -> str:
     clean = normalize_whitespace(label)
     clean = re.sub(r"\bC\s*[ÁA]\s*M\s*A\s*R\s*A\b", "Cámara", clean, flags=re.I)
@@ -3451,6 +3616,39 @@ def _normalize_gaceta_project_label(kind: str, label: str) -> str:
     clean = re.sub(r"\s+y\s+", " y ", clean, flags=re.I)
     kind_clean = "Acto Legislativo" if "ACTO" in fold_accents(kind.upper()) else "Ley"
     return f"Proyecto de {kind_clean} {clean}".strip()
+
+
+def _gaceta_project_kind(text: str) -> str:
+    folded = fold_accents(text.lower())
+    return "Acto Legislativo" if "proyecto de acto legislativo" in folded else "Ley"
+
+
+def _gaceta_project_records_from_text(text: str) -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for match in _GACETA_PROJECT_RECORD_RE.finditer(text):
+        record = {
+            "number": match.group("number").lstrip("0") or "0",
+            "year": match.group("year"),
+            "chamber": _normalize_senado_chamber(match.group("chamber")),
+        }
+        key = (record["number"], record["year"], record["chamber"])
+        if key in seen:
+            continue
+        seen.add(key)
+        records.append(record)
+    return records
+
+
+def _gaceta_project_label_from_records(
+    kind: str,
+    records: list[dict[str, str]],
+) -> str:
+    labels = [
+        f"{record['number']} DE {record['year']} {record['chamber']}"
+        for record in records
+    ]
+    return f"Proyecto de {kind} {' y '.join(labels)}".strip()
 
 
 def _gaceta_project_records(project_label: str) -> list[dict[str, str]]:
@@ -3483,12 +3681,7 @@ def _gaceta_project_records(project_label: str) -> list[dict[str, str]]:
     return records
 
 
-def _has_usable_gaceta_identity(project_label: str, document_title: str) -> bool:
-    if not _gaceta_project_records(project_label):
-        return False
-    folded_label = fold_accents(project_label.lower())
-    if re.search(r"\bproyecto de (?:ley|acto legislativo)\s+de\s+\d{4}", folded_label):
-        return False
+def _has_usable_gaceta_document_title(document_title: str) -> bool:
     folded_title = fold_accents(document_title.lower()).strip()
     if len(folded_title) < 24:
         return False
@@ -3497,17 +3690,44 @@ def _has_usable_gaceta_identity(project_label: str, document_title: str) -> bool
     return True
 
 
+def _has_usable_gaceta_identity(
+    project_label: str,
+    document_title: str,
+    project_records: list[dict[str, str]] | None = None,
+) -> bool:
+    records = (
+        project_records
+        if project_records is not None
+        else _gaceta_project_records(project_label)
+    )
+    if not records:
+        return False
+    folded_label = fold_accents(project_label.lower())
+    if re.search(r"\bproyecto de (?:ley|acto legislativo)\s+de\s+\d{4}", folded_label):
+        return False
+    return _has_usable_gaceta_document_title(document_title)
+
+
 def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
-    clean_text = normalize_whitespace(text)
+    clean_text = _normalize_gaceta_identity_text(text)
     if len(clean_text) < PDF_TEXT_MIN_CHARS:
         return None
     project_label = ""
+    project_records: list[dict[str, str]] = []
     project_match = _GACETA_PROJECT_RE.search(clean_text)
     if project_match:
         project_label = _normalize_gaceta_project_label(
             project_match.group("kind"),
             project_match.group("label"),
         )
+        project_records = _gaceta_project_records(project_label)
+    if not project_records:
+        project_records = _gaceta_project_records_from_text(clean_text)
+        if project_records:
+            project_label = _gaceta_project_label_from_records(
+                _gaceta_project_kind(clean_text),
+                project_records,
+            )
     title_match = _GACETA_TITLE_RE.search(clean_text)
     document_title = ""
     if title_match:
@@ -3515,15 +3735,31 @@ def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
     elif item.metadata.get("document_title"):
         document_title = normalize_whitespace(str(item.metadata["document_title"]))
 
-    if not project_label and not document_title:
+    if not document_title:
         return None
-    if not _has_usable_gaceta_identity(project_label, document_title):
+    if not project_records:
+        if not _has_usable_gaceta_document_title(document_title):
+            return None
+        return {
+            "project_label": "",
+            "project_records": [],
+            "document_title": document_title,
+            "action_type": _gaceta_action_type(clean_text[:1500]),
+            "identity_quality": "document_title_only",
+            "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
+        }
+    if not _has_usable_gaceta_identity(
+        project_label,
+        document_title,
+        project_records,
+    ):
         return None
     return {
         "project_label": project_label,
-        "project_records": _gaceta_project_records(project_label),
+        "project_records": project_records,
         "document_title": document_title,
         "action_type": _gaceta_action_type(clean_text[:1500]),
+        "identity_quality": "project_and_title",
         "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
     }
 
@@ -3609,13 +3845,24 @@ def _enrich_gaceta_pdfs(
         if parsed["document_title"]:
             title_parts.append(parsed["document_title"][:180])
         title = " — ".join(title_parts)
+        fragment_prefix = "project" if parsed["project_label"] else "title"
+        fragment = _imprenta_fragment(
+            fragment_prefix,
+            parsed["project_label"],
+            parsed["document_title"],
+        )
+        row_url = f"{item.url}#{fragment}"
         metadata.update(
             {
                 "content_extraction": "gaceta_pdf_text",
+                "document_row_type": "gaceta_bill_item",
+                "parent_edition_url": item.url,
+                "parent_item_id": item.id,
                 "document_title": parsed["document_title"],
                 "project_label": parsed["project_label"],
                 "project_records": parsed["project_records"],
                 "agenda_action_type": parsed["action_type"],
+                "gaceta_identity_quality": parsed["identity_quality"],
                 "matched_project_labels": [parsed["project_label"]]
                 if parsed["project_label"]
                 else [],
@@ -3624,11 +3871,11 @@ def _enrich_gaceta_pdfs(
         )
         enriched.append(
             RawItem(
-                id=_make_id(item.source_id, item.url, title),
+                id=_make_id(item.source_id, row_url, title),
                 source_id=item.source_id,
                 source_name=item.source_name,
                 source_type=item.source_type,
-                url=item.url,
+                url=row_url,
                 title=title,
                 fetched_at=item.fetched_at,
                 published_at=item.published_at,

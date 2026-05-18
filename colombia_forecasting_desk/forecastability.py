@@ -92,10 +92,44 @@ _LOW_FORECASTABILITY_TERMS = {
     "veterinario",
 }
 _SECOP_SOURCE_PREFIXES = ("secop_",)
+_DIARIO_FINAL_ROW_TYPE = "diario_legal_act"
+_UNRESOLVED_ANCHOR_SOURCE_IDS = {
+    "camara_agenda_consolidada",
+    "camara_proyectos_ley_registry",
+    "dian_proyectos_normas",
+    "gacetas_congreso",
+    "mincit_zonas_francas",
+    "minhacienda_proyectos_decreto",
+    "senado_agenda_legislativa",
+    "senado_leyes_registry",
+}
+LEGISLATIVE_REGISTRY_SOURCE_IDS = {
+    "senado_leyes_registry",
+    "camara_proyectos_ley_registry",
+}
+_UNRESOLVED_ANCHOR_METADATA_KEYS = {
+    "agenda_action_type",
+    "bill_title",
+    "declaratory_resolution",
+    "legislative_registry",
+    "project_label",
+    "project_records",
+    "registry_change_type",
+    "registry_detail_url",
+    "zona_franca_name",
+}
 _GENERIC_IMPRENTA_TITLE_RE = re.compile(
     r"^(?:gaceta del congreso\s+\d+|diario oficial\s+[\d.]+)"
     r"(?:\s+[-]\s+(?:senado de la republica|camara de representantes|"
-    r"edicion ordinaria|edicion extraordinaria))?$",
+    r"edicion ordinaria|edicion extraordinaria|ordinaria|extraordinaria))?$",
+    re.IGNORECASE,
+)
+_DIARIO_FINAL_ACT_TITLE_RE = re.compile(
+    r"\bdiario oficial\s+[\d.]+\s+-\s+"
+    r"(?:(?:ordinaria|extraordinaria)\s+-\s+)?"
+    r"(?:acto legislativo|decreto(?:\s+ley)?|ley|"
+    r"resolucion(?:\s+\w+){0,3}|circular(?:\s+\w+){0,2}|acuerdo|directiva)"
+    r"\s+(?:no\.?\s*)?[a-z]?\d",
     re.IGNORECASE,
 )
 _GENERIC_SENADO_AGENDA_TITLE_RE = re.compile(
@@ -145,6 +179,76 @@ def _is_opaque_imprenta_cluster(cluster: Cluster) -> bool:
         if not _GENERIC_IMPRENTA_TITLE_RE.match(normalized):
             return False
     return True
+
+
+def _normalized_text(text: str) -> str:
+    normalized = text.lower().replace("—", "-").replace("–", "-")
+    normalized = fold_accents(normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _has_diario_final_publication_member(cluster: Cluster) -> bool:
+    titles = cluster.member_titles or [cluster.title]
+    metadata_items = cluster.member_metadata or [{} for _ in titles]
+    source_ids = cluster.member_source_ids or ["diario_oficial" for _ in titles]
+    for source_id, title, metadata in zip(source_ids, titles, metadata_items):
+        if source_id != "diario_oficial":
+            continue
+        if metadata.get("document_row_type") == _DIARIO_FINAL_ROW_TYPE:
+            return True
+        if (
+            metadata.get("content_extraction") == "diario_oficial_pdf_text"
+            and metadata.get("legal_act_records")
+        ):
+            return True
+        if _DIARIO_FINAL_ACT_TITLE_RE.search(_normalized_text(title)):
+            return True
+    return False
+
+
+def _is_diario_final_publication_cluster(cluster: Cluster) -> bool:
+    return (
+        set(cluster.member_source_ids) == {"diario_oficial"}
+        and _has_diario_final_publication_member(cluster)
+    )
+
+
+def _has_clean_unresolved_decision_identity(cluster: Cluster) -> bool:
+    cluster_sources = set(cluster.member_source_ids)
+    if not cluster_sources & _UNRESOLVED_ANCHOR_SOURCE_IDS:
+        return False
+    for metadata in cluster.member_metadata:
+        if any(metadata.get(key) for key in _UNRESOLVED_ANCHOR_METADATA_KEYS):
+            return True
+    texts = [cluster.title, cluster.summary, *cluster.member_titles]
+    if "gacetas_congreso" in cluster_sources and any(
+        re.search(r"\bproyecto\s+de\s+(?:ley|acto\s+legislativo)\s+\d", text, re.I)
+        for text in texts
+    ):
+        return True
+    if "senado_agenda_legislativa" in cluster_sources and any(
+        _has_clean_senado_project_identity(text) for text in texts
+    ):
+        return True
+    if cluster_sources & LEGISLATIVE_REGISTRY_SOURCE_IDS and any(
+        re.search(
+            r"\bproyecto\s+de\s+(?:ley|acto\s+legislativo)\s+"
+            r"\d{1,4}\s+de\s+\d{4}\s+(?:senado|c[aá]mara)",
+            text,
+            re.I,
+        )
+        for text in texts
+    ):
+        return True
+    return False
+
+
+def _is_mixed_diario_final_without_unresolved_identity(cluster: Cluster) -> bool:
+    return (
+        _has_diario_final_publication_member(cluster)
+        and set(cluster.member_source_ids) != {"diario_oficial"}
+        and not _has_clean_unresolved_decision_identity(cluster)
+    )
 
 
 def _is_generic_senado_agenda_cluster(cluster: Cluster) -> bool:
@@ -263,6 +367,14 @@ def noise_reasons(cluster: Cluster) -> list[str]:
         reasons.append(
             "official publication index lacks document title or parsed text"
         )
+    if _is_diario_final_publication_cluster(cluster):
+        reasons.append(
+            "final Diario Oficial publication is resolution evidence, not an unresolved forecast"
+        )
+    if _is_mixed_diario_final_without_unresolved_identity(cluster):
+        reasons.append(
+            "mixed cluster includes final Diario Oficial publication without a clean unresolved decision identity"
+        )
     if _is_generic_senado_agenda_cluster(cluster):
         reasons.append("Senado agenda PDF lacks a parsed bill/action entry")
     if _is_weak_senado_agenda_entry_cluster(cluster):
@@ -289,6 +401,10 @@ def forecastability_score(cluster: Cluster) -> float:
     if _has_only_secop_sources(cluster):
         score -= 4.0
     if _is_opaque_imprenta_cluster(cluster):
+        score -= 8.0
+    if _is_diario_final_publication_cluster(cluster):
+        score -= 8.0
+    if _is_mixed_diario_final_without_unresolved_identity(cluster):
         score -= 8.0
     if _is_generic_senado_agenda_cluster(cluster):
         score -= 8.0

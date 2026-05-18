@@ -153,6 +153,59 @@ def test_clean_allows_imprenta_rows_with_document_title(make_raw, sample_source)
     assert "low_quality:missing_document_title" not in cleaned.quality_notes
 
 
+def test_clean_blocks_parsed_gaceta_without_project_identity(
+    make_raw,
+    sample_source,
+) -> None:
+    source = _source(
+        id="gacetas_congreso",
+        type="legal",
+        trust_role="agenda_signal",
+    )
+    raw = make_raw(
+        source_id="gacetas_congreso",
+        source_type="legal",
+        title="Gaceta del Congreso 484 — por el cual se expide un estatuto docente",
+        raw_text="Extracted from official Gaceta PDF. por el cual se expide un estatuto docente.",
+        metadata={
+            "content_extraction": "gaceta_pdf_text",
+            "document_title": "por el cual se expide un estatuto docente",
+            "project_records": [],
+        },
+    )
+
+    cleaned = clean(raw, source)
+
+    assert "low_quality:missing_project_identity" in cleaned.quality_notes
+    assert "low_quality:missing_document_title" not in cleaned.quality_notes
+
+
+def test_clean_blocks_parsed_diario_without_legal_act_records(
+    make_raw,
+    sample_source,
+) -> None:
+    source = _source(
+        id="diario_oficial",
+        type="legal",
+        trust_role="resolution_source",
+    )
+    raw = make_raw(
+        source_id="diario_oficial",
+        source_type="legal",
+        title="Diario Oficial 53.493 — Ordinaria",
+        raw_text="Diario Oficial PDF parsed; no legal-act identities found.",
+        metadata={
+            "content_extraction": "diario_oficial_pdf_text",
+            "legal_act_records": [],
+        },
+    )
+
+    cleaned = clean(raw, source)
+
+    assert "low_quality:no_legal_act_records" in cleaned.quality_notes
+    assert "low_quality:missing_document_title" not in cleaned.quality_notes
+
+
 def test_clean_flags_no_title(make_raw, sample_source) -> None:
     raw = make_raw(title="")
     cleaned = clean(raw, sample_source)

@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 _TRACKING_PREFIXES = ("utm_",)
 _TRACKING_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src"}
 _PRIMARY_TRUST_ROLES = {"official_signal", "resolution_source"}
+_SEMANTIC_FRAGMENT_ROW_TYPES = {"diario_legal_act", "gaceta_bill_item"}
 
 
 def canonicalize_url(url: str) -> str:
@@ -39,10 +40,19 @@ def _trust_rank(item: CleanedItem) -> int:
     return 1 if item.trust_role in _PRIMARY_TRUST_ROLES else 0
 
 
+def _canonical_item_url(item: CleanedItem) -> str:
+    key = canonicalize_url(item.url)
+    fragment = urlsplit(item.url).fragment
+    row_type = str((item.metadata or {}).get("document_row_type") or "")
+    if key and fragment and row_type in _SEMANTIC_FRAGMENT_ROW_TYPES:
+        return f"{key}#{fragment}"
+    return key
+
+
 def dedupe(items: list[CleanedItem]) -> list[CleanedItem]:
     by_url: dict[str, CleanedItem] = {}
     for item in items:
-        key = canonicalize_url(item.url)
+        key = _canonical_item_url(item)
         if not key:
             key = f"__no_url__:{item.source_id}:{_normalize_title(item.title)}"
         existing = by_url.get(key)

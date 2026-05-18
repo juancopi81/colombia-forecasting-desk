@@ -159,6 +159,60 @@ def test_rejected_includes_opaque_gaceta_and_noisy_cluster() -> None:
     }
 
 
+def test_mixed_diario_final_cluster_is_rejected_before_m2_promotion() -> None:
+    cluster = _cluster(
+        cluster_id="c-diario-cne-mixed",
+        title="Diario Oficial 53.491 — Resolución 1002 de 2026",
+        summary=(
+            "Final Diario legal acts were clustered with a CNE polling item; "
+            "this is resolution evidence, not a clean unresolved decision."
+        ),
+        source_count=2,
+        source_types=["legal", "polling"],
+        signal_types=["court_or_regulatory_movement", "poll"],
+        member_source_ids=["diario_oficial", "cne_encuestas_2026"],
+        member_source_names=[
+            "Diario Oficial — Imprenta Nacional",
+            "CNE — Encuestas Electorales 2026",
+        ],
+        member_titles=[
+            "Diario Oficial 53.491 — Ordinaria — Resolución 1002 de 2026",
+            "ANALIZAR & LOMBANA",
+        ],
+        member_urls=[
+            "https://svrpubindc.imprenta.gov.co/diario?edicion=53.491#act-resolucion-1002-de-2026",
+            "https://www.cne.gov.co/encuestas-2026/43-analizar-lombana",
+        ],
+        member_metadata=[
+            {
+                "content_extraction": "diario_oficial_pdf_text",
+                "document_row_type": "diario_legal_act",
+                "legal_act_records": [
+                    {"kind": "Resolución", "number": "1002", "year": "2026"}
+                ],
+            },
+            {},
+        ],
+        detected_entities=["cne", "presidencia"],
+        detected_topics=["fiscal_tax", "electoral", "regulatory"],
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=["electoral", "regulatory"],
+        generated_at="2026-05-18T16:25:26Z",
+    )
+
+    assert out["candidates"] == []
+    assert out["rejected"][0]["reason"] == (
+        "mixed cluster includes final Diario Oficial publication without a clean "
+        "unresolved decision identity"
+    )
+    assert out["rejected"][0]["noise_reasons"] == [out["rejected"][0]["reason"]]
+
+
 def test_indicator_seed_candidate_from_observed_trm_move() -> None:
     trm = IndicatorObservation(
         indicator_id="trm_usd_cop",

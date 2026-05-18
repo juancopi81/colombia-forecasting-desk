@@ -159,12 +159,16 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
   are M2-ready only when they have a clean project number and bill title; loose
   title-only extracts should remain research leads.
 - `_enrich_gaceta_pdfs` — posts the official Imprenta/Gacetas JSF download
-  button, extracts PDF text, and emits parsed Gaceta project/title metadata only
-  when the downloaded PDF exposes usable legislative text.
+  button, extracts PDF text, and emits bill-item rows with `#project` / `#title`
+  URL fragments plus parsed Gaceta project/title metadata. If the PDF exposes a
+  clean title but no clean project number/year/chamber, keep it as a parsed
+  research lead rather than a rankable candidate.
 - `_enrich_diario_oficial_pdfs` — posts the official Imprenta/Diario JSF
-  download button, extracts PDF text, and records normalized legal-act
-  identities such as `Resolución 2118 de 2025` when the official PDF exposes
-  enough text.
+  download button, extracts PDF text with `pdfplumber`, and emits one row per
+  published legal-act heading such as `Resolución 2118 de 2025`. Referenced
+  legal acts stay in metadata as references, not separate rows. Readable PDFs
+  with no legal-act identities should still be marked as parsed content, but
+  kept non-rankable.
 - `_fetch_senado_leyes_registry` and `_fetch_camara_proyectos_ley_registry` —
   use the official public registry endpoints/pages as the primary legislative
   bill-identity/status layer, emitting parsed project number, chamber, title,

@@ -340,7 +340,7 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    notes: "Final publication of national norms (laws, decrees, administrative acts). M1.4 added a PrimeFaces-table parser that extracts the latest 10 editions per fetch (Número | Tipo | Fecha). M1.22 posts the official JSF PDF download for recent editions and marks content_extraction=diario_oficial_pdf_text only when the PDF yields normalized legal-act identities; downloaded PDFs with no extractable text remain document_unparsed/document_links_only. The download buttons are JSF postbacks, so per-edition URLs are synthesized as ?edicion=NNN.NNN; rows still dedupe distinctly."
+    notes: "Final publication of national norms (laws, decrees, administrative acts). M1.4 added a PrimeFaces-table parser that extracts the latest 10 editions per fetch (Número | Tipo | Fecha). M1.22 posts the official JSF PDF download for recent editions. M1.24 reads recent PDFs with pdfplumber, emits one row per published legal-act heading with content_extraction=diario_oficial_pdf_text, preserves referenced acts separately, and keeps no-act editions parsed but non-rankable. Final act rows are resolution evidence, not standalone unresolved forecast candidates."
 
   - id: gacetas_congreso
     name: Gacetas del Congreso — Imprenta Nacional
@@ -354,7 +354,7 @@ metasources:
     trust_role: agenda_signal
     parsing_difficulty: medium
     enabled: true
-    notes: "Best source for legislative bills, ponencias, and text changes before final approval. M1.4 added the shared Imprenta Nacional PrimeFaces-table parser; extracts the latest 10 gacetas per fetch (Número | Entidad | Fecha). M1.18 follows the official JSF PDF download for the first rows and marks content_extraction=gaceta_pdf_text only when a usable project label or document title is parsed; opaque rows remain document-link coverage. M1.19 links parsed Gaceta project records to clean Senado agenda records by project number/year/chamber."
+    notes: "Best source for legislative bills, ponencias, and text changes before final approval. M1.4 added the shared Imprenta Nacional PrimeFaces-table parser; extracts the latest 10 gacetas per fetch (Número | Entidad | Fecha). M1.24 follows the official JSF PDF download for the first five rows, emits bill-item URLs with #project/#title fragments, recovers project number/year/chamber from body references when the cover headline is lossy, and marks title-only rows as parsed research leads but non-rankable. M1.19 links parsed Gaceta project records to clean Senado agenda records by project number/year/chamber."
 
   - id: suin_juriscol
     name: SUIN-Juriscol

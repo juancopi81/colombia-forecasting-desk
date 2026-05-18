@@ -54,3 +54,24 @@ def test_dedupe_keeps_different_sources_same_title(make_cleaned) -> None:
     b = make_cleaned(id="b", source_id="y", url="https://e2.com/b", title="Hola")
     out = dedupe([a, b])
     assert len(out) == 2
+
+
+def test_dedupe_preserves_semantic_document_fragments(make_cleaned) -> None:
+    first = make_cleaned(
+        id="decreto-500",
+        source_id="diario_oficial",
+        url="https://example.com/diario?edicion=53.491#act-decreto-500-de-2026",
+        title="Diario Oficial 53.491 — Decreto 500 de 2026",
+        metadata={"document_row_type": "diario_legal_act"},
+    )
+    second = make_cleaned(
+        id="decreto-502",
+        source_id="diario_oficial",
+        url="https://example.com/diario?edicion=53.491#act-decreto-502-de-2026",
+        title="Diario Oficial 53.491 — Decreto 502 de 2026",
+        metadata={"document_row_type": "diario_legal_act"},
+    )
+
+    out = dedupe([first, second])
+
+    assert [item.id for item in out] == ["decreto-500", "decreto-502"]

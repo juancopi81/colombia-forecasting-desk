@@ -13,7 +13,7 @@ _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 _GENERIC_IMPRENTA_TITLE_RE = re.compile(
     r"^(?:gaceta del congreso\s+\d+|diario oficial\s+[\d.]+)"
     r"(?:\s+[-]\s+(?:senado de la republica|camara de representantes|"
-    r"edicion ordinaria|edicion extraordinaria))?$",
+    r"edicion ordinaria|edicion extraordinaria|ordinaria|extraordinaria))?$",
     re.IGNORECASE,
 )
 _STRONG_TAG_PAIRS = frozenset(

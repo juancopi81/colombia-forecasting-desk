@@ -62,6 +62,7 @@ def _is_opaque_imprenta_index(raw: RawItem) -> bool:
     return (
         raw.metadata.get("extraction") == IMPRENTA_INDEX_EXTRACTION
         and not raw.metadata.get("document_title")
+        and not raw.metadata.get("content_extraction")
     )
 
 
@@ -80,6 +81,18 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         notes.append("low_quality:short_text")
     if _is_opaque_imprenta_index(raw):
         notes.append("low_quality:missing_document_title")
+    if (
+        raw.source_id == "gacetas_congreso"
+        and raw.metadata.get("content_extraction") == "gaceta_pdf_text"
+        and not raw.metadata.get("project_records")
+    ):
+        notes.append("low_quality:missing_project_identity")
+    if (
+        raw.source_id == "diario_oficial"
+        and raw.metadata.get("content_extraction") == "diario_oficial_pdf_text"
+        and not raw.metadata.get("legal_act_records")
+    ):
+        notes.append("low_quality:no_legal_act_records")
     quality_notes = ",".join(notes)
     tag_metadata = {
         **(raw.metadata or {}),

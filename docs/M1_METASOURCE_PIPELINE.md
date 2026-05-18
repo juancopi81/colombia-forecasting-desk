@@ -408,10 +408,16 @@ a prior structured run and detect a new row or changed resolution field.
 M1.22 adds the official legal-resolution bridge. `legal_identity` normalizes
 acts such as `Resolución 2118 de 2025`, `Ley 1474 de 2011`, and
 `Decreto 123 de 2026` into stable kind/number/year keys. Diario Oficial now
-posts the Imprenta JSF download button for recent editions and marks
-`content_extraction: diario_oficial_pdf_text` only when the downloaded PDF
-yields usable legal-act identities. SUIN and Gestor-style legal rows are
-annotated with the same metadata when their titles expose act identities.
+posts the Imprenta JSF download button for recent editions, follows the embedded
+PDF viewer, and reads the official PDF with `pdfplumber`. Readable editions get
+`content_extraction: diario_oficial_pdf_text`; when published legal-act headings
+are present, M1 emits one row per act with a semantic `#act-...` URL fragment.
+Referenced legal acts remain in `referenced_legal_act_records` so citations do
+not become false publication rows. Readable no-act editions are treated as
+parsed but non-rankable, so source health no longer confuses "we read the PDF
+and found no legal acts" with "we only saw a document link." SUIN and
+Gestor-style legal rows are annotated with the same metadata when their titles
+expose act identities.
 `decision_records.link_official_legal_records` then attaches official
 resolution matches to MinCIT approved-zone rows only when the act key matches
 and the official legal source also contains MinCIT or named zone context. A
@@ -420,7 +426,13 @@ same-number resolution from an unrelated entity remains unlinked.
 Reaching the Diario Oficial PDF viewer is not treated as parsed evidence by
 itself. If the downloaded PDF yields no extractable text, the item keeps
 `content_extraction_error` metadata and the source-health gate remains
-`document_unparsed` / `document_links_only` rather than green.
+`document_unparsed` / `document_links_only` rather than green. Parsed Diario
+rows are still resolution evidence first; generic edition titles such as
+`Diario Oficial 53.491 — Ordinaria` should not become standalone forecast
+candidates unless a later parser emits a specific unresolved decision hook.
+Likewise, act-level Diario rows such as `Diario Oficial 53.491 — Decreto 502 de
+2026` are final-publication evidence and should be linked to existing leads
+rather than promoted as unresolved forecasts on their own.
 
 M1.23 closes the DANE GDP/ISE coverage gap exposed by the May 15, 2026
 PIB/ISE release. The Indicator Watch now reads DANE's official PIB technical
@@ -583,12 +595,16 @@ but M1.6 treats parsed document content as the stronger evidence contract for
 sources whose useful data lives inside PDFs or spreadsheets.
 
 For document-intelligence sources, `parsed` should be backed by an emitted
-`RawItem.metadata.content_extraction` value and a test that demonstrates the
-record can become a valid M1 candidate. For example, Senado agenda entries use
+`RawItem.metadata.content_extraction` value and tests that demonstrate both the
+positive and guarded cases. For example, Senado agenda entries use
 `senado_agenda_pdf`, but only entries with clean project identity metadata should
-promote to M2 candidates. Gacetas rows use `gaceta_pdf_text` only after a
-successful official PDF download and project/title extraction; opaque Imprenta
-rows remain document-link coverage debt.
+promote to M2 candidates. Gacetas rows use `gaceta_pdf_text` after a successful
+official PDF download and project/title extraction; project rows use `#project`
+URL fragments, title-only rows use `#title` fragments and remain parsed research
+leads, while rows without a usable title remain document-link coverage debt.
+The dedupe layer preserves these semantic document fragments for Imprenta row
+types so multiple acts or bill items from the same PDF edition do not collapse
+back into one edition-level row.
 
 ## Daily Brief Structure
 

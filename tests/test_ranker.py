@@ -170,6 +170,157 @@ def test_opaque_gaceta_index_is_not_forecastable_candidate() -> None:
     )
 
 
+def test_generic_diario_ordinaria_title_is_not_forecastable_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-diario-ordinaria",
+        title="Diario Oficial 53.491 — Ordinaria",
+        summary=(
+            "Diario Oficial legal-act identities: Decreto 502 de 2026, "
+            "Decreto 500 de 2026."
+        ),
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["diario_oficial"],
+        member_source_names=["Diario Oficial — Imprenta Nacional"],
+        member_titles=["Diario Oficial 53.491 — Ordinaria"],
+        member_urls=["https://svrpubindc.imprenta.gov.co/diario?edicion=53.491"],
+        priorities=["high"],
+    )
+
+    assert not is_forecastable_candidate(cluster)
+    assert "official publication index lacks document title or parsed text" in noise_reasons(
+        cluster
+    )
+
+
+def test_diario_final_act_row_is_resolution_evidence_not_forecast_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-diario-act",
+        title="Diario Oficial 53.491 — Decreto 502 de 2026",
+        summary=(
+            "Diario Oficial 53.491 — Decreto 502 de 2026. "
+            "Official Diario act excerpt."
+        ),
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["diario_oficial"],
+        member_source_names=["Diario Oficial — Imprenta Nacional"],
+        member_titles=["Diario Oficial 53.491 — Decreto 502 de 2026"],
+        member_urls=[
+            "https://svrpubindc.imprenta.gov.co/diario?edicion=53.491#act-decreto-502-de-2026"
+        ],
+        priorities=["high"],
+    )
+
+    assert not is_forecastable_candidate(cluster)
+    assert (
+        "final Diario Oficial publication is resolution evidence, not an unresolved forecast"
+        in noise_reasons(cluster)
+    )
+
+
+def test_mixed_diario_final_cluster_without_unresolved_identity_is_not_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-diario-cne-mixed",
+        title="Diario Oficial 53.491 — Resolución 1002 de 2026",
+        summary=(
+            "Diario Oficial final act rows were clustered with a CNE polling "
+            "filing because they shared broad electoral tags."
+        ),
+        source_count=2,
+        source_types=["legal", "polling"],
+        signal_types=["court_or_regulatory_movement", "poll"],
+        member_source_ids=["diario_oficial", "cne_encuestas_2026"],
+        member_source_names=[
+            "Diario Oficial — Imprenta Nacional",
+            "CNE — Encuestas Electorales 2026",
+        ],
+        member_titles=[
+            "Diario Oficial 53.491 — Ordinaria — Resolución 1002 de 2026",
+            "ANALIZAR & LOMBANA",
+        ],
+        member_urls=[
+            "https://svrpubindc.imprenta.gov.co/diario?edicion=53.491#act-resolucion-1002-de-2026",
+            "https://www.cne.gov.co/encuestas-2026/43-analizar-lombana",
+        ],
+        member_metadata=[
+            {
+                "content_extraction": "diario_oficial_pdf_text",
+                "document_row_type": "diario_legal_act",
+                "legal_act_records": [
+                    {"kind": "Resolución", "number": "1002", "year": "2026"}
+                ],
+            },
+            {},
+        ],
+        detected_entities=["cne", "presidencia"],
+        detected_topics=["electoral", "regulatory"],
+        priorities=["high", "high"],
+    )
+
+    assert not is_forecastable_candidate(cluster)
+    assert (
+        "mixed cluster includes final Diario Oficial publication without a clean unresolved decision identity"
+        in noise_reasons(cluster)
+    )
+
+
+def test_mixed_diario_final_cluster_with_clean_gaceta_identity_can_remain_candidate() -> None:
+    cluster = _cluster(
+        cluster_id="c-gaceta-diario-project",
+        title=(
+            "Gaceta del Congreso 485 — Proyecto de Ley 560 DE 2025 Cámara — "
+            "subsidio de transporte del GLP"
+        ),
+        summary=(
+            "Gaceta identifies Proyecto de Ley 560 DE 2025 Cámara; Diario "
+            "publication is only follow-up context."
+        ),
+        source_count=2,
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["gacetas_congreso", "diario_oficial"],
+        member_source_names=[
+            "Gacetas del Congreso — Imprenta Nacional",
+            "Diario Oficial — Imprenta Nacional",
+        ],
+        member_titles=[
+            (
+                "Gaceta del Congreso 485 — Proyecto de Ley 560 DE 2025 Cámara — "
+                "subsidio de transporte del GLP"
+            ),
+            "Diario Oficial 53.491 — Ordinaria — Resolución 1002 de 2026",
+        ],
+        member_urls=[
+            "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=485#project-560",
+            "https://svrpubindc.imprenta.gov.co/diario?edicion=53.491#act-resolucion-1002-de-2026",
+        ],
+        member_metadata=[
+            {
+                "content_extraction": "gaceta_pdf_text",
+                "document_row_type": "gaceta_bill_item",
+                "project_label": "Proyecto de Ley 560 DE 2025 Cámara",
+                "project_records": [
+                    {"kind": "Proyecto de Ley", "number": "560", "year": "2025"}
+                ],
+            },
+            {
+                "content_extraction": "diario_oficial_pdf_text",
+                "document_row_type": "diario_legal_act",
+                "legal_act_records": [
+                    {"kind": "Resolución", "number": "1002", "year": "2026"}
+                ],
+            },
+        ],
+        detected_entities=["congreso"],
+        detected_topics=["legislative", "hydrocarbons"],
+        priorities=["high", "medium"],
+    )
+
+    assert is_forecastable_candidate(cluster)
+    assert noise_reasons(cluster) == []
+
+
 def test_parsed_gaceta_project_is_forecastable_followup_evidence() -> None:
     cluster = _cluster(
         cluster_id="c-gaceta-parsed-project",
