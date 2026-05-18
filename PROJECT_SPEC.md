@@ -151,11 +151,14 @@ colombia-forecasting-desk/
       cleaned_items.json
       clusters.json
       indicator_watch.json
+      legislative_reconciler.json
+      m2_ranked_questions.json
       m1_candidates.json
       metasource_brief.md
       m2_handoff.md
       acceptance_report.json
       source_health.json
+      run_manifest.json
       candidate_questions.md
       evidence_packs/
       forecast_drafts/
@@ -348,6 +351,11 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       status, latest movement, contradiction handling, and M2 readiness.
 - [x] Implement `legislative_reconciler.json` so M1 exposes one conservative
       bill-status record per reconciled legislative identity before M2 ranking.
+- [x] Generate `run_manifest.json` so historical daily runs can be compared
+      without pretending all parser capabilities existed on every date.
+- [x] Generate advisory `m2_ranked_questions.json` from legislative reconciler
+      records with transparent score reasons, review buckets, and heuristic-risk
+      audit flags.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.
@@ -367,8 +375,11 @@ bill signals from Senado, Cámara, Gacetas, and legal-resolution sources become
 one clean bill-status record before M2 ranks them.
 
 - [ ] Read daily brief.
-- [ ] Generate candidate questions.
-- [ ] Score questions by interest, forecastability, evidence availability, freshness, and risk.
+- [x] Generate deterministic advisory legislative question ranking from
+      structured M1 records.
+- [ ] Generate final candidate questions.
+- [ ] Score questions by interest, forecastability, evidence availability,
+      freshness, and risk across all candidate families.
 - [ ] Select a small number of questions for deeper research.
 - [ ] Save candidate and selected questions.
 

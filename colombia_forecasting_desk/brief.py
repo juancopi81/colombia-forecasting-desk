@@ -203,6 +203,46 @@ def _render_candidate_db_summary(
     )
 
 
+def _render_m2_ranking_summary(m2_ranked_questions: dict | None) -> str:
+    if not m2_ranked_questions:
+        return "- `m2_ranked_questions.json`: _not generated for this render._"
+    bucket_counts = m2_ranked_questions.get("bucket_counts")
+    audit = m2_ranked_questions.get("heuristic_audit")
+    ranked = m2_ranked_questions.get("ranked_questions")
+    review_queue = m2_ranked_questions.get("review_queue")
+    if not isinstance(bucket_counts, dict):
+        bucket_counts = {}
+    if not isinstance(audit, dict):
+        audit = {}
+    if not isinstance(ranked, list):
+        ranked = []
+    if not isinstance(review_queue, list):
+        review_queue = []
+    bucket_text = ", ".join(
+        f"{key}={value}" for key, value in sorted(bucket_counts.items())
+    ) or "no buckets"
+    lines = [
+        f"- `m2_ranked_questions.json`: {len(ranked)} ranked legislative review "
+        f"items; buckets: {bucket_text}.",
+        "- Heuristic policy: advisory triage only; low-ranked items with audit "
+        "flags still require human/LLM sampling.",
+        f"- Audit: possible_false_negatives="
+        f"{audit.get('possible_false_negative_count', 0)}, "
+        f"possible_false_positives={audit.get('possible_false_positive_count', 0)}, "
+        f"review_queue={len(review_queue)}.",
+    ]
+    top = [item for item in ranked if isinstance(item, dict)][:3]
+    if top:
+        lines.append("- Top legislative review items:")
+        for item in top:
+            lines.append(
+                f"  - `{item.get('bucket', 'unknown')}` "
+                f"{item.get('overall_score', 'n/a')}: "
+                f"{item.get('question_seed', item.get('canonical_bill_id', ''))}"
+            )
+    return "\n".join(lines)
+
+
 def _candidate_links(candidate: dict, limit: int = 3) -> str:
     evidence = candidate.get("evidence") if isinstance(candidate, dict) else {}
     links = evidence.get("links") if isinstance(evidence, dict) else []
@@ -790,6 +830,7 @@ def render_brief(
     indicator_watch: list[IndicatorObservation] | None = None,
     m1_candidates: dict | None = None,
     acceptance_report: dict | None = None,
+    m2_ranked_questions: dict | None = None,
 ) -> str:
     top = ranked_clusters[:TOP_SIGNALS_LIMIT]
     top_blocks = [
@@ -820,6 +861,8 @@ def render_brief(
         f"{_render_m2_seed_questions(indicator_watch or [], run_summary.run_date)}\n\n"
         "## Candidate DB\n\n"
         f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
+        "## M2 Legislative Ranking\n\n"
+        f"{_render_m2_ranking_summary(m2_ranked_questions)}\n\n"
         "## Forecastable Signals\n\n"
         f"{_render_candidate_event_signals(m1_candidates) or _render_forecastable_signals(ranked_clusters)}\n\n"
         "## Top Signals\n\n"
@@ -916,6 +959,7 @@ def render_m2_handoff(
     indicator_watch: list[IndicatorObservation] | None = None,
     m1_candidates: dict | None = None,
     acceptance_report: dict | None = None,
+    m2_ranked_questions: dict | None = None,
 ) -> str:
     indicators = indicator_watch or []
     health = source_health or []
@@ -945,6 +989,8 @@ def render_m2_handoff(
         f"{seeds}\n\n"
         "## Candidate DB Snapshot\n\n"
         f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
+        "## M2 Legislative Ranking Snapshot\n\n"
+        f"{_render_m2_ranking_summary(m2_ranked_questions)}\n\n"
         "## Forecastable Event Signals\n\n"
         f"{_render_candidate_event_signals(m1_candidates) or forecastable}\n\n"
         "## Rejected / Noisy Signals\n\n"

@@ -121,12 +121,14 @@ def main() -> int:
                 config_path=args.config,
                 runs_root=args.runs_dir,
                 date=args.date,
+                strict_requested=args.strict,
             )
         else:
             result = run(
                 date=args.date,
                 config_path=args.config,
                 runs_root=args.runs_dir,
+                strict_requested=args.strict,
             )
     except Exception as exc:
         logging.basicConfig(level=logging.ERROR)

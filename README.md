@@ -27,6 +27,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
+- `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
 - `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
@@ -34,11 +35,12 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `source_failures.json` — per-source errors (run never crashes on a single source)
 - `source_health.json` — per-source raw, dated, rankable, tag, content-mode, document-link, parsed-content, and failure counts
 - `run_summary.json` — counts and timestamps for the run
+- `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
 
-For legislative sources, the next implementation target is the
-[`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md):
-one clean bill-status record per bill, with linked Cámara/Senado identities,
-latest movement, contradiction handling, and M2 readiness.
+For legislative sources, `legislative_reconciler.json` is the broad case-file
+artifact, while `m2_ranked_questions.json` is only an advisory triage layer. It
+must not hide low-ranked items from human or LLM review when the audit flags
+possible heuristic blind spots.
 
 ### Optional flags
 
@@ -67,9 +69,9 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M1.23 — GDP/ISE Indicator Watch coverage**, building on the
-M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, and
-M1.22 official legal-resolution bridge. The
+Currently at **M2.1 — advisory legislative ranking**, building on the
+M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
+official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
 provide primary structured bill identity/status records; Senado agenda PDFs and
 Gacetas remain fallback/follow-up evidence. The MinCIT zonas francas source
@@ -84,10 +86,13 @@ navigation, but still marked as parser feasibility rather than rankable
 evidence. DANE PIB and ISE official pages are now first-class Indicator Watch
 cards, including PIB sector drivers and current-release official document
 links, so GDP/ISE releases can become M2-ready activity seeds instead of only
-appearing as indirect context. See
+appearing as indirect context. Legislative records now also get an advisory M2
+ranking with explicit score reasons, review buckets, and heuristic-risk audit
+flags so humans and LLMs can challenge brittle rules instead of inheriting them
+silently. See
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
 detailed plan, the
 [`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md)
-for the next legislative hardening milestone, and
+for the legislative identity/status contract, and
 [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for upcoming milestones (M2 question
 discovery, M3 evidence packs, M4 public X experiment).

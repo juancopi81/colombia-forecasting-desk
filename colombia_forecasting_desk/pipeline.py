@@ -23,6 +23,8 @@ from .indicator_watch import (
     fetch_structured_indicator_observations,
 )
 from .legislative_reconciler import build_legislative_reconciliations
+from .m2_ranker import build_legislative_m2_ranking
+from .manifest import build_run_manifest
 from .models import (
     CleanedItem,
     Cluster,
@@ -58,8 +60,10 @@ class PipelineResult:
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
     legislative_reconciliations: list[dict]
+    m2_ranked_questions: dict
     m1_candidates: dict
     acceptance_report: dict
+    run_manifest: dict
     summary: RunSummary
 
 
@@ -315,6 +319,7 @@ def run_single_source(
     config_path: str | Path = DEFAULT_CONFIG_PATH,
     runs_root: str | Path = RUNS_DIR,
     date: str | None = None,
+    strict_requested: bool = False,
 ) -> PipelineResult:
     """Fetch+clean+rank a single source and write artifacts to runs/sandbox/<source_id>/.
 
@@ -368,6 +373,11 @@ def run_single_source(
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
     )
+    m2_ranked_questions = build_legislative_m2_ranking(
+        legislative_reconciliations,
+        summary,
+        generated_at=finished_at,
+    )
     acceptance_report = build_acceptance_report(
         summary,
         m1_candidates,
@@ -388,9 +398,21 @@ def run_single_source(
     _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
+    _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     _write_json(run_dir / "run_summary.json", asdict(summary))
+    run_manifest = build_run_manifest(
+        run_dir,
+        summary,
+        config_path=config_path,
+        strict_requested=strict_requested,
+        acceptance_report=acceptance_report,
+        m1_candidates=m1_candidates,
+        legislative_reconciliations=legislative_reconciliations,
+        m2_ranked_questions=m2_ranked_questions,
+    )
+    _write_json(run_dir / "run_manifest.json", run_manifest)
 
     logger.info("Wrote sandbox artifacts to %s", run_dir)
     return PipelineResult(
@@ -402,8 +424,10 @@ def run_single_source(
         source_health=source_health,
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
+        m2_ranked_questions=m2_ranked_questions,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
+        run_manifest=run_manifest,
         summary=summary,
     )
 
@@ -412,6 +436,7 @@ def run(
     date: str | None = None,
     config_path: str | Path = DEFAULT_CONFIG_PATH,
     runs_root: str | Path = RUNS_DIR,
+    strict_requested: bool = False,
 ) -> PipelineResult:
     _setup_logging()
     started_at = _now_iso()
@@ -482,6 +507,11 @@ def run(
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
     )
+    m2_ranked_questions = build_legislative_m2_ranking(
+        legislative_reconciliations,
+        summary,
+        generated_at=finished_at,
+    )
     acceptance_report = build_acceptance_report(
         summary,
         m1_candidates,
@@ -504,6 +534,7 @@ def run(
     )
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
+    _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     brief_text = render_brief(
@@ -516,6 +547,7 @@ def run(
         indicator_watch=indicator_watch,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
+        m2_ranked_questions=m2_ranked_questions,
     )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
     handoff_text = render_m2_handoff(
@@ -527,9 +559,21 @@ def run(
         indicator_watch=indicator_watch,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
+        m2_ranked_questions=m2_ranked_questions,
     )
     (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
+    run_manifest = build_run_manifest(
+        run_dir,
+        summary,
+        config_path=config_path,
+        strict_requested=strict_requested,
+        acceptance_report=acceptance_report,
+        m1_candidates=m1_candidates,
+        legislative_reconciliations=legislative_reconciliations,
+        m2_ranked_questions=m2_ranked_questions,
+    )
+    _write_json(run_dir / "run_manifest.json", run_manifest)
 
     logger.info("Wrote artifacts to %s", run_dir)
     return PipelineResult(
@@ -541,7 +585,9 @@ def run(
         source_health=source_health,
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
+        m2_ranked_questions=m2_ranked_questions,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
+        run_manifest=run_manifest,
         summary=summary,
     )
