@@ -24,6 +24,23 @@ BANREP_SERIES_API_BASE = (
 )
 BANREP_POLICY_RATE_SERIES_ID = 59
 BANREP_IBR_OVERNIGHT_SERIES_ID = 241
+BANREP_TES_CURVE_SERIES = {
+    "tes_1y": {
+        "series_id": 15272,
+        "label": "TES pesos 1y zero-coupon",
+        "value_key": "banrep_tes_1y_zero_coupon_pct",
+    },
+    "tes_5y": {
+        "series_id": 15273,
+        "label": "TES pesos 5y zero-coupon",
+        "value_key": "banrep_tes_5y_zero_coupon_pct",
+    },
+    "tes_10y": {
+        "series_id": 15274,
+        "label": "TES pesos 10y zero-coupon",
+        "value_key": "banrep_tes_10y_zero_coupon_pct",
+    },
+}
 BANREP_POLICY_RATE_SOURCE_URL = (
     "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/"
     "59/tasas_interes_politica_monetaria/"
@@ -31,6 +48,10 @@ BANREP_POLICY_RATE_SOURCE_URL = (
 BANREP_IBR_SOURCE_URL = (
     "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/"
     "241/tasas_interes_indicador_bancario_referencia_ibr/"
+)
+BANREP_TES_CURVE_SOURCE_URL = (
+    "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/"
+    "220002/tasas_interes_cero_cupon_tes"
 )
 TRM_API_URL = "https://www.datos.gov.co/resource/32sa-8pi3.json"
 TRM_SOURCE_URL = (
@@ -415,8 +436,9 @@ INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
             "TES yields + fiscal deficit flags market concern before budget headlines",
         ),
         next_step=(
-            "DIAN monthly tax-collection XLSX is wired; add deficit, debt, "
-            "and TES components when a broader fiscal-stress card is needed."
+            "DIAN monthly tax-collection XLSX, MinHacienda TES auction reports, "
+            "and BanRep TES 1y/5y/10y zero-coupon series are wired; add deficit "
+            "and broader debt-stock components when needed."
         ),
     ),
 )
@@ -737,6 +759,29 @@ _BUNDLE_COMPONENTS = {
             "next_step": "Headline HTML is wired; add origin/CUODE/product annex drivers later.",
         },
     ),
+    "fiscal_tax_pulse": (
+        {
+            "component_id": "tax_collection",
+            "name": "DIAN tax collection",
+            "source_name": "DIAN",
+            "source_url": DIAN_TAX_REVENUE_PAGE_URL,
+            "next_step": "Parsed from DIAN's official monthly tax-collection XLSX ZIP.",
+        },
+        {
+            "component_id": "tes_auction",
+            "name": "MinHacienda TES auction",
+            "source_name": "Ministerio de Hacienda y Crédito Público",
+            "source_url": "https://www.minhacienda.gov.co/informes-tes-2026",
+            "next_step": "Parsed from official MinHacienda TES auction report PDFs.",
+        },
+        {
+            "component_id": "banrep_tes_curve",
+            "name": "BanRep TES zero-coupon curve",
+            "source_name": "Banco de la República",
+            "source_url": BANREP_TES_CURVE_SOURCE_URL,
+            "next_step": "Uses verified SUAMECA child series 15272, 15273, and 15274 only.",
+        },
+    ),
 }
 
 
@@ -848,7 +893,12 @@ def _bundle_values(
 
 
 def _component_frequency(indicator_id: str) -> str:
-    if indicator_id in {"construction_bundle", "oil_gas_production", "external_trade"}:
+    if indicator_id in {
+        "construction_bundle",
+        "oil_gas_production",
+        "external_trade",
+        "fiscal_tax_pulse",
+    }:
         return "monthly"
     if indicator_id == "energy_system":
         return "daily"
@@ -1720,6 +1770,17 @@ def external_trade_observation_from_components(
     return replace(observation, period=exports.period, headline=headline, values=values)
 
 
+def fiscal_tax_observation_from_components(
+    components: Iterable[IndicatorComponent],
+) -> IndicatorObservation | None:
+    return _bundle_observation_from_components(
+        "fiscal_tax_pulse",
+        components,
+        failed_headline="Fiscal/tax pulse components failed to fetch or parse.",
+        observed_headline_prefix="Fiscal/tax pulse has observed components",
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TrmPoint:
     value: float
@@ -1869,6 +1930,62 @@ def policy_rate_ibr_observation_from_rows(
             "ibr_date": ibr_date.strftime("%Y-%m-%d"),
             "ibr_policy_spread_pp": spread,
         },
+    )
+
+
+def banrep_tes_curve_component_from_rows(
+    rows_by_tenor: dict[str, Iterable[dict[str, Any]]],
+) -> IndicatorComponent | None:
+    values: dict[str, Any] = {}
+    dates: list[datetime] = []
+    observed_series: list[dict[str, Any]] = []
+    for tenor_key, config in BANREP_TES_CURVE_SERIES.items():
+        dated_rows: list[tuple[datetime, dict[str, Any]]] = []
+        for row in rows_by_tenor.get(tenor_key, []):
+            if not isinstance(row, dict) or row.get("isSerie") != "SI":
+                continue
+            date = _parse_dmy_date(row.get("fecha"))
+            value = _to_float_unrounded(row.get("valor"))
+            if date is None or value is None:
+                continue
+            dated_rows.append((date, row))
+        if not dated_rows:
+            return None
+        latest_date, latest_row = max(dated_rows, key=lambda item: item[0])
+        latest_value = _to_float_unrounded(latest_row.get("valor"))
+        if latest_value is None:
+            return None
+        dates.append(latest_date)
+        values[str(config["value_key"])] = latest_value
+        values[f"{tenor_key}_date"] = latest_date.strftime("%Y-%m-%d")
+        observed_series.append(
+            {
+                "tenor": tenor_key,
+                "series_id": config["series_id"],
+                "name": latest_row.get("nombre") or config["label"],
+                "date": latest_date.strftime("%Y-%m-%d"),
+                "value_pct": latest_value,
+            }
+        )
+    period_date = max(dates)
+    period = period_date.strftime("%Y-%m-%d")
+    values["observed_series"] = observed_series
+    return _component(
+        component_id="banrep_tes_curve",
+        name="BanRep TES zero-coupon curve",
+        status="observed",
+        source_name="Banco de la República",
+        source_url=BANREP_TES_CURVE_SOURCE_URL,
+        period=period,
+        release_date=period + "T00:00:00Z",
+        headline=(
+            f"BanRep TES zero-coupon {period}: 1y "
+            f"{values['banrep_tes_1y_zero_coupon_pct']:.2f}%, 5y "
+            f"{values['banrep_tes_5y_zero_coupon_pct']:.2f}%, 10y "
+            f"{values['banrep_tes_10y_zero_coupon_pct']:.2f}%."
+        ),
+        values=values,
+        next_step="Uses verified SUAMECA child series 15272, 15273, and 15274 only.",
     )
 
 
@@ -2281,31 +2398,46 @@ def fiscal_tax_observation_from_dian_xlsx(xlsx_bytes: bytes) -> IndicatorObserva
     release_date = _release_date_from_text(release_text)
     period = f"{year}-{month:02d}"
     definition = _definition_map()["fiscal_tax_pulse"]
+    values = {
+        "gross_tax_revenue_cop_millions": total,
+        "gross_tax_revenue_annual_variation_pct": annual_change,
+        "internal_tax_revenue_cop_millions": internal,
+        "external_tax_revenue_cop_millions": external,
+        "income_tax_cop_millions": income_tax,
+        "internal_vat_cop_millions": internal_vat,
+        "tariff_revenue_cop_millions": tariff,
+        "external_vat_cop_millions": external_vat,
+        "previous_year_same_month_cop_millions": previous_total,
+    }
+    headline = (
+        f"DIAN tax collection {period}: COP {total:,.0f} million gross "
+        f"revenue"
+        + (
+            f" ({annual_change:+.2f}% y/y)."
+            if annual_change is not None
+            else "."
+        )
+    )
+    component = _component(
+        component_id="tax_collection",
+        name="DIAN tax collection",
+        status="observed",
+        source_name="DIAN",
+        source_url=DIAN_TAX_REVENUE_PAGE_URL,
+        period=period,
+        release_date=release_date,
+        headline=headline,
+        values=values,
+        next_step="Parsed from DIAN's official monthly tax-collection XLSX ZIP.",
+    )
     return _headline_definition(
         definition,
         status="observed",
         period=period,
         release_date=release_date,
-        headline=(
-            f"DIAN tax collection {period}: COP {total:,.0f} million gross "
-            f"revenue"
-            + (
-                f" ({annual_change:+.2f}% y/y)."
-                if annual_change is not None
-                else "."
-            )
-        ),
-        values={
-            "gross_tax_revenue_cop_millions": total,
-            "gross_tax_revenue_annual_variation_pct": annual_change,
-            "internal_tax_revenue_cop_millions": internal,
-            "external_tax_revenue_cop_millions": external,
-            "income_tax_cop_millions": income_tax,
-            "internal_vat_cop_millions": internal_vat,
-            "tariff_revenue_cop_millions": tariff,
-            "external_vat_cop_millions": external_vat,
-            "previous_year_same_month_cop_millions": previous_total,
-        },
+        headline=headline,
+        values=values,
+        components=_complete_bundle_components("fiscal_tax_pulse", [component]),
     )
 
 
@@ -2399,6 +2531,42 @@ def _fetch_policy_rate_ibr_observation(client: httpx.Client) -> IndicatorObserva
             "BanRep SUAMECA fetch returned no parseable policy/IBR rows.",
         )
     return observation
+
+
+def _fetch_banrep_tes_curve_component(client: httpx.Client) -> IndicatorComponent:
+    try:
+        rows_by_tenor = {
+            tenor_key: _fetch_banrep_series_rows(
+                client,
+                int(config["series_id"]),
+            )
+            for tenor_key, config in BANREP_TES_CURVE_SERIES.items()
+        }
+    except (httpx.HTTPError, ValueError) as exc:
+        return _failed_component(
+            "fiscal_tax_pulse",
+            component_id="banrep_tes_curve",
+            headline=f"BanRep TES SUAMECA fetch failed: {exc.__class__.__name__}: {exc}",
+        )
+    if any(rows is None for rows in rows_by_tenor.values()):
+        return _failed_component(
+            "fiscal_tax_pulse",
+            component_id="banrep_tes_curve",
+            headline="BanRep TES SUAMECA fetch returned non-list JSON.",
+        )
+    component = banrep_tes_curve_component_from_rows(
+        {
+            key: rows or []
+            for key, rows in rows_by_tenor.items()
+        }
+    )
+    if component is None:
+        return _failed_component(
+            "fiscal_tax_pulse",
+            component_id="banrep_tes_curve",
+            headline="BanRep TES SUAMECA fetch returned no parseable 1y/5y/10y rows.",
+        )
+    return component
 
 
 _DANE_HTML_INDICATORS: tuple[
@@ -2768,6 +2936,11 @@ def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
         if oil_gas:
             observations.append(oil_gas)
         observations.append(_fetch_dian_tax_observation(client))
+        fiscal_tes = fiscal_tax_observation_from_components(
+            [_fetch_banrep_tes_curve_component(client)]
+        )
+        if fiscal_tes:
+            observations.append(fiscal_tes)
     return observations
 
 
@@ -2828,6 +3001,51 @@ def _icoced_observation(item: RawItem) -> IndicatorObservation | None:
         why_it_matters=definition.why_it_matters,
         correlations=list(definition.correlations),
         next_step=definition.next_step,
+    )
+
+
+def _tes_auction_observation(item: RawItem) -> IndicatorObservation | None:
+    metadata = item.metadata or {}
+    if metadata.get("content_extraction") != "minhacienda_tes_auction_pdf":
+        return None
+    rows = metadata.get("maturity_rows")
+    if not isinstance(rows, list) or not rows:
+        return None
+    values = {
+        "auction_date": metadata.get("auction_date"),
+        "auction_type": metadata.get("auction_type"),
+        "currency": metadata.get("currency"),
+        "security_type": metadata.get("security_type"),
+        "total_issued_cop_billions": metadata.get("total_issued_cop_billions"),
+        "total_demand_cop_billions": metadata.get("total_demand_cop_billions"),
+        "bid_to_cover": metadata.get("bid_to_cover"),
+        "maturity_years": metadata.get("maturity_years"),
+        "maturity_rows": rows,
+        "max_cutoff_rate_pct": metadata.get("max_cutoff_rate_pct"),
+        "long_cutoff_rate_pct": metadata.get("long_cutoff_rate_pct"),
+        "long_maturity_year": metadata.get("long_maturity_year"),
+        "source_pdf_url": metadata.get("source_pdf_url") or item.url,
+    }
+    component = _component(
+        component_id="tes_auction",
+        name="MinHacienda TES auction",
+        status="observed",
+        source_name=item.source_name,
+        source_url=item.url,
+        period=(metadata.get("auction_date") or item.published_at or "")[:10],
+        release_date=metadata.get("auction_date") or item.published_at,
+        headline=item.raw_text,
+        values=values,
+        next_step="Parsed from official MinHacienda TES auction report PDFs.",
+    )
+    observation = fiscal_tax_observation_from_components([component])
+    if observation is None:
+        return None
+    return replace(
+        observation,
+        source_name=item.source_name,
+        source_url=item.url,
+        headline=item.raw_text,
     )
 
 
@@ -2991,8 +3209,9 @@ def _merge_observations(
             if component.status == "observed"
         ]
         if observed_ids:
+            indicator_name = _definition_map()[left.indicator_id].name
             headline = (
-                "Construction bundle has observed components: "
+                f"{indicator_name} has observed components: "
                 f"{', '.join(observed_ids)}."
             )
     return replace(
@@ -3029,6 +3248,10 @@ def build_indicator_watch(
     for item in raw_items:
         if item.source_id == "dane_icoced":
             observation = _icoced_observation(item)
+            if observation:
+                _store_observation(observed, observation)
+        if item.source_id == "minhacienda_tes_reports":
+            observation = _tes_auction_observation(item)
             if observation:
                 _store_observation(observed, observation)
 

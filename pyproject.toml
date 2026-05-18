@@ -9,6 +9,8 @@ dependencies = [
     "httpx>=0.27",          # modern HTTP client with sane timeouts
     "beautifulsoup4>=4.12", # HTML parsing (uses stdlib html.parser backend)
     "PyYAML>=6.0",          # reads config/metasources.yaml
+    "pdfplumber>=0.11",     # portable PDF text/table extraction for official reports
+    "playwright>=1.45",     # browser fallback for Radware-protected official pages
 ]
 
 [dependency-groups]

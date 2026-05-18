@@ -431,6 +431,30 @@ official document/annex links for M2/M3 follow-up. A strong ISE reading fires
 an `activity_acceleration` M2 seed, making the follow-up question explicit
 instead of relying on indirect retail/manufacturing clues.
 
+M1.24 adds official sovereign-debt/TES coverage. `minhacienda_tes_reports`
+uses the MinHacienda Investor Relations Colombia (`irc.gov.co`) COP, UVR, and
+TCO auction-result document-library pages because the main MinHacienda
+`Informes TES 2026` page is Radware-blocked in shell fetches. It marks
+`content_extraction: minhacienda_tes_auction_pdf` only when the parser recovers
+the auction date, TES type/currency, total issued, demand, bid-to-cover,
+maturity rows, coupon rates when present, cutoff rates, per-maturity demand,
+approved amounts, maximum cutoff rate, long-maturity cutoff rate, and source
+PDF link. The parser uses `pdfplumber` for portable layout-preserving PDF text
+because the no-dependency extractor drops or mangles the numeric table. IRC
+returns 403 to simple shell fetches, so this source uses a Playwright browser
+path; if the browser path is blocked or a PDF table cannot be parsed, the item
+stays link-level with `content_extraction_error`.
+
+M1.24 also deepens the fiscal card with official BanRep TES curve observations
+from SUAMECA. The parent group page is
+`informacionSerie/220002/tasas_interes_cero_cupon_tes`, but the group id is not
+a data series. The wired official child series are exactly `15272` (TES pesos
+1y), `15273` (TES pesos 5y), and `15274` (TES pesos 10y) through the existing
+`consultaInformacionSerieXTipoDato` endpoint. Do not add non-official or
+guessed TES series ids. A parsed TES auction with max cutoff rate at or above
+14.0% fires a `tes_funding_cost` M2 seed resolved against the next official
+MinHacienda / IRC auction-result PDF for the same auction type.
+
 ## Indicator Watch
 
 Each run writes:
@@ -504,14 +528,17 @@ Current observed cards:
 - `oil_gas_production`: ANH / datos.gov.co consolidated crude and fiscalized
   gas production aggregates, including top departments by volume.
 - `fiscal_tax_pulse`: DIAN monthly gross tax collection by broad bucket from
-  the official XLSX ZIP, including year-over-year change.
+  the official XLSX ZIP, MinHacienda TES auction facts from official report
+  PDFs, and BanRep TES pesos 1y/5y/10y zero-coupon observations from verified
+  SUAMECA child series.
 
 All fourteen cards now have a first-pass source. The next hardening candidates
 are source health thresholds, regression fixtures from live structured
 endpoints, and explicit alert rules for stale critical components. The next
 deepening candidates are SECOP sector fields, external-trade product/country
-annexes, DIAN/Minhacienda deficit and debt components, BanRep IBR term
-structure, and energy thermal/non-regulated/scarcity-price details.
+annexes, DIAN/Minhacienda deficit and debt-stock components, BanRep IBR term
+structure, TES UVR curve coverage once official child series are verified, and
+energy thermal/non-regulated/scarcity-price details.
 
 M1.13 adds deterministic alert rendering for known high-value conditions:
 

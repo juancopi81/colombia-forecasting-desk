@@ -31,6 +31,7 @@ DEFAULT_MISSING_EVIDENCE = [
     "whether the event is already resolved",
 ]
 INDICATOR_SEED_LIMIT = 8
+INDICATOR_ONLY_SOURCE_IDS = {"minhacienda_tes_reports"}
 MONTHLY_LAG_WARNING_DAYS = 120
 GACETAS_CONGRESO_URL = "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml"
 SENADO_LEYES_REGISTRY_URL = "https://leyes.senado.gov.co/"
@@ -71,12 +72,26 @@ def build_m1_candidates(
     link_only_sources = _link_only_source_ids(health)
     for cluster in ranked_clusters:
         blocked_sources = sorted(set(cluster.member_source_ids) & link_only_sources)
+        indicator_only_sources = sorted(
+            set(cluster.member_source_ids) & INDICATOR_ONLY_SOURCE_IDS
+        )
         if blocked_sources:
             rejected.append(
                 _rejected_cluster(
                     cluster,
                     topic_keywords,
                     reason="source is link-only in this run; document contents are missing",
+                )
+            )
+        elif indicator_only_sources:
+            rejected.append(
+                _rejected_cluster(
+                    cluster,
+                    topic_keywords,
+                    reason=(
+                        "source is promoted through Indicator Watch; raw clusters "
+                        "would have a generic resolution path"
+                    ),
                 )
             )
         elif is_forecastable_candidate(cluster):
@@ -335,6 +350,49 @@ def _indicator_candidates(
     fiscal = by_id.get("fiscal_tax_pulse")
     ipc = by_id.get("ipc_inflation")
     if fiscal and fiscal.status == "observed":
+        components = fiscal.values.get("components")
+        tes_auction = (
+            components.get("tes_auction") if isinstance(components, dict) else None
+        )
+        if isinstance(tes_auction, dict):
+            max_cutoff = tes_auction.get("max_cutoff_rate_pct")
+            bid_to_cover = tes_auction.get("bid_to_cover")
+            auction_type = str(tes_auction.get("auction_type") or "TES").upper()
+            auction_date = str(tes_auction.get("auction_date") or fiscal.period)
+            if isinstance(max_cutoff, int | float) and max_cutoff >= 14:
+                seeds.append(
+                    (
+                        fiscal,
+                        {
+                            "theme": "TES auction funding cost",
+                            "trigger": (
+                                f"{auction_type} auction {auction_date[:10]}: "
+                                f"max cutoff {max_cutoff:.3f}%"
+                                + (
+                                    f", bid-to-cover {bid_to_cover:.1f}x."
+                                    if isinstance(bid_to_cover, int | float)
+                                    else "."
+                                )
+                            ),
+                            "question": (
+                                "Will the next official MinHacienda / IRC "
+                                f"{auction_type} TES auction report show a maximum "
+                                "cutoff rate of at least 14.0%?"
+                            ),
+                            "resolution": (
+                                "MinHacienda / IRC official TES auction-result PDF "
+                                f"for the next {auction_type} auction."
+                            ),
+                            "deadline": f"Next official {auction_type} TES auction report.",
+                            "missing": (
+                                "Auction calendar, next offered maturities, secondary "
+                                "TES curve moves, fiscal headlines, and whether the "
+                                "next auction is comparable in tenor mix."
+                            ),
+                        },
+                        ["tes_funding_cost"],
+                    )
+                )
         nominal_tax = fiscal.values.get("gross_tax_revenue_annual_variation_pct")
         annual_ipc = ipc.values.get("annual_variation_pct") if ipc else None
         if isinstance(nominal_tax, int | float) and isinstance(annual_ipc, int | float):

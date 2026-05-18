@@ -245,6 +245,99 @@ def test_indicator_seed_candidate_from_ise_activity_acceleration() -> None:
     assert candidate["evidence"]["values"]["annual_growth_pct"] == 3.98
 
 
+def test_indicator_seed_candidate_from_tes_auction_cost() -> None:
+    fiscal = IndicatorObservation(
+        indicator_id="fiscal_tax_pulse",
+        name="Fiscal / tax pulse",
+        category="fiscal",
+        status="observed",
+        frequency="monthly",
+        source_name="MinHacienda / IRC — Subastas TES 2026",
+        source_url=(
+            "https://www.irc.gov.co/documents/d/guest/"
+            "subasta-9-cop-mayo-13-de-2026?download=true"
+        ),
+        period="2026-05-13",
+        release_date="2026-05-13T00:00:00Z",
+        headline="Fiscal / tax pulse has observed components: tes_auction.",
+        values={
+            "observed_components": 1,
+            "total_components": 3,
+            "components": {
+                "tes_auction": {
+                    "auction_type": "COP",
+                    "auction_date": "2026-05-13T00:00:00Z",
+                    "max_cutoff_rate_pct": 14.79,
+                    "bid_to_cover": 4.1,
+                    "source_pdf_url": (
+                        "https://www.irc.gov.co/documents/d/guest/"
+                        "subasta-9-cop-mayo-13-de-2026?download=true"
+                    ),
+                }
+            },
+        },
+        freshness_status="current",
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [],
+        [],
+        topic_keywords=[],
+        indicator_watch=[fiscal],
+        generated_at="2026-05-13T12:00:31Z",
+    )
+
+    assert len(out["candidates"]) == 1
+    candidate = out["candidates"][0]
+    assert candidate["candidate_type"] == "indicator_seed"
+    assert candidate["origin_id"] == "fiscal_tax_pulse"
+    assert candidate["theme"] == "TES auction funding cost"
+    assert candidate["reasons"] == ["indicator:tes_funding_cost"]
+    assert candidate["question_seed"] == (
+        "Will the next official MinHacienda / IRC COP TES auction report show "
+        "a maximum cutoff rate of at least 14.0%?"
+    )
+    assert candidate["resolution_source"] == (
+        "MinHacienda / IRC official TES auction-result PDF for the next COP auction."
+    )
+    assert candidate["evidence"]["values"]["components"]["tes_auction"][
+        "max_cutoff_rate_pct"
+    ] == 14.79
+
+
+def test_tes_raw_clusters_are_indicator_only() -> None:
+    cluster = _cluster(
+        cluster_id="c-tes-auction",
+        title="Subasta 09 COP Mayo 13 de 2026",
+        summary="Official MinHacienda TES auction report with cutoff rates.",
+        member_source_ids=["minhacienda_tes_reports"],
+        member_source_names=["MinHacienda / IRC — Subastas TES 2026"],
+        source_types=["economic_indicator"],
+        signal_types=["official_update"],
+        member_urls=[
+            "https://www.irc.gov.co/documents/d/guest/"
+            "subasta-9-cop-mayo-13-de-2026?download=true"
+        ],
+        member_titles=["Subasta 09 COP Mayo 13 de 2026"],
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=["tes"],
+        generated_at="2026-05-13T12:00:31Z",
+    )
+
+    assert out["candidates"] == []
+    assert out["rejected"][0]["source_ids"] == ["minhacienda_tes_reports"]
+    assert out["rejected"][0]["reject_reason"] == (
+        "source is promoted through Indicator Watch; raw clusters would have a "
+        "generic resolution path"
+    )
+
+
 def test_source_caveats_include_failures_and_link_only_sources() -> None:
     failure = SourceFailure(
         source_id="registraduria_noticias",

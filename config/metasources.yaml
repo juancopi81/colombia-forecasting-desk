@@ -418,6 +418,21 @@ metasources:
     onboarding_status: needs_parser
     notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. Sandbox: 302 redirect to validate.perfdrive.com (Radware bot manager) then back to a 200 challenge page — bot detector did not catch it because the final response was 200. Needs both a stronger bot-block heuristic and a real-browser fetch path."
 
+  - id: minhacienda_tes_reports
+    name: MinHacienda / IRC — Subastas TES 2026
+    url: https://www.irc.gov.co/424
+    type: economic_indicator
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: weekly
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 15
+    notes: "Official MinHacienda investor-relations TES auction pages. Parser uses IRC's COP, UVR, and TCO 2026 document-library pages, follows official auction-result PDFs, and marks content_extraction=minhacienda_tes_auction_pdf only when the auction date, TES type/currency, issued amount, demand, bid-to-cover, maturity rows, cutoff rates, demand by maturity, and approved amounts are recovered. IRC returns 403 to simple shell fetches, so this source uses the Playwright browser path and should fail source health if browser fetches are blocked."
+
   - id: cne_encuestas_2026
     name: CNE — Encuestas Electorales 2026
     url: https://www.cne.gov.co/encuestas-2026

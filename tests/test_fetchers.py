@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 import httpx
 
+import colombia_forecasting_desk.fetchers as fetchers
 from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
@@ -26,6 +27,8 @@ from colombia_forecasting_desk.fetchers import (
     _extract_dian_regulatory_project_links,
     _extract_imprenta_jsf_table,
     _extract_mincit_zonas_francas_approved_rows_from_text,
+    _extract_minhacienda_tes_auction_facts,
+    _extract_minhacienda_tes_auction_rows_from_text,
     _extract_pdf_text,
     _extract_senado_agenda_entries_from_text,
     _cap_items,
@@ -105,6 +108,56 @@ def _minimal_icoced_xlsx() -> bytes:
     return out.getvalue()
 
 
+MINHACIENDA_TES_COP_TEXT = """
+MINHACIENDA REALIZA SUBASTA DE TES COP POR
+$6,0 BILLONES, LA MAYOR REALIZADA A LA FECHA
+El Ministerio de Hacienda y Crédito Público Minhacienda emitió hoy $6,0
+billones en la subasta de TES denominados en pesos (COP) con vencimiento a
+cuatro, nueve, catorce y treinta y dos años.
+Se recibieron órdenes de compra por $12,3 billones, 4,1 veces el monto
+inicialmente ofrecido.
+Las tasas de interés de corte de la subasta fueron de 14,790% para los
+TES 2030, 14,300% para los TES 2035, 13,968% para los TES 2040 y
+13,940% para los TES 2058.
+Bogotá, 13 de mayo de 2026
+Tabla 1
+Resultados Subasta TES COP
+Plazo al vencimiento 4 años 9 años 14 años 32 años
+Fecha de Vencimiento 27-feb-30 24-ene-35 28-nov-40 13-mar-58
+Tasa cupón 12.500% 11.750% 12.750% 12.000%
+Tasa de corte 14.790% 14.300% 13.968% 13.940%
+Ofertas Recibidas $5.4 billones $4.2 billones $740 mil millones $1.9 billones
+Monto Aprobado $2.8 billones $2.2 billones $178 mil millones $890 mil millones
+(Fin).
+"""
+
+
+IRC_TES_COP_TEXT = """
+RESUMEN SUBASTA TES TASA FIJA
+Subdirección Financiamiento Interno de la Nación
+Dirección General de Crédito Público y Tesoro Nacional
+Ministerio de Hacienda y Crédito Público
+Subasta No. 9 13 de mayo de 2026
+FECHA PLAZO AL VTO. TASA MÍNIMA TASA MÁXIMA TASA PROMEDIO TASA DE
+CORTE TASA SEN PRECIA PRECIO CUPÓN "TI" TAIL PB
+VENCIMIENTO (AÑOS)
+27-feb-30 4 14,520% 15,100% 14,810% 14,790% 14,760% 14,546% 96,120 12,50% 14,785% 0,459
+24-ene-35 9 14,099% 14,661% 14,380% 14,300% 14,260% 14,053% 91,087 11,75% 14,346% -4,572
+28-nov-40 14 13,820% 14,411% 14,116% 13,968% 13,902% 13,768% 98,174 12,75% 14,098% -13,039
+13-mar-58 32 13,650% 14,297% 13,974% 13,940% 13,850% 13,639% 88,200 12,00% 13,983% -4,332
+MONTOS
+SESION COMPETITIVA
+FECHA MONTO OFERTADO MONTO OFERTADO MONTO APROBADO MONTO APROBADO
+BID/COVER
+VENCIMIENTO Valor Nominal Valor Costo Valor Nominal Valor Costo
+27-feb-30 5.698.333.000.000 5.430.910.232.310 2.886.053.800.000 2.774.074.912.560
+24-ene-35 4.677.500.000.000 4.187.531.875.000 2.369.000.000.000 2.157.851.030.000
+28-nov-40 773.000.000.000 739.660.510.000 181.000.000.000 177.694.940.000
+13-mar-58 2.228.500.000.000 1.917.802.530.000 1.009.500.000.000 890.379.000.000
+TOTAL 13.377.333.000.000 12.275.905.147.310 6.445.553.800.000 5.999.999.882.560 4,1
+"""
+
+
 def test_struct_time_to_iso_handles_none() -> None:
     assert _struct_time_to_iso(None) is None
 
@@ -144,6 +197,266 @@ def test_extract_anchors_filters_nav_and_short() -> None:
     assert not any("other.com" in u for u in urls)
     # nav/short dropped
     assert not any(text.lower() in {"menú", "inicio"} for text, _ in anchors)
+
+
+def test_extract_minhacienda_tes_auction_rows_from_text() -> None:
+    rows = _extract_minhacienda_tes_auction_rows_from_text(MINHACIENDA_TES_COP_TEXT)
+
+    assert rows == [
+        {
+            "tenor_years": 4,
+            "maturity_date": "27-feb-30",
+            "maturity_year": 2030,
+            "coupon_rate_pct": 12.5,
+            "cutoff_rate_pct": 14.79,
+            "demand_cop_billions": 5.4,
+            "approved_cop_billions": 2.8,
+        },
+        {
+            "tenor_years": 9,
+            "maturity_date": "24-ene-35",
+            "maturity_year": 2035,
+            "coupon_rate_pct": 11.75,
+            "cutoff_rate_pct": 14.3,
+            "demand_cop_billions": 4.2,
+            "approved_cop_billions": 2.2,
+        },
+        {
+            "tenor_years": 14,
+            "maturity_date": "28-nov-40",
+            "maturity_year": 2040,
+            "coupon_rate_pct": 12.75,
+            "cutoff_rate_pct": 13.968,
+            "demand_cop_billions": 0.74,
+            "approved_cop_billions": 0.178,
+        },
+        {
+            "tenor_years": 32,
+            "maturity_date": "13-mar-58",
+            "maturity_year": 2058,
+            "coupon_rate_pct": 12.0,
+            "cutoff_rate_pct": 13.94,
+            "demand_cop_billions": 1.9,
+            "approved_cop_billions": 0.89,
+        },
+    ]
+
+
+def test_extract_irc_tes_auction_facts() -> None:
+    facts = _extract_minhacienda_tes_auction_facts(
+        IRC_TES_COP_TEXT,
+        title="Subasta 09 COP Mayo 13 de 2026",
+        pdf_url="https://www.irc.gov.co/documents/d/guest/subasta-9-cop-mayo-13-de-2026?download=true",
+    )
+
+    assert facts is not None
+    assert facts["auction_date"] == "2026-05-13T00:00:00Z"
+    assert facts["auction_type"] == "COP"
+    assert facts["auction_number"] == "9"
+    assert facts["total_issued_cop_billions"] == 6.0
+    assert facts["total_demand_cop_billions"] == 12.276
+    assert facts["bid_to_cover"] == 4.1
+    assert facts["maturity_years"] == [2030, 2035, 2040, 2058]
+    assert facts["maturity_rows"][0]["cutoff_rate_pct"] == 14.79
+    assert facts["maturity_rows"][0]["coupon_rate_pct"] == 12.5
+    assert facts["maturity_rows"][0]["approved_cop_billions"] == 2.774
+    assert facts["max_cutoff_rate_pct"] == 14.79
+
+
+def test_extract_minhacienda_tes_auction_facts_fail_closed_without_table() -> None:
+    facts = _extract_minhacienda_tes_auction_facts(
+        "El Ministerio emitió TES, pero este texto no contiene la tabla.",
+        title="Informe TES subasta COP No. 09",
+        pdf_url="https://www.minhacienda.gov.co/documents/d/portal/report?download=true",
+    )
+
+    assert facts is None
+
+
+def test_fetch_minhacienda_tes_reports_enriches_pdf_text(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_tes_reports",
+        name="MinHacienda — Informes TES 2026",
+        type="economic_indicator",
+        url="https://www.minhacienda.gov.co/informes-tes-2026",
+        fetch_method="html",
+        trust_role="official_signal",
+        max_items=1,
+    )
+    index_html = """
+    <main>
+      <a href="/documents/d/portal/informe-tes-subasta-cop-no-09">
+        Informe TES subasta COP No. 09
+      </a>
+      <p>El Ministerio de Hacienda y Crédito Público MinHacienda emitió hoy
+      $6,0 billones en la subasta de...</p>
+    </main>
+    """
+
+    def fake_pdf_text(content: bytes, *, max_chars: int) -> str:
+        assert content == b"%PDF official report"
+        return MINHACIENDA_TES_COP_TEXT
+
+    monkeypatch.setattr(fetchers, "_extract_pdf_text_with_pdfplumber", fake_pdf_text)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/informes-tes-2026":
+            return httpx.Response(200, text=index_html)
+        if request.url.path == "/documents/d/portal/informe-tes-subasta-cop-no-09":
+            assert request.url.params["download"] == "true"
+            return httpx.Response(200, content=b"%PDF official report")
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.published_at == "2026-05-13T00:00:00Z"
+    assert item.metadata["content_extraction"] == "minhacienda_tes_auction_pdf"
+    assert item.metadata["total_issued_cop_billions"] == 6.0
+    assert item.metadata["total_demand_cop_billions"] == 12.3
+    assert item.metadata["bid_to_cover"] == 4.1
+    assert item.metadata["maturity_years"] == [2030, 2035, 2040, 2058]
+    assert item.metadata["max_cutoff_rate_pct"] == 14.79
+    assert item.metadata["long_cutoff_rate_pct"] == 13.94
+    assert "Source PDF:" in item.raw_text
+
+
+def test_extract_minhacienda_tes_reports_derives_pdf_url_from_view_file(
+    sample_source,
+) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_tes_reports",
+        name="MinHacienda — Informes TES 2026",
+        type="economic_indicator",
+        url="https://www.minhacienda.gov.co/informes-tes-2026",
+    )
+    html = """
+    <table>
+      <tr>
+        <td>
+          <a href="/informes-tes-2026/-/document_library/immw/view_file/3281840">
+            Informe TES subasta COP No. 09
+          </a>
+        </td>
+        <td>Hace 2 días</td>
+      </tr>
+    </table>
+    """
+    items = fetchers._extract_minhacienda_tes_reports(
+        html,
+        source.url,
+        source,
+        "2026-05-16T00:00:00Z",
+    )
+
+    assert len(items) == 1
+    assert items[0].url == (
+        "https://www.minhacienda.gov.co/documents/d/portal/"
+        "informe-tes-subasta-cop-no-09?download=true"
+    )
+
+
+def test_extract_irc_tes_reports_pairs_titles_with_download_links(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_tes_reports",
+        name="MinHacienda / IRC — Subastas TES 2026",
+        type="economic_indicator",
+        url="https://www.irc.gov.co/424",
+    )
+    html = """
+    <table>
+      <tr>
+        <td><a href="/424/-/document_library/sinf/view_file/3288677">
+          Subasta 09 COP Mayo 13 de 2026
+        </a></td>
+        <td>Hace 2 días</td>
+      </tr>
+      <tr>
+        <td><a href="/424/-/document_library/sinf/view_file/3288666">
+          Subasta 08 COP Abril 29 de 2026
+        </a></td>
+        <td>Hace 2 semanas</td>
+      </tr>
+    </table>
+    <a href="/documents/d/guest/subasta-9-cop-mayo-13-de-2026?download=true">
+      Descargar (244 KB)
+    </a>
+    <a href="/documents/d/guest/subasta-8-cop-abril-29-de-2026-1?download=true">
+      Descargar (235 KB)
+    </a>
+    """
+    items = fetchers._extract_irc_tes_reports(
+        html,
+        source.url,
+        source,
+        "2026-05-16T00:00:00Z",
+    )
+
+    assert [item.title for item in items] == [
+        "Subasta 09 COP Mayo 13 de 2026",
+        "Subasta 08 COP Abril 29 de 2026",
+    ]
+    assert items[0].url == (
+        "https://www.irc.gov.co/documents/d/guest/"
+        "subasta-9-cop-mayo-13-de-2026?download=true"
+    )
+    assert items[0].published_at == "2026-05-13T00:00:00Z"
+
+
+def test_fetch_minhacienda_tes_reports_uses_browser_on_bot_block(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_tes_reports",
+        name="MinHacienda — Informes TES 2026",
+        type="economic_indicator",
+        url="https://www.minhacienda.gov.co/informes-tes-2026",
+        fetch_method="html",
+        max_items=1,
+    )
+    browser_item = RawItem(
+        id="minhacienda-browser-item",
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url="https://www.minhacienda.gov.co/documents/d/portal/informe-tes-subasta-cop-no-09?download=true",
+        title="Informe TES subasta COP No. 09",
+        fetched_at="2026-05-16T00:00:00Z",
+        published_at="2026-05-13T00:00:00Z",
+        raw_text="Official MinHacienda TES auction report.",
+        metadata={"content_extraction": "minhacienda_tes_auction_pdf"},
+    )
+    calls: list[tuple[str, int]] = []
+
+    def fake_browser_fetch(source_arg, fetched_at, *, max_items):
+        calls.append((source_arg.id, max_items))
+        return [browser_item]
+
+    monkeypatch.setattr(
+        fetchers,
+        "_fetch_minhacienda_tes_reports_with_browser",
+        fake_browser_fetch,
+    )
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text="<html>Radware Bot Manager</html>")
+    )
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert items == [browser_item]
+    assert calls == [("minhacienda_tes_reports", 1)]
 
 
 def test_fetch_senado_leyes_registry_parses_search_and_detail(sample_source) -> None:

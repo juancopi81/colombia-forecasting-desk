@@ -178,6 +178,13 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
   landing page down to Agenda Reglamentaria / Proyectos de Normas leads so the
   source-health report shows a precise parser gap instead of generic navigation
   noise.
+- `_enrich_minhacienda_tes_reports` — follows MinHacienda / IRC official COP,
+  UVR, and TCO auction-result PDFs and emits parsed TES auction facts only when
+  the report exposes the auction date, TES type/currency, total issued, demand,
+  bid-to-cover, maturity rows, cutoff rates, per-maturity demand, and approved
+  amounts. Numeric/table parsing uses `pdfplumber` when installed and fails
+  closed to link-level evidence if the PDF cannot be read. The source uses a
+  Playwright browser path because IRC returns 403 to simple shell fetches.
 - `_enrich_banrep_minutas_html` — keeps BanRep Junta/minutas under the existing
   `banrep_junta_comunicados` source, follows recent minutas detail pages, and
   adds parsed monetary-policy body metadata only when the official HTML exposes

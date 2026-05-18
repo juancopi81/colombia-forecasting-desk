@@ -5,6 +5,7 @@ import zipfile
 from datetime import datetime, timezone
 
 from colombia_forecasting_desk.indicator_watch import (
+    banrep_tes_curve_component_from_rows,
     build_indicator_watch,
     cement_component_from_html,
     construction_bundle_observation_from_components,
@@ -15,6 +16,7 @@ from colombia_forecasting_desk.indicator_watch import (
     exports_component_from_html,
     external_trade_observation_from_components,
     fiscal_tax_observation_from_dian_xlsx,
+    fiscal_tax_observation_from_components,
     fiscalized_gas_component_from_anh_rows,
     gdp_observation_from_html,
     housing_finance_component_from_html,
@@ -262,6 +264,53 @@ def test_policy_rate_ibr_observation_from_banrep_rows() -> None:
     assert observation.values["policy_rate_pct"] == 11.25
     assert observation.values["ibr_overnight_nominal_pct"] == 10.505
     assert observation.values["ibr_policy_spread_pp"] == -0.745
+
+
+def test_banrep_tes_curve_component_from_verified_child_series() -> None:
+    component = banrep_tes_curve_component_from_rows(
+        {
+            "tes_1y": [
+                {
+                    "id": 15272,
+                    "nombre": "Tasa de interés Cero Cupón TES pesos - 1 año",
+                    "fecha": "11/05/2026",
+                    "valor": 13.43,
+                    "isSerie": "SI",
+                }
+            ],
+            "tes_5y": [
+                {
+                    "id": 15273,
+                    "nombre": "Tasa de interés Cero Cupón TES pesos - 5 años",
+                    "fecha": "11/05/2026",
+                    "valor": 14.1,
+                    "isSerie": "SI",
+                }
+            ],
+            "tes_10y": [
+                {
+                    "id": 15274,
+                    "nombre": "Tasa de interés Cero Cupón TES pesos - 10 años",
+                    "fecha": "11/05/2026",
+                    "valor": 14.0,
+                    "isSerie": "SI",
+                }
+            ],
+        }
+    )
+
+    assert component is not None
+    assert component.component_id == "banrep_tes_curve"
+    assert component.status == "observed"
+    assert component.period == "2026-05-11"
+    assert component.values["banrep_tes_1y_zero_coupon_pct"] == 13.43
+    assert component.values["banrep_tes_5y_zero_coupon_pct"] == 14.1
+    assert component.values["banrep_tes_10y_zero_coupon_pct"] == 14.0
+    assert [row["series_id"] for row in component.values["observed_series"]] == [
+        15272,
+        15273,
+        15274,
+    ]
 
 
 def test_ipc_observation_from_html_extracts_dane_headline() -> None:
@@ -856,6 +905,99 @@ def test_fiscal_tax_observation_from_dian_xlsx() -> None:
     assert observation.values["gross_tax_revenue_annual_variation_pct"] == 1.44
     assert observation.values["income_tax_cop_millions"] == 7725.0
     assert observation.values["external_tax_revenue_cop_millions"] == 3555.0
+    by_id = {component.component_id: component for component in observation.components}
+    assert by_id["tax_collection"].status == "observed"
+    assert by_id["tes_auction"].status == "pending_source"
+
+
+def test_indicator_watch_extracts_minhacienda_tes_auction(make_raw) -> None:
+    raw = make_raw(
+        source_id="minhacienda_tes_reports",
+        source_name="MinHacienda — Informes TES 2026",
+        source_type="economic_indicator",
+        url="https://www.minhacienda.gov.co/documents/d/portal/informe-tes-subasta-cop-no-09?download=true",
+        title="Informe TES subasta COP No. 09",
+        published_at="2026-05-13T00:00:00Z",
+        raw_text=(
+            "Informe TES subasta COP No. 09. Official MinHacienda TES auction "
+            "report. Auction date: 2026-05-13; type: TES COP; issued: COP "
+            "6.0 billones; demand: COP 12.3 billones; bid-to-cover: 4.1x; "
+            "maturities: 2030/2035/2040/2058; max cutoff rate: 14.79%."
+        ),
+        metadata={
+            "content_extraction": "minhacienda_tes_auction_pdf",
+            "auction_date": "2026-05-13T00:00:00Z",
+            "auction_type": "COP",
+            "currency": "COP",
+            "security_type": "TES",
+            "total_issued_cop_billions": 6.0,
+            "total_demand_cop_billions": 12.3,
+            "bid_to_cover": 4.1,
+            "maturity_years": [2030, 2035, 2040, 2058],
+            "maturity_rows": [
+                {
+                    "tenor_years": 4,
+                    "maturity_date": "27-feb-30",
+                    "maturity_year": 2030,
+                    "coupon_rate_pct": 12.5,
+                    "cutoff_rate_pct": 14.79,
+                    "demand_cop_billions": 5.4,
+                    "approved_cop_billions": 2.8,
+                },
+                {
+                    "tenor_years": 32,
+                    "maturity_date": "13-mar-58",
+                    "maturity_year": 2058,
+                    "coupon_rate_pct": 12.0,
+                    "cutoff_rate_pct": 13.94,
+                    "demand_cop_billions": 1.9,
+                    "approved_cop_billions": 0.89,
+                },
+            ],
+            "max_cutoff_rate_pct": 14.79,
+            "long_cutoff_rate_pct": 13.94,
+            "long_maturity_year": 2058,
+            "source_pdf_url": "https://www.minhacienda.gov.co/documents/d/portal/informe-tes-subasta-cop-no-09?download=true",
+        },
+    )
+
+    fiscal = next(
+        item
+        for item in build_indicator_watch(
+            [raw],
+            [],
+            now=datetime(2026, 5, 16, tzinfo=timezone.utc),
+        )
+        if item.indicator_id == "fiscal_tax_pulse"
+    )
+
+    assert fiscal.status == "observed"
+    assert fiscal.period == "2026-05-13"
+    assert fiscal.values["components"]["tes_auction"]["bid_to_cover"] == 4.1
+    by_id = {component.component_id: component for component in fiscal.components}
+    assert by_id["tes_auction"].status == "observed"
+    assert by_id["tes_auction"].values["max_cutoff_rate_pct"] == 14.79
+    assert by_id["banrep_tes_curve"].status == "pending_source"
+
+
+def test_fiscal_tax_observation_from_components_merges_banrep_tes_curve() -> None:
+    tes_curve = banrep_tes_curve_component_from_rows(
+        {
+            "tes_1y": [{"fecha": "11/05/2026", "valor": 13.43, "isSerie": "SI"}],
+            "tes_5y": [{"fecha": "11/05/2026", "valor": 14.1, "isSerie": "SI"}],
+            "tes_10y": [{"fecha": "11/05/2026", "valor": 14.0, "isSerie": "SI"}],
+        }
+    )
+    assert tes_curve is not None
+
+    observation = fiscal_tax_observation_from_components([tes_curve])
+
+    assert observation is not None
+    assert observation.indicator_id == "fiscal_tax_pulse"
+    assert observation.status == "observed"
+    assert observation.values["components"]["banrep_tes_curve"][
+        "banrep_tes_10y_zero_coupon_pct"
+    ] == 14.0
 
 
 def test_indicator_watch_marks_stale_observation_but_keeps_it_visible() -> None:
