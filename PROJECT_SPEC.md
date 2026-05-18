@@ -135,11 +135,16 @@ colombia-forecasting-desk/
 
   scripts/
     scan_metasources.py
+    check_artifact_parity.py
     clean_items.py
     cluster_signals.py
     build_daily_brief.py
     build_evidence_pack.py
     draft_forecast.py
+
+  colombia_forecasting_desk/
+    fetchers.py
+    source_fetching/
 
   data/
     raw/

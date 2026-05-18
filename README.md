@@ -20,6 +20,13 @@ uv run python scripts/scan_metasources.py
 uv run python scripts/scan_metasources.py --source-report
 ```
 
+For refactors that should preserve behavior, compare regenerated run folders
+with the stable artifact parity guard:
+
+```bash
+uv run python scripts/check_artifact_parity.py runs/YYYY-MM-DD runs/YYYY-MM-DD-candidate
+```
+
 The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 
 - `raw_items.json` — every item fetched from each enabled metasource
@@ -61,14 +68,25 @@ high-impact source failures.
 ## Project layout
 
 ```
-colombia_forecasting_desk/   # core package (config, fetchers, cleaner, dedupe, cluster, ranker, brief, pipeline)
+colombia_forecasting_desk/   # core package (config, cleaner, dedupe, cluster, ranker, brief, pipeline)
+  fetchers.py                # compatibility import path for source fetching
+  source_fetching/           # source fetching and source-specific parser internals
 config/metasources.yaml      # registry of public sources (enabled/disabled, fetch_method, priority, trust_role)
 scripts/scan_metasources.py  # M1 entry point
+scripts/check_artifact_parity.py # stable generated-artifact comparison guard
 prompts/                     # placeholder prompts (used in later milestones)
 runs/YYYY-MM-DD/             # generated run artifacts (gitignored content)
 forecasts/                   # forecast log (used in later milestones)
 tests/                       # pytest suite
 ```
+
+`colombia_forecasting_desk.fetchers` remains the supported import path used by
+the pipeline, tests, and workflow snippets. Its implementation is staged under
+`colombia_forecasting_desk/source_fetching/` so future source-family parser work
+can be moved behind clearer boundaries without changing the daily command. The
+current split keeps shared helpers in `common.py`, dispatcher functions in
+`core.py`, and source-family logic in modules such as `dane.py`, `imprenta.py`,
+`minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, and `socrata.py`.
 
 ## Status
 

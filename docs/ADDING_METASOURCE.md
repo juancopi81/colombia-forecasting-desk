@@ -74,9 +74,9 @@ What to look at:
   the message. Common cases: bot-block (Radware/Cloudflare), 403, timeout.
 - **Bot-block detected** → the fetcher will now raise a `BotBlockError`
   rather than return 0 silent items. The default headers
-  (`fetchers.DEFAULT_HEADERS`) include a Chrome-like User-Agent and Spanish
-  Accept-Language; that gets past most static bot walls but not interactive
-  challenges.
+  (`colombia_forecasting_desk.fetchers.DEFAULT_HEADERS`) include a Chrome-like
+  User-Agent and Spanish Accept-Language; that gets past most static bot walls
+  but not interactive challenges.
 
 ## 3. Pick the right onboarding_status
 
@@ -150,7 +150,11 @@ the gap stays visible without crashing the pipeline.
 Most sources work with the generic dated-anchor extractor. Write a
 source-specific parser only when the page has structure the generic one
 misses (a real comunicados table, a date column, an embedded calendar).
-Examples in `colombia_forecasting_desk/fetchers.py`:
+The supported import path remains `colombia_forecasting_desk.fetchers`; the
+implementation now lives under `colombia_forecasting_desk/source_fetching/` so
+source-family parser work can be separated without changing pipeline callers.
+Current examples are split by family under
+`colombia_forecasting_desk/source_fetching/`:
 
 - `_extract_dane_comunicados` — table with date column.
 - `_extract_corte_comunicados` — anchor-only listing filtered by keyword.
@@ -200,7 +204,10 @@ Examples in `colombia_forecasting_desk/fetchers.py`:
   is not enough unless the source also contains MinCIT or named-entity context.
 
 Wire a new extractor in `fetch_html` by source id, and prefer it to fall back
-to `_extract_dated_anchors` when it returns nothing.
+to `_extract_dated_anchors` when it returns nothing. If the parser grows beyond
+a small source-specific function, move that source family into a dedicated
+module under `colombia_forecasting_desk/source_fetching/` and keep
+`colombia_forecasting_desk.fetchers` compatibility intact.
 
 ## 7. Document parsers
 
@@ -225,7 +232,8 @@ attachment URL in `RawItem.url`.
 
 For document-heavy sources, the proof loop is:
 
-1. Add a small source-specific parser or enrichment function in `fetchers.py`.
+1. Add a small source-specific parser or enrichment function under
+   `colombia_forecasting_desk/source_fetching/`.
 2. Emit named raw items, not just a generic document title, when the document
    contains multiple actionable records.
 3. Set `metadata.content_extraction` only after the parser extracts usable

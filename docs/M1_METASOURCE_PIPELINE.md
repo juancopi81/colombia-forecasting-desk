@@ -36,6 +36,14 @@ metasources.yaml
 → write a daily metasource brief
 ```
 
+The public fetcher import path is still `colombia_forecasting_desk.fetchers`.
+The implementation is staged under `colombia_forecasting_desk/source_fetching/`
+so source-specific parsers can be split by source family while preserving the
+daily workflow command and existing import snippets. `core.py` owns the fetch
+dispatchers, `common.py` owns shared HTTP/date/anchor helpers, and parser-heavy
+logic is split into source-family modules such as `dane.py`, `imprenta.py`,
+`minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, and `socrata.py`.
+
 ## Non-Goals
 
 Do not build:
@@ -815,13 +823,14 @@ The exact command can change, but aim for something like:
 uv run python scripts/scan_metasources.py
 ```
 
-or:
+For behavior-preserving refactors, compare regenerated run folders with:
 
 ```bash
-uv run python -m colombia_forecasting_desk.scan_metasources
+uv run python scripts/check_artifact_parity.py runs/YYYY-MM-DD runs/YYYY-MM-DD-candidate
 ```
 
-Prefer the simpler option first.
+Prefer the script entry point first; it is the path used by the daily workflow
+skill and the CLI documentation.
 
 ## Notes
 

@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 import httpx
 
 import colombia_forecasting_desk.fetchers as fetchers
+import colombia_forecasting_desk.source_fetching.imprenta as imprenta_fetchers
+import colombia_forecasting_desk.source_fetching.minhacienda as minhacienda_fetchers
 from colombia_forecasting_desk.fetchers import (
     SOCRATA_ADAPTERS,
     SocrataAdapter,
@@ -304,7 +306,11 @@ def test_fetch_minhacienda_tes_reports_enriches_pdf_text(
         assert content == b"%PDF official report"
         return MINHACIENDA_TES_COP_TEXT
 
-    monkeypatch.setattr(fetchers, "_extract_pdf_text_with_pdfplumber", fake_pdf_text)
+    monkeypatch.setattr(
+        minhacienda_fetchers,
+        "_extract_pdf_text_with_pdfplumber",
+        fake_pdf_text,
+    )
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/informes-tes-2026":
@@ -1482,7 +1488,7 @@ def test_enrich_diario_oficial_pdfs_marks_pdf_as_parsed_legal_acts(
     )
     client = _FakeDiarioPdfClient()
     monkeypatch.setattr(
-        fetchers,
+        imprenta_fetchers,
         "_extract_pdf_text_with_pdfplumber",
         lambda content, *, max_chars: (
             "Diario Oficial 53.490. Ministerio de Comercio, Industria y "
@@ -1543,7 +1549,7 @@ def test_enrich_diario_oficial_pdfs_marks_no_identity_pdf_as_parsed(
     )
     client = _FakeDiarioPdfClient()
     monkeypatch.setattr(
-        fetchers,
+        imprenta_fetchers,
         "_extract_pdf_text_with_pdfplumber",
         lambda content, *, max_chars: (
             "Diario Oficial 53.493. Imprenta Nacional de Colombia publica "
@@ -1596,7 +1602,7 @@ def test_enrich_diario_oficial_pdfs_emits_one_row_per_published_act(
     )
     client = _FakeDiarioPdfClient()
     monkeypatch.setattr(
-        fetchers,
+        imprenta_fetchers,
         "_extract_pdf_text_with_pdfplumber",
         lambda content, *, max_chars: (
             "DECRETO NÚMERO 0502 DE 2026 por el cual se designa un "
