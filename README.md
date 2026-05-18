@@ -26,6 +26,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `cleaned_items.json` — items after HTML stripping, normalization, filtering, and dedupe
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
+- `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
 - `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing

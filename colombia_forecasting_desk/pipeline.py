@@ -22,6 +22,7 @@ from .indicator_watch import (
     build_indicator_watch,
     fetch_structured_indicator_observations,
 )
+from .legislative_reconciler import build_legislative_reconciliations
 from .models import (
     CleanedItem,
     Cluster,
@@ -56,6 +57,7 @@ class PipelineResult:
     failures: list[SourceFailure]
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
+    legislative_reconciliations: list[dict]
     m1_candidates: dict
     acceptance_report: dict
     summary: RunSummary
@@ -330,6 +332,7 @@ def run_single_source(
     logger.info("Sandbox run for source: %s", source.id)
 
     raw_items, failures = fetch_all([source])
+    legislative_reconciliations = build_legislative_reconciliations(raw_items)
 
     cleaned = [clean(raw, source) for raw in raw_items]
     cleaned = _drop_empty(cleaned)
@@ -363,6 +366,7 @@ def run_single_source(
         keywords,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        legislative_reconciliations=legislative_reconciliations,
     )
     acceptance_report = build_acceptance_report(
         summary,
@@ -383,6 +387,7 @@ def run_single_source(
     )
     _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+    _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -396,6 +401,7 @@ def run_single_source(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        legislative_reconciliations=legislative_reconciliations,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         summary=summary,
@@ -424,6 +430,7 @@ def run(
     )
     raw_items = link_legislative_followups(raw_items)
     raw_items = link_official_legal_records(raw_items)
+    legislative_reconciliations = build_legislative_reconciliations(raw_items)
     logger.info(
         "Fetched %d raw items; %d source failures", len(raw_items), len(failures)
     )
@@ -473,6 +480,7 @@ def run(
         keywords,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        legislative_reconciliations=legislative_reconciliations,
     )
     acceptance_report = build_acceptance_report(
         summary,
@@ -495,6 +503,7 @@ def run(
         run_dir / "source_failures.json", [asdict(f) for f in failures]
     )
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
+    _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     brief_text = render_brief(
@@ -531,6 +540,7 @@ def run(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        legislative_reconciliations=legislative_reconciliations,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         summary=summary,

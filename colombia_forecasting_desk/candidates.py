@@ -31,6 +31,7 @@ DEFAULT_MISSING_EVIDENCE = [
     "whether the event is already resolved",
 ]
 INDICATOR_SEED_LIMIT = 8
+LEGISLATIVE_CANDIDATE_LIMIT = 5
 INDICATOR_ONLY_SOURCE_IDS = {"minhacienda_tes_reports"}
 MONTHLY_LAG_WARNING_DAYS = 120
 GACETAS_CONGRESO_URL = "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml"
@@ -60,11 +61,13 @@ def build_m1_candidates(
     topic_keywords: list[str],
     source_health: list[SourceHealth] | None = None,
     indicator_watch: list[IndicatorObservation] | None = None,
+    legislative_reconciliations: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
     """Build the deterministic M1-to-M2 candidate evidence contract."""
     health = source_health or []
     indicators = indicator_watch or []
+    reconciliations = legislative_reconciliations or []
     generated = generated_at or run_summary.finished_at
 
     event_candidates: list[dict[str, Any]] = []
@@ -102,22 +105,275 @@ def build_m1_candidates(
             rejected.append(_rejected_cluster(cluster, topic_keywords))
 
     indicator_candidates = _indicator_candidates(run_summary, indicators)
+    legislative_candidates = _legislative_candidates(run_summary, reconciliations)
+    inputs = {
+        "clusters_artifact": "clusters.json",
+        "indicator_watch_artifact": "indicator_watch.json",
+        "source_health_artifact": "source_health.json",
+        "topic_keywords": _unique_sorted(topic_keywords),
+        "failure_count": len(failures),
+    }
+    if legislative_reconciliations is not None:
+        inputs["legislative_reconciler_artifact"] = "legislative_reconciler.json"
+        inputs["legislative_reconciliations"] = _legislative_reconciliation_summary(
+            reconciliations
+        )
 
     return {
         "schema_version": SCHEMA_VERSION,
         "run_date": run_summary.run_date,
         "generated_at": generated,
-        "inputs": {
-            "clusters_artifact": "clusters.json",
-            "indicator_watch_artifact": "indicator_watch.json",
-            "source_health_artifact": "source_health.json",
-            "topic_keywords": _unique_sorted(topic_keywords),
-            "failure_count": len(failures),
-        },
-        "candidates": indicator_candidates + event_candidates,
+        "inputs": inputs,
+        "candidates": indicator_candidates + event_candidates + legislative_candidates,
         "rejected": rejected,
         "source_caveats": _source_caveats(failures, health),
     }
+
+
+def _legislative_reconciliation_summary(
+    reconciliations: list[dict[str, Any]]
+) -> dict[str, Any]:
+    states: dict[str, int] = {}
+    decision_states: dict[str, int] = {}
+    contradiction_count = 0
+    ready_ids: list[str] = []
+    for record in reconciliations:
+        if not isinstance(record, dict):
+            continue
+        readiness = record.get("m2_readiness") if isinstance(record, dict) else {}
+        state = (
+            str(readiness.get("state") or "unknown")
+            if isinstance(readiness, dict)
+            else "unknown"
+        )
+        states[state] = states.get(state, 0) + 1
+        decision_state = str(record.get("decision_state") or "unknown")
+        decision_states[decision_state] = decision_states.get(decision_state, 0) + 1
+        contradiction = record.get("contradiction")
+        if isinstance(contradiction, dict) and contradiction.get("has_contradiction"):
+            contradiction_count += 1
+        if state == "ready":
+            ready_ids.append(str(record.get("canonical_bill_id") or ""))
+    return {
+        "record_count": len(reconciliations),
+        "m2_readiness_counts": states,
+        "decision_state_counts": decision_states,
+        "contradiction_count": contradiction_count,
+        "ready_bill_ids": [bill_id for bill_id in ready_ids if bill_id],
+    }
+
+
+def _legislative_candidates(
+    run_summary: RunSummary,
+    reconciliations: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    records = [
+        record
+        for record in reconciliations
+        if isinstance(record, dict) and _promote_legislative_record(record)
+    ]
+    records = sorted(records, key=_legislative_record_sort_key)
+    for record in records[:LEGISLATIVE_CANDIDATE_LIMIT]:
+        if not isinstance(record, dict):
+            continue
+        readiness = record.get("m2_readiness")
+        if not isinstance(readiness, dict) or readiness.get("state") != "ready":
+            continue
+        canonical_id = str(record.get("canonical_bill_id") or "")
+        display_title = str(record.get("display_title") or canonical_id)
+        question = (
+            f"Will {display_title} receive a final official resolution "
+            "in Congress or Diario Oficial?"
+        )
+        latest_movement = record.get("latest_movement")
+        status = record.get("status")
+        evidence_text = _legislative_evidence_text(record)
+        links = _legislative_links(record)
+        source_ids = _unique_preserve_order(
+            [
+                str(evidence.get("source_id") or "")
+                for evidence in record.get("source_evidence") or []
+                if isinstance(evidence, dict)
+            ]
+        )
+        source_names = _unique_preserve_order(
+            [
+                str(evidence.get("source_id") or "")
+                for evidence in record.get("source_evidence") or []
+                if isinstance(evidence, dict)
+            ]
+        )
+        missing = list(readiness.get("missing") or [])
+        missing.extend(["human editorial framing", "exact forecast deadline/window"])
+        candidates.append(
+            {
+                "candidate_id": _candidate_id(
+                    "legislative", run_summary.run_date, canonical_id, question
+                ),
+                "candidate_type": "legislative_bill",
+                "origin_id": canonical_id,
+                "source_ids": [source_id for source_id in source_ids if source_id],
+                "source_names": [name for name in source_names if name],
+                "event_type": "legislative_status",
+                "actor": "congreso",
+                "topic": "legislative",
+                "published_at": _legislative_published_at(latest_movement, status),
+                "evidence_text": evidence_text,
+                "question_seed": question,
+                "trigger": evidence_text,
+                "why_now": "Legislative reconciler marked this bill ready for M2 review.",
+                "resolution_source": (
+                    "Official Congreso registry, Gacetas del Congreso, and Diario Oficial."
+                ),
+                "resolution_source_hint": (
+                    "Official Congreso registry, Gacetas del Congreso, and Diario Oficial."
+                ),
+                "deadline_or_window": "Needs M2/editorial deadline selection.",
+                "deadline_hint": "Needs M2/editorial deadline selection.",
+                "missing_evidence": _unique_preserve_order(missing),
+                "m1_scores": {
+                    "rank_score": 0.0,
+                    "forecastability_score": 4,
+                },
+                "reasons": [str(readiness.get("reason") or "ready")],
+                "noise_reasons": [],
+                "entities": ["congreso"],
+                "topics": ["legislative"],
+                "freshness": {
+                    "latest_published_at": _legislative_published_at(
+                        latest_movement,
+                        status,
+                    ),
+                    "freshness_status": "current"
+                    if _legislative_published_at(latest_movement, status)
+                    else "unknown",
+                },
+                "evidence": {
+                    "canonical_bill_id": canonical_id,
+                    "legislative_reconciler_record": record,
+                    "source_ids": [source_id for source_id in source_ids if source_id],
+                    "links": links,
+                    "evidence_text": evidence_text,
+                    "starting_evidence": evidence_text,
+                },
+                "follow_up_sources": _legislative_follow_up_sources(record),
+                "decision_hint": "candidate",
+            }
+        )
+    return candidates
+
+
+def _promote_legislative_record(record: dict[str, Any]) -> bool:
+    readiness = record.get("m2_readiness")
+    if not isinstance(readiness, dict) or readiness.get("state") != "ready":
+        return False
+    latest = record.get("latest_movement")
+    if not isinstance(latest, dict):
+        return False
+    action_type = str(latest.get("action_type") or "")
+    # Registry rows make the bill-status artifact useful, but they are too broad
+    # for the daily M2 queue. Promote only a substantive follow-up movement.
+    return action_type not in {"registry_publication", "registry_status"}
+
+
+def _legislative_record_sort_key(record: dict[str, Any]) -> tuple[int, str, str]:
+    latest = record.get("latest_movement") if isinstance(record, dict) else {}
+    action_type = str(latest.get("action_type") or "") if isinstance(latest, dict) else ""
+    action_rank = {
+        "ponencia_publicada": 0,
+        "texto_aprobado_publicado": 1,
+        "conciliacion_publicada": 2,
+        "agenda_debate": 3,
+    }.get(action_type, 9)
+    date_value = str(latest.get("date") or "") if isinstance(latest, dict) else ""
+    return action_rank, _reverse_date_key(date_value), str(record.get("canonical_bill_id") or "")
+
+
+def _reverse_date_key(value: str) -> str:
+    # ISO dates sort ascending; invert digits so newer dates sort first without
+    # adding date parsing to this lightweight candidate layer.
+    table = str.maketrans("0123456789", "9876543210")
+    return value.translate(table)
+
+
+def _legislative_evidence_text(record: dict[str, Any]) -> str:
+    latest_movement = record.get("latest_movement")
+    status = record.get("status")
+    parts = [str(record.get("display_title") or "")]
+    if isinstance(status, dict) and status.get("label"):
+        parts.append(f"Status: {status['label']}")
+    if isinstance(latest_movement, dict) and latest_movement.get("label"):
+        parts.append(f"Latest movement: {latest_movement['label']}")
+    return ". ".join(part for part in parts if part)
+
+
+def _legislative_published_at(
+    latest_movement: object,
+    status: object,
+) -> str:
+    if isinstance(latest_movement, dict):
+        date_value = str(latest_movement.get("date") or "")
+        if date_value:
+            return date_value
+    if isinstance(status, dict):
+        return str(status.get("as_of") or "")
+    return ""
+
+
+def _legislative_links(record: dict[str, Any]) -> list[dict[str, str]]:
+    links: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for evidence in record.get("source_evidence") or []:
+        if not isinstance(evidence, dict):
+            continue
+        url = str(evidence.get("url") or "")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        links.append(
+            {
+                "title": str(evidence.get("summary") or evidence.get("source_id") or ""),
+                "url": url,
+                "source_name": str(evidence.get("source_id") or ""),
+            }
+        )
+    return links
+
+
+def _legislative_follow_up_sources(record: dict[str, Any]) -> list[dict[str, str]]:
+    sources: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    search_hint = str(record.get("display_title") or record.get("canonical_bill_id") or "")
+    for key in ("status", "latest_movement"):
+        item = record.get(key)
+        if not isinstance(item, dict):
+            continue
+        source_id = str(item.get("source_id") or "")
+        url = str(item.get("url") or "")
+        if not source_id or not url or (source_id, url) in seen:
+            continue
+        seen.add((source_id, url))
+        sources.append(
+            {
+                "source_id": source_id,
+                "source_name": source_id,
+                "url": url,
+                "search_hint": search_hint,
+                "purpose": "Track the reconciled bill status and final resolution.",
+            }
+        )
+    if ("gacetas_congreso", GACETAS_CONGRESO_URL) not in seen:
+        sources.append(
+            {
+                "source_id": "gacetas_congreso",
+                "source_name": "Gacetas del Congreso — Imprenta Nacional",
+                "url": GACETAS_CONGRESO_URL,
+                "search_hint": search_hint,
+                "purpose": "Check later official publications and ponencias.",
+            }
+        )
+    return sources
 
 
 def _event_candidate(

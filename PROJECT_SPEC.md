@@ -346,6 +346,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       fallback or follow-up evidence.
 - [x] Define the legislative reconciler contract for clean bill identity,
       status, latest movement, contradiction handling, and M2 readiness.
+- [x] Implement `legislative_reconciler.json` so M1 exposes one conservative
+      bill-status record per reconciled legislative identity before M2 ranking.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

@@ -174,14 +174,32 @@ def _render_candidate_db_summary(
     candidates = m1_candidates.get("candidates", [])
     rejected = m1_candidates.get("rejected", [])
     caveats = m1_candidates.get("source_caveats", [])
+    inputs = m1_candidates.get("inputs", {})
+    legislative = (
+        inputs.get("legislative_reconciliations")
+        if isinstance(inputs, dict)
+        else None
+    )
     status = (acceptance_report or {}).get("status", "unknown")
     errors = (acceptance_report or {}).get("error_count", "n/a")
     warnings = (acceptance_report or {}).get("warning_count", "n/a")
+    legislative_line = ""
+    if isinstance(legislative, dict) and legislative.get("record_count"):
+        ready = (legislative.get("m2_readiness_counts") or {}).get("ready", 0)
+        blocked = (legislative.get("m2_readiness_counts") or {}).get("blocked", 0)
+        contradictions = legislative.get("contradiction_count", 0)
+        legislative_line = (
+            "\n"
+            f"- `legislative_reconciler.json`: "
+            f"{legislative.get('record_count')} bill records, {ready} M2-ready, "
+            f"{blocked} blocked, {contradictions} contradictions."
+        )
     return (
         f"- `m1_candidates.json`: {len(candidates)} candidates, "
         f"{len(rejected)} rejected signals, {len(caveats)} source caveats.\n"
         f"- `acceptance_report.json`: status={status}; errors={errors}; "
         f"warnings={warnings}."
+        f"{legislative_line}"
     )
 
 
@@ -214,7 +232,7 @@ def _render_candidate_event_signals(m1_candidates: dict | None) -> str | None:
         candidate
         for candidate in m1_candidates.get("candidates", [])
         if isinstance(candidate, dict)
-        and candidate.get("candidate_type") == "event_signal"
+        and candidate.get("candidate_type") in {"event_signal", "legislative_bill"}
     ][:FORECASTABLE_SIGNAL_LIMIT]
     if not candidates:
         return "_No deterministic forecastable event candidates passed the M1 filter._"

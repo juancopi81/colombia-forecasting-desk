@@ -116,6 +116,73 @@ def test_event_candidate_shape_uses_forecastability_helpers() -> None:
     ]
 
 
+def test_legislative_reconciler_promotes_substantive_movement_only() -> None:
+    registry_only = {
+        "canonical_bill_id": "bill:2026:camara:550",
+        "display_title": "Proyecto de Ley 550 de 2026 Cámara - presupuesto",
+        "status": {
+            "stage": "active",
+            "label": "En trámite",
+            "as_of": "2026-05-18T00:00:00Z",
+            "source_id": "camara_proyectos_ley_registry",
+            "url": "https://example.com/camara-550",
+        },
+        "latest_movement": {
+            "date": "2026-05-18T00:00:00Z",
+            "action_type": "registry_publication",
+            "label": "Publication metadata listed in official registry",
+            "source_id": "camara_proyectos_ley_registry",
+            "source_name": "Cámara",
+            "url": "https://example.com/camara-550",
+        },
+        "source_evidence": [
+            {
+                "source_id": "camara_proyectos_ley_registry",
+                "role": "identity_status",
+                "date": "2026-05-18T00:00:00Z",
+                "url": "https://example.com/camara-550",
+                "summary": "Registry row with project number and active status.",
+            }
+        ],
+        "contradiction": {"has_contradiction": False},
+        "decision_state": "unresolved",
+        "m2_readiness": {"state": "ready", "reason": "ready", "missing": []},
+    }
+    ponencia = {
+        **registry_only,
+        "canonical_bill_id": "bill:2025:camara:560",
+        "display_title": "Proyecto de Ley 560 de 2025 Cámara - subsidio GLP",
+        "latest_movement": {
+            "date": "2026-05-19T00:00:00Z",
+            "action_type": "ponencia_publicada",
+            "label": "Ponencia publicada en Gaceta del Congreso",
+            "source_id": "gacetas_congreso",
+            "source_name": "Gacetas del Congreso",
+            "url": "https://example.com/gaceta-485",
+        },
+    }
+
+    out = build_m1_candidates(
+        _summary(),
+        [],
+        [],
+        topic_keywords=[],
+        legislative_reconciliations=[registry_only, ponencia],
+    )
+
+    legislative = [
+        candidate
+        for candidate in out["candidates"]
+        if candidate["candidate_type"] == "legislative_bill"
+    ]
+    assert len(legislative) == 1
+    assert legislative[0]["origin_id"] == "bill:2025:camara:560"
+    assert out["inputs"]["legislative_reconciliations"]["record_count"] == 2
+    assert out["inputs"]["legislative_reconciliations"]["m2_readiness_counts"] == {
+        "ready": 2
+    }
+
+
 def test_rejected_includes_opaque_gaceta_and_noisy_cluster() -> None:
     opaque = _cluster(
         cluster_id="c-gaceta-opaque",
