@@ -108,12 +108,16 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "source_health.json").exists()
     assert (result.run_dir / "m2_handoff.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()
+    assert (result.run_dir / "m2_review_packet.json").exists()
+    assert (result.run_dir / "m2_review_packet.md").exists()
     assert (result.run_dir / "m1_candidates.json").exists()
     assert (result.run_dir / "acceptance_report.json").exists()
     assert (result.run_dir / "run_manifest.json").exists()
     assert result.m2_ranked_questions["schema_version"] == "m2_legislative_ranking.v1"
+    assert result.m2_review_packet["schema_version"] == "m2_review_packet.v1"
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
     assert result.run_manifest["capabilities"]["legislative_m2_ranking"] is True
+    assert result.run_manifest["capabilities"]["m2_review_packet"] is True
 
 
 def test_run_keeps_future_calendar_items_inside_planning_window(
@@ -192,6 +196,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert result.source_health[0].source_id == "test_source"
     assert result.source_health[0].rankable_count == 1
     assert (result.run_dir / "m2_ranked_questions.json").exists()
+    assert (result.run_dir / "m2_review_packet.json").exists()
+    assert (result.run_dir / "m2_review_packet.md").exists()
     assert (result.run_dir / "m1_candidates.json").exists()
     assert (result.run_dir / "acceptance_report.json").exists()
     assert (result.run_dir / "run_manifest.json").exists()

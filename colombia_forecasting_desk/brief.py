@@ -243,6 +243,34 @@ def _render_m2_ranking_summary(m2_ranked_questions: dict | None) -> str:
     return "\n".join(lines)
 
 
+def _render_m2_review_packet_summary(m2_review_packet: dict | None) -> str:
+    if not m2_review_packet:
+        return "- `m2_review_packet.json`: _not generated for this render._"
+    summary = m2_review_packet.get("summary")
+    if not isinstance(summary, dict):
+        summary = {}
+    policy = m2_review_packet.get("policy")
+    instruction = ""
+    if isinstance(policy, dict):
+        instruction = str(policy.get("review_instruction") or "")
+    lines = [
+        "- `m2_review_packet.json` / `m2_review_packet.md`: "
+        f"{summary.get('review_item_count', 0)} content-rich review items; "
+        f"{summary.get('items_with_source_excerpts', 0)} include source excerpts.",
+        "- M2.2 policy: source excerpts are the primary input; deterministic "
+        "scores and buckets are advisory only.",
+    ]
+    if summary.get("heuristic_challenge_count"):
+        lines.append(
+            f"- Heuristic challenge queue: "
+            f"{summary.get('heuristic_challenge_count')} items carry risk flags "
+            "that require human/LLM sampling."
+        )
+    if instruction:
+        lines.append(f"- Review instruction: {instruction}")
+    return "\n".join(lines)
+
+
 def _candidate_links(candidate: dict, limit: int = 3) -> str:
     evidence = candidate.get("evidence") if isinstance(candidate, dict) else {}
     links = evidence.get("links") if isinstance(evidence, dict) else []
@@ -831,6 +859,7 @@ def render_brief(
     m1_candidates: dict | None = None,
     acceptance_report: dict | None = None,
     m2_ranked_questions: dict | None = None,
+    m2_review_packet: dict | None = None,
 ) -> str:
     top = ranked_clusters[:TOP_SIGNALS_LIMIT]
     top_blocks = [
@@ -863,6 +892,8 @@ def render_brief(
         f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
         "## M2 Legislative Ranking\n\n"
         f"{_render_m2_ranking_summary(m2_ranked_questions)}\n\n"
+        "## M2 Review Packet\n\n"
+        f"{_render_m2_review_packet_summary(m2_review_packet)}\n\n"
         "## Forecastable Signals\n\n"
         f"{_render_candidate_event_signals(m1_candidates) or _render_forecastable_signals(ranked_clusters)}\n\n"
         "## Top Signals\n\n"
@@ -882,7 +913,8 @@ def render_brief(
         "## Source Failures\n\n"
         f"{_render_failures(failures)}\n\n"
         "## Suggested Next Step\n\n"
-        "- Paste `m2_handoff.md` plus `prompts/question_selection.md` into an AI to run M2 question selection.\n"
+        "- Paste `m2_review_packet.md`, `m2_handoff.md`, and "
+        "`prompts/question_selection.md` into an AI to run M2 question selection.\n"
     )
 
 
@@ -895,7 +927,9 @@ def _render_handoff_instructions() -> str:
         "candidate forecast questions, reject weak items, score candidates, "
         "and select the top 1-3 for evidence-pack research. Each selected "
         "question must have clear resolution criteria, a likely resolution "
-        "source, a deadline/window, and missing evidence."
+        "source, a deadline/window, and missing evidence. If "
+        "`m2_review_packet.md` is available, read its source excerpts before "
+        "trusting deterministic scores or buckets."
     )
 
 
@@ -960,6 +994,7 @@ def render_m2_handoff(
     m1_candidates: dict | None = None,
     acceptance_report: dict | None = None,
     m2_ranked_questions: dict | None = None,
+    m2_review_packet: dict | None = None,
 ) -> str:
     indicators = indicator_watch or []
     health = source_health or []
@@ -991,6 +1026,8 @@ def render_m2_handoff(
         f"{_render_candidate_db_summary(m1_candidates, acceptance_report)}\n\n"
         "## M2 Legislative Ranking Snapshot\n\n"
         f"{_render_m2_ranking_summary(m2_ranked_questions)}\n\n"
+        "## M2 Review Packet Snapshot\n\n"
+        f"{_render_m2_review_packet_summary(m2_review_packet)}\n\n"
         "## Forecastable Event Signals\n\n"
         f"{_render_candidate_event_signals(m1_candidates) or forecastable}\n\n"
         "## Rejected / Noisy Signals\n\n"

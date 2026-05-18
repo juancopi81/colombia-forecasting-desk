@@ -153,6 +153,8 @@ colombia-forecasting-desk/
       indicator_watch.json
       legislative_reconciler.json
       m2_ranked_questions.json
+      m2_review_packet.json
+      m2_review_packet.md
       m1_candidates.json
       metasource_brief.md
       m2_handoff.md
@@ -356,6 +358,8 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate advisory `m2_ranked_questions.json` from legislative reconciler
       records with transparent score reasons, review buckets, and heuristic-risk
       audit flags.
+- [x] Generate content-rich `m2_review_packet.json` / `.md` so M2 sees source
+      excerpts and structured context before relying on advisory heuristics.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

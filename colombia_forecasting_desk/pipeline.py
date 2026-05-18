@@ -23,6 +23,7 @@ from .indicator_watch import (
     fetch_structured_indicator_observations,
 )
 from .legislative_reconciler import build_legislative_reconciliations
+from .m2_review_packet import build_m2_review_packet, render_m2_review_packet
 from .m2_ranker import build_legislative_m2_ranking
 from .manifest import build_run_manifest
 from .models import (
@@ -61,6 +62,7 @@ class PipelineResult:
     indicator_watch: list[IndicatorObservation]
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
+    m2_review_packet: dict
     m1_candidates: dict
     acceptance_report: dict
     run_manifest: dict
@@ -378,6 +380,17 @@ def run_single_source(
         summary,
         generated_at=finished_at,
     )
+    m2_review_packet = build_m2_review_packet(
+        summary,
+        raw_items,
+        cleaned,
+        m1_candidates,
+        m2_ranked_questions,
+        legislative_reconciliations,
+        source_health,
+        indicator_watch,
+        generated_at=finished_at,
+    )
     acceptance_report = build_acceptance_report(
         summary,
         m1_candidates,
@@ -399,6 +412,11 @@ def run_single_source(
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
     _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
+    _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
+    (run_dir / "m2_review_packet.md").write_text(
+        render_m2_review_packet(m2_review_packet),
+        encoding="utf-8",
+    )
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -411,6 +429,7 @@ def run_single_source(
         m1_candidates=m1_candidates,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -425,6 +444,7 @@ def run_single_source(
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,
@@ -512,6 +532,17 @@ def run(
         summary,
         generated_at=finished_at,
     )
+    m2_review_packet = build_m2_review_packet(
+        summary,
+        raw_items,
+        cleaned,
+        m1_candidates,
+        m2_ranked_questions,
+        legislative_reconciliations,
+        source_health,
+        indicator_watch,
+        generated_at=finished_at,
+    )
     acceptance_report = build_acceptance_report(
         summary,
         m1_candidates,
@@ -535,6 +566,11 @@ def run(
     _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
     _write_json(run_dir / "legislative_reconciler.json", legislative_reconciliations)
     _write_json(run_dir / "m2_ranked_questions.json", m2_ranked_questions)
+    _write_json(run_dir / "m2_review_packet.json", m2_review_packet)
+    (run_dir / "m2_review_packet.md").write_text(
+        render_m2_review_packet(m2_review_packet),
+        encoding="utf-8",
+    )
     _write_json(run_dir / "m1_candidates.json", m1_candidates)
     _write_json(run_dir / "acceptance_report.json", acceptance_report)
     brief_text = render_brief(
@@ -548,6 +584,7 @@ def run(
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
     )
     (run_dir / "metasource_brief.md").write_text(brief_text, encoding="utf-8")
     handoff_text = render_m2_handoff(
@@ -560,6 +597,7 @@ def run(
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
     )
     (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
     _write_json(run_dir / "run_summary.json", asdict(summary))
@@ -572,6 +610,7 @@ def run(
         m1_candidates=m1_candidates,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -586,6 +625,7 @@ def run(
         indicator_watch=indicator_watch,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
+        m2_review_packet=m2_review_packet,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,

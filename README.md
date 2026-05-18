@@ -28,6 +28,8 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
 - `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
+- `m2_review_packet.json` — content-rich M2 review queue that attaches source excerpts and structured context to M1/M2 candidates
+- `m2_review_packet.md` — paste-ready M2 review packet that tells the reviewer to read excerpts before trusting heuristic scores
 - `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
@@ -38,9 +40,10 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
 
 For legislative sources, `legislative_reconciler.json` is the broad case-file
-artifact, while `m2_ranked_questions.json` is only an advisory triage layer. It
-must not hide low-ranked items from human or LLM review when the audit flags
-possible heuristic blind spots.
+artifact, while `m2_ranked_questions.json` is only an advisory triage layer.
+`m2_review_packet.json` / `.md` are the content-first M2 inputs: they package
+source excerpts and structured context so low-ranked items can still be sampled
+by a human or LLM when the evidence suggests possible heuristic blind spots.
 
 ### Optional flags
 
@@ -69,7 +72,7 @@ tests/                       # pytest suite
 
 ## Status
 
-Currently at **M2.1 — advisory legislative ranking**, building on the
+Currently at **M2.2 — content-rich M2 review packets**, building on the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
@@ -88,8 +91,9 @@ cards, including PIB sector drivers and current-release official document
 links, so GDP/ISE releases can become M2-ready activity seeds instead of only
 appearing as indirect context. Legislative records now also get an advisory M2
 ranking with explicit score reasons, review buckets, and heuristic-risk audit
-flags so humans and LLMs can challenge brittle rules instead of inheriting them
-silently. See
+flags. M2.2 adds a content-rich review packet that attaches source excerpts and
+structured indicator/legal context to the queue, so humans and LLMs can
+challenge brittle rules instead of inheriting them silently. See
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
 detailed plan, the
 [`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md)

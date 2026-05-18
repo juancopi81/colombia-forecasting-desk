@@ -20,6 +20,7 @@ def build_run_manifest(
     m1_candidates: dict[str, Any],
     legislative_reconciliations: list[dict[str, Any]],
     m2_ranked_questions: dict[str, Any],
+    m2_review_packet: dict[str, Any],
 ) -> dict[str, Any]:
     """Describe which code and artifact contracts produced a run."""
     return {
@@ -42,6 +43,7 @@ def build_run_manifest(
             "m2_ranked_questions": len(
                 m2_ranked_questions.get("ranked_questions") or []
             ),
+            "m2_review_items": len(m2_review_packet.get("review_items") or []),
         },
         "capabilities": {
             "source_health": True,
@@ -50,6 +52,7 @@ def build_run_manifest(
             "legislative_reconciler": bool(legislative_reconciliations),
             "legislative_m2_ranking": True,
             "heuristic_audit": bool(m2_ranked_questions.get("heuristic_audit")),
+            "m2_review_packet": True,
         },
         "artifact_schemas": {
             "m1_candidates.json": str(
@@ -60,6 +63,9 @@ def build_run_manifest(
             ),
             "m2_ranked_questions.json": str(
                 m2_ranked_questions.get("schema_version") or "unknown"
+            ),
+            "m2_review_packet.json": str(
+                m2_review_packet.get("schema_version") or "unknown"
             ),
             "acceptance_report.json": str(
                 acceptance_report.get("schema_version") or "unknown"
@@ -118,6 +124,8 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "source_health.json",
         "legislative_reconciler.json",
         "m2_ranked_questions.json",
+        "m2_review_packet.json",
+        "m2_review_packet.md",
         "m1_candidates.json",
         "acceptance_report.json",
         "metasource_brief.md",
