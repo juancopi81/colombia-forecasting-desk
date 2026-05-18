@@ -25,6 +25,7 @@ from colombia_forecasting_desk.fetchers import (
     _extract_corte_comunicados,
     _extract_dane_comunicados,
     _extract_dian_regulatory_project_links,
+    _extract_eltiempo_colombia_section,
     _extract_imprenta_jsf_table,
     _extract_mincit_zonas_francas_approved_rows_from_text,
     _extract_minhacienda_tes_auction_facts,
@@ -44,6 +45,7 @@ from colombia_forecasting_desk.fetchers import (
     _struct_time_to_iso,
     fetch_api,
     fetch_html,
+    fetch_rss,
 )
 from colombia_forecasting_desk.models import RawItem
 
@@ -172,6 +174,7 @@ def test_parse_date_text_to_iso_handles_spanish_dates() -> None:
         "2026-04-09T00:00:00Z"
     )
     assert _parse_date_text_to_iso("27/04/2026") == "2026-04-27T00:00:00Z"
+    assert _parse_date_text_to_iso("17.05.2026") == "2026-05-17T00:00:00Z"
     assert _parse_date_text_to_iso("Agenda Legislativa del 20 al 24 de abril de 2026") == (
         "2026-04-20T00:00:00Z"
     )
@@ -1843,6 +1846,108 @@ def test_recover_rss_entries_from_loose_xml(sample_source) -> None:
     assert len(items) == 1
     assert items[0].published_at == "2026-04-09T16:35:00Z"
     assert items[0].metadata["extraction"] == "rss_recovery"
+
+
+def test_extract_eltiempo_colombia_section_parses_article_cards(sample_source) -> None:
+    source = replace(sample_source, id="eltiempo_colombia")
+    html = """
+    <html><body>
+      <article
+        data-id="3556412"
+        data-publicacion="2026-05-17"
+        data-category="Colombia/otras ciudades"
+        data-name="Recompensa por responsables de ataque en el Cauca"
+      >
+        <a
+          class="c-articulo__titulo__txt"
+          href="/colombia/otras-ciudades/recompensa-por-ataque-en-cauca-3556412"
+        >Recompensa por responsables de ataque en el Cauca</a>
+        <p class="c-articulo__resumen">Autoridades anunciaron una recompensa.</p>
+      </article>
+      <article data-publicacion="2026-05-17">
+        <a class="c-articulo__titulo__txt" href="/mas-contenido/especial-comercial">
+          Especial comercial de marca
+        </a>
+      </article>
+      <article data-publicacion="2026-05-17">
+        <a class="c-articulo__titulo__txt" href="https://example.com/colombia/noticia">
+          Nota externa que no pertenece al sitio
+        </a>
+      </article>
+    </body></html>
+    """
+
+    items = _extract_eltiempo_colombia_section(
+        html,
+        "https://www.eltiempo.com/colombia",
+        source,
+        fetched_at="2026-05-18T12:00:00Z",
+    )
+
+    assert len(items) == 1
+    assert items[0].title == "Recompensa por responsables de ataque en el Cauca"
+    assert items[0].url == (
+        "https://www.eltiempo.com/colombia/otras-ciudades/"
+        "recompensa-por-ataque-en-cauca-3556412"
+    )
+    assert items[0].published_at == "2026-05-17T00:00:00Z"
+    assert items[0].raw_text == "Autoridades anunciaron una recompensa."
+    assert items[0].metadata["extraction"] == "eltiempo_colombia_section_html"
+    assert items[0].metadata["article_id"] == "3556412"
+
+
+def test_fetch_eltiempo_rss_augments_with_section_cards(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="eltiempo_colombia",
+        name="El Tiempo — Colombia",
+        url="https://www.eltiempo.com/rss/colombia.xml",
+        fetch_method="rss",
+    )
+    rss = """
+    <rss><channel>
+      <item>
+        <title>Última hora política desde Bogotá</title>
+        <link>https://www.eltiempo.com/colombia/bogota/rss-story-123</link>
+        <pubDate>Mon, 18 May 2026 11:34:48 -0500</pubDate>
+        <description>Noticia desde el RSS.</description>
+      </item>
+    </channel></rss>
+    """
+    section_html = """
+    <html><body>
+      <article data-id="123" data-publicacion="2026-05-18">
+        <a class="c-articulo__titulo__txt" href="/colombia/bogota/rss-story-123">
+          Última hora política desde Bogotá
+        </a>
+        <p class="c-articulo__resumen">Duplicado desde la sección.</p>
+      </article>
+      <article data-id="456" data-publicacion="2026-05-17">
+        <a class="c-articulo__titulo__txt" href="/colombia/otras-ciudades/older-story-456">
+          Alcaldes anuncian nuevas medidas regionales
+        </a>
+        <p class="c-articulo__resumen">Artículo que ya salió del RSS corto.</p>
+      </article>
+    </body></html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == source.url:
+            return httpx.Response(200, text=rss, request=request)
+        if str(request.url) == "https://www.eltiempo.com/colombia":
+            return httpx.Response(200, text=section_html, request=request)
+        return httpx.Response(404, request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True) as client:
+        items = fetch_rss(source, client)
+
+    assert len(items) == 2
+    assert items[0].url == "https://www.eltiempo.com/colombia/bogota/rss-story-123"
+    assert items[0].published_at == "2026-05-18T16:34:48Z"
+    assert items[1].url == (
+        "https://www.eltiempo.com/colombia/otras-ciudades/older-story-456"
+    )
+    assert items[1].metadata["extraction"] == "eltiempo_colombia_section_html"
 
 
 def test_parse_socrata_date_handles_iso_with_millis() -> None:

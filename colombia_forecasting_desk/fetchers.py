@@ -45,6 +45,8 @@ BACKOFF_SECONDS = 1.0
 ANCHORS_PER_SOURCE = 30
 MIN_ANCHOR_TEXT = 10
 DATE_CONTEXT_CHARS = 500
+ELTIEMPO_COLOMBIA_SECTION_URL = "https://www.eltiempo.com/colombia"
+ELTIEMPO_SECTION_EXTRACTION = "eltiempo_colombia_section_html"
 BOT_BLOCK_MARKERS = (
     "Radware Bot Manager",
     "validate.perfdrive.com",
@@ -164,7 +166,7 @@ def _parse_date_text_to_iso(text: str | None) -> str | None:
         year, month, day = (int(x) for x in match.groups())
         return _date_to_iso(year, month, day)
 
-    match = re.search(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b", compact)
+    match = re.search(r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{4})\b", compact)
     if match:
         day, month, year = (int(x) for x in match.groups())
         return _date_to_iso(year, month, day)
@@ -293,6 +295,137 @@ def _recover_rss_entries(html_or_xml: str, source: Metasource, fetched_at: str) 
             )
         )
     return items
+
+
+def _raw_item_sort_datetime(item: RawItem) -> datetime:
+    if item.published_at:
+        try:
+            parsed = datetime.fromisoformat(item.published_at.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+        if parsed is not None:
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+    return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _sort_raw_items_newest_first(items: list[RawItem]) -> list[RawItem]:
+    return sorted(items, key=_raw_item_sort_datetime, reverse=True)
+
+
+def _dedupe_raw_items_by_url(items: list[RawItem]) -> list[RawItem]:
+    deduped: list[RawItem] = []
+    seen: set[str] = set()
+    for item in items:
+        key = canonicalize_url(item.url) or f"{item.source_id}:{item.title}"
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _extract_eltiempo_colombia_section(
+    html_text: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    for article in soup.find_all("article"):
+        link = (
+            article.select_one("a.c-articulo__titulo__txt[href]")
+            or article.select_one("a.page-link[href]")
+            or article.find("a", href=True)
+        )
+        if link is None:
+            continue
+        resolved = _same_site_url(str(link["href"]), base_url)
+        if resolved is None or not urlsplit(resolved).path.startswith("/colombia/"):
+            continue
+
+        title = normalize_whitespace(link.get_text(separator=" ", strip=True))
+        if not title:
+            title = normalize_whitespace(str(article.get("data-name") or ""))
+        if len(title) < MIN_ANCHOR_TEXT or title.lower() in NAV_TEXT:
+            continue
+
+        canon = canonicalize_url(resolved)
+        if canon in seen:
+            continue
+        seen.add(canon)
+
+        published_at = _parse_date_text_to_iso(str(article.get("data-publicacion") or ""))
+        if not published_at:
+            date_node = article.select_one(".c-articulo__fecha")
+            if date_node is not None:
+                published_at = _parse_date_text_to_iso(
+                    date_node.get_text(separator=" ", strip=True)
+                )
+
+        summary_node = article.select_one(".c-articulo__resumen")
+        raw_text = (
+            normalize_whitespace(summary_node.get_text(separator=" ", strip=True))
+            if summary_node is not None
+            else ""
+        )
+        if not raw_text:
+            raw_text = normalize_whitespace(article.get_text(separator=" ", strip=True))
+
+        items.append(
+            RawItem(
+                id=_make_id(source.id, resolved, title),
+                source_id=source.id,
+                source_name=source.name,
+                source_type=source.type,
+                url=resolved,
+                title=title,
+                fetched_at=fetched_at,
+                published_at=published_at,
+                raw_text=raw_text,
+                metadata={
+                    "extraction": ELTIEMPO_SECTION_EXTRACTION,
+                    "article_id": str(article.get("data-id") or ""),
+                    "category": str(article.get("data-category") or ""),
+                    "section": "colombia",
+                },
+            )
+        )
+    return items
+
+
+def _augment_eltiempo_colombia_rss_items(
+    source: Metasource,
+    client: httpx.Client,
+    fetched_at: str,
+    base_items: list[RawItem],
+) -> list[RawItem]:
+    try:
+        response = _http_get(client, ELTIEMPO_COLOMBIA_SECTION_URL)
+        marker = _detect_bot_block(response.text)
+        if marker:
+            raise BotBlockError(f"bot block detected: {marker}")
+        section_items = _extract_eltiempo_colombia_section(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+        )
+    except Exception:  # noqa: BLE001 - augmentation must not hide a healthy RSS feed.
+        if base_items:
+            logger.warning(
+                "El Tiempo Colombia section augmentation failed; keeping RSS items",
+                exc_info=True,
+            )
+            return _sort_raw_items_newest_first(_dedupe_raw_items_by_url(base_items))
+        raise
+
+    return _sort_raw_items_newest_first(
+        _dedupe_raw_items_by_url([*base_items, *section_items])
+    )
 
 
 def _extract_anchors(html: str, base_url: str) -> list[tuple[str, str]]:
@@ -4772,12 +4905,21 @@ def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
         raise BotBlockError(f"bot block detected: {marker}")
     parsed = feedparser.parse(response.content)
     items = _parse_rss_entries(parsed, source, fetched_at)
+    if not items:
+        items = _recover_rss_entries(response.text, source, fetched_at)
+
+    if source.id == "eltiempo_colombia":
+        augmented = _augment_eltiempo_colombia_rss_items(
+            source,
+            client,
+            fetched_at,
+            items,
+        )
+        if augmented:
+            return augmented
+
     if items:
         return items
-
-    recovered = _recover_rss_entries(response.text, source, fetched_at)
-    if recovered:
-        return recovered
 
     html_fallback = _extract_dated_anchors(
         response.text,

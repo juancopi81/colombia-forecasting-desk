@@ -844,7 +844,7 @@ def _source_caveats(
             append(
                 health.source_id,
                 "warning",
-                "rolling RSS media pulse; not guaranteed full-day coverage",
+                "media pulse with RSS plus section-page coverage; still not a complete archive",
                 source_name=health.source_name,
             )
         if health.failure_count:

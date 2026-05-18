@@ -848,8 +848,8 @@ def _render_source_caveats(source_health: list[SourceHealth]) -> str:
             (
                 4,
                 0,
-                "- `eltiempo_colombia` is a rolling RSS media pulse, not guaranteed "
-                "full-day coverage unless a local cache/scheduler is running.",
+                "- `eltiempo_colombia` now combines RSS with Colombia section cards, "
+                "but it is still a media pulse rather than a complete archive.",
             )
         )
     for index, health in enumerate(source_health):

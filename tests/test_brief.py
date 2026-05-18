@@ -356,7 +356,7 @@ def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
     assert "Forecastable Event Signals" in out
     assert "Candidate DB Snapshot" in out
     assert "Required M2 Output Schema" in out
-    assert "rolling RSS media pulse" in out
+    assert "combines RSS with Colombia section cards" in out
     assert "Will the official TRM remain" in out
 
 

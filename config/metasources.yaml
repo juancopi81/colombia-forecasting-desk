@@ -11,8 +11,8 @@ metasources:
     trust_role: media_signal
     parsing_difficulty: easy
     enabled: true
-    max_items: 15
-    notes: "High-volume national news source. Filter aggressively."
+    max_items: 30
+    notes: "High-volume national news source. RSS is augmented with the Colombia section page to reduce short-feed continuity gaps; filter aggressively."
 
   - id: banrep_rss
     name: Banco de la República — RSS
