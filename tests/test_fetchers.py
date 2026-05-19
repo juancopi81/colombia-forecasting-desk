@@ -33,6 +33,7 @@ from colombia_forecasting_desk.fetchers import (
     _extract_imprenta_jsf_table,
     _extract_mincit_zonas_francas_approved_rows_from_text,
     _extract_minhacienda_decree_projects,
+    _extract_minhacienda_decree_projects_from_reader_markdown,
     _extract_minhacienda_tes_auction_facts,
     _extract_minhacienda_tes_auction_rows_from_text,
     _extract_pdf_text,
@@ -542,6 +543,67 @@ def test_extract_minhacienda_decree_projects_requires_complete_project_fields(
     )
 
 
+def test_extract_minhacienda_decree_projects_from_reader_markdown(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_proyectos_decreto",
+        name="MinHacienda — Proyectos de Decreto",
+        type="regulatory",
+        url="https://www.minhacienda.gov.co/normativa/proyectos-de-decretos/2026",
+        fetch_method="html",
+        trust_role="regulatory_signal",
+    )
+    markdown = """
+    [PD. Por el cual se modifica el Decreto 1068 de 2015.](https://www.minhacienda.gov.co/documents/20119/2873514/PD+garantias.pdf/abc?t=1 "Documento")
+
+    mayo 13, 2026
+
+    El proyecto de decreto tiene por objeto modificar garantias para bonos
+    hipotecarios.
+
+    El Ministerio de Hacienda informa que el Proyecto de Decreto esta para
+    comentarios del 13 al 28 de mayo de 2026 hasta las 12 de la noche.
+
+    [Comentar proyecto](https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529)
+
+    [PD. Proyecto sin formulario publicado.](https://www.minhacienda.gov.co/documents/20119/2873514/PD+sin+formulario.pdf/def?t=2 "Documento")
+
+    mayo 12, 2026
+
+    El proyecto de decreto tiene por objeto ajustar una regla fiscal.
+
+    Mostrando el intervalo 1 - 2 de 2 resultados.
+    """
+
+    items = _extract_minhacienda_decree_projects_from_reader_markdown(
+        markdown,
+        source.url,
+        "https://r.jina.ai/" + source.url,
+        source,
+        "2026-05-19T00:00:00Z",
+    )
+
+    assert len(items) == 2
+    complete = items[0]
+    assert complete.published_at == "2026-05-13T00:00:00Z"
+    assert (
+        complete.metadata["content_extraction"]
+        == "minhacienda_decree_project_reader"
+    )
+    assert complete.metadata["source_access"] == "jina_reader_proxy"
+    assert complete.metadata["official_source_url"] == source.url
+    assert complete.metadata["comment_form_url"] == (
+        "https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529"
+    )
+    assert "13 al 28 de mayo de 2026" in complete.metadata["comment_window_text"]
+
+    incomplete = items[1]
+    assert "content_extraction" not in incomplete.metadata
+    assert incomplete.metadata["content_extraction_error"] == (
+        "missing required decree project fields: comment_form_url"
+    )
+
+
 def test_fetch_minhacienda_decree_projects_uses_browser_on_bot_block(
     sample_source,
     monkeypatch,
@@ -574,7 +636,7 @@ def test_fetch_minhacienda_decree_projects_uses_browser_on_bot_block(
         return [browser_item]
 
     monkeypatch.setattr(
-        fetchers,
+        minhacienda_fetchers,
         "_fetch_minhacienda_decree_projects_with_browser",
         fake_browser_fetch,
     )
@@ -587,6 +649,64 @@ def test_fetch_minhacienda_decree_projects_uses_browser_on_bot_block(
 
     assert items == [browser_item]
     assert calls == [("minhacienda_proyectos_decreto", 2)]
+
+
+def test_fetch_minhacienda_decree_projects_uses_reader_after_browser_bot_block(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="minhacienda_proyectos_decreto",
+        name="MinHacienda — Proyectos de Decreto",
+        type="regulatory",
+        url="https://www.minhacienda.gov.co/normativa/proyectos-de-decretos/2026",
+        fetch_method="html",
+        max_items=2,
+    )
+    calls: list[str] = []
+
+    def fake_browser_fetch(source_arg, fetched_at, *, max_items):
+        calls.append(source_arg.id)
+        raise fetchers.BotBlockError("browser fetch still bot-blocked: Radware Page")
+
+    monkeypatch.setattr(
+        minhacienda_fetchers,
+        "_fetch_minhacienda_decree_projects_with_browser",
+        fake_browser_fetch,
+    )
+    reader_markdown = """
+    [PD. Por el cual se modifica el Decreto 1068 de 2015.](https://www.minhacienda.gov.co/documents/20119/2873514/project.pdf/abc?t=1)
+
+    mayo 13, 2026
+
+    El Ministerio de Hacienda informa que el Proyecto de Decreto esta para
+    comentarios del 13 al 28 de mayo de 2026 hasta las 12 de la noche.
+
+    [Comentar proyecto](https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529)
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "www.minhacienda.gov.co":
+            return httpx.Response(200, text="<title>Radware Page</title>")
+        if request.url.host == "r.jina.ai":
+            assert str(request.url).startswith(
+                "https://r.jina.ai/https://www.minhacienda.gov.co/"
+            )
+            return httpx.Response(200, text=reader_markdown)
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert calls == ["minhacienda_proyectos_decreto"]
+    assert len(items) == 1
+    assert items[0].metadata["source_access"] == "jina_reader_proxy"
+    assert (
+        items[0].metadata["content_extraction"]
+        == "minhacienda_decree_project_reader"
+    )
 
 
 def test_fetch_banrep_junta_uses_browser_on_bot_block(

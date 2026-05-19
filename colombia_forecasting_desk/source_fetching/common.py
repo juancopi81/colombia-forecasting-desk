@@ -54,9 +54,11 @@ ELTIEMPO_COLOMBIA_SECTION_URL = "https://www.eltiempo.com/colombia"
 ELTIEMPO_SECTION_EXTRACTION = "eltiempo_colombia_section_html"
 BOT_BLOCK_MARKERS = (
     "Radware Bot Manager",
+    "Radware Page",
     "validate.perfdrive.com",
     "Access denied",
     "Bot Manager Block",
+    "Verifying your browser before proceeding",
 )
 SPA_SHELL_MARKERS = ("<app-root></app-root>", "<app-root>")
 PDF_TEXT_PARSE_LIMIT = 5
@@ -77,6 +79,8 @@ MINHACIENDA_TES_IRC_PAGES = (
 MINHACIENDA_DECREE_PARSE_LIMIT = 30
 MINHACIENDA_DECREE_BROWSER_TIMEOUT_MS = 30_000
 MINHACIENDA_DECREE_BROWSER_NETWORK_IDLE_MS = 5_000
+MINHACIENDA_DECREE_READER_TIMEOUT_SECONDS = 30.0
+JINA_READER_BASE_URL = "https://r.jina.ai/"
 
 
 def _minhacienda_tes_title_slug(title: str) -> str | None:

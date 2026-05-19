@@ -414,8 +414,8 @@ metasources:
     trust_role: regulatory_signal
     parsing_difficulty: hard
     enabled: true
-    onboarding_status: needs_parser
-    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. M1.27 adds a source-specific parser for the rendered 2026 page and marks rows parsed only when title, date, description/comment-window text, project PDF URL, and comment form URL are all present. Local live smoke still hits Radware even through Playwright, so this source remains fail-closed until a reliable access path is available."
+    onboarding_status: working
+    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. M1.27 adds a source-specific parser for the rendered 2026 page and marks rows parsed only when title, date, description/comment-window text, project PDF URL, and comment form URL are all present. M1.28 keeps official direct/browser fetch first, then falls back to Jina Reader with explicit `source_access=jina_reader_proxy` metadata when Radware blocks local access."
 
   - id: minhacienda_tes_reports
     name: MinHacienda / IRC — Subastas TES 2026

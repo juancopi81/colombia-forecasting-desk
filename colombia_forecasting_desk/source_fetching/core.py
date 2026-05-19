@@ -44,8 +44,9 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             if browser_items:
                 return browser_items
         if source.id == "minhacienda_proyectos_decreto":
-            browser_items = _fetch_minhacienda_decree_projects_with_browser(
+            browser_items = _fetch_minhacienda_decree_projects_with_fallbacks(
                 source,
+                client,
                 fetched_at,
                 max_items=source.max_items
                 if source.max_items is not None

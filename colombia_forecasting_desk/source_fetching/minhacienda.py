@@ -395,6 +395,11 @@ def _is_minhacienda_decree_pdf_href(href: str) -> bool:
     return "/documents/" in lowered and ".pdf" in lowered
 
 
+def _looks_like_minhacienda_decree_project_title(title: str) -> bool:
+    folded = fold_accents(title.lower()).strip(" .\"'“”")
+    return folded.startswith(("pd", "p.d", "por el cual"))
+
+
 def _minhacienda_decree_container(link: Any) -> Any:
     for candidate in link.parents:
         if not getattr(candidate, "get_text", None):
@@ -451,6 +456,101 @@ def _minhacienda_decree_comment_form_url(container: Any, base_url: str) -> str |
     return None
 
 
+def _minhacienda_decree_reader_url(url: str) -> str:
+    return f"{JINA_READER_BASE_URL}{url}"
+
+
+def _parse_minhacienda_decree_project_date(text: str) -> str | None:
+    folded = fold_accents(normalize_whitespace(text).lower())
+    month_names = "|".join(MONTHS_ES)
+    match = re.search(rf"\b({month_names})\s+\d{{1,2}},?\s+\d{{4}}\b", folded)
+    if match:
+        return _parse_date_text_to_iso(match.group(0))
+    return _parse_date_text_to_iso(text[:DATE_CONTEXT_CHARS])
+
+
+def _is_minhacienda_decree_project_date_line(
+    line: str,
+    published_at: str | None,
+) -> bool:
+    if not published_at:
+        return False
+    folded = fold_accents(normalize_whitespace(line).lower())
+    month_names = "|".join(MONTHS_ES)
+    date_line_patterns = (
+        rf"({month_names})\s+\d{{1,2}},?\s+\d{{4}}",
+        rf"\d{{1,2}}\s+de\s+({month_names})\s+de\s+\d{{4}}",
+    )
+    if not any(re.fullmatch(pattern, folded) for pattern in date_line_patterns):
+        return False
+    return _parse_date_text_to_iso(line) == published_at
+
+
+_MARKDOWN_LINK_RE = re.compile(
+    r"\[(?P<text>[^\]]+)\]\((?P<url>https?://[^\s)]+)(?:\s+\"[^\"]*\")?\)",
+    flags=re.DOTALL,
+)
+
+
+def _strip_markdown_links(text: str) -> str:
+    return _MARKDOWN_LINK_RE.sub(lambda match: match.group("text"), text)
+
+
+def _extract_minhacienda_reader_page_urls(markdown_text: str) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in _MARKDOWN_LINK_RE.finditer(markdown_text):
+        link_text = normalize_whitespace(match.group("text"))
+        url = html.unescape(match.group("url"))
+        folded = fold_accents(link_text.lower())
+        if "pagina" not in folded:
+            continue
+        if "proyectos-de-decretos/2026" not in url:
+            continue
+        if "_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_oevr_cur=1" in url:
+            continue
+        canon = canonicalize_url(url)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        urls.append(url)
+    return urls
+
+
+def _minhacienda_decree_reader_description(
+    segment: str,
+    published_at: str | None,
+) -> tuple[str, str]:
+    parts: list[str] = []
+    for raw_line in segment.splitlines():
+        line = normalize_whitespace(_strip_markdown_links(raw_line))
+        if not line:
+            continue
+        folded = fold_accents(line.lower())
+        if line.startswith("![") or line.startswith("#"):
+            break
+        if folded in {"comentar proyecto", "compartir:"}:
+            continue
+        if folded.startswith("image "):
+            continue
+        if folded.startswith("mostrando el intervalo"):
+            break
+        if folded.startswith("pagina ") or folded in {"pagina 1", "pagina 2"}:
+            break
+        if _is_minhacienda_decree_project_date_line(line, published_at):
+            continue
+        parts.append(line)
+    description_text = normalize_whitespace(" ".join(parts))
+    comment_parts = [
+        part
+        for part in parts
+        if "comentario" in fold_accents(part.lower())
+        or "comentarios" in fold_accents(part.lower())
+    ]
+    comment_window_text = normalize_whitespace(" ".join(comment_parts))
+    return description_text, comment_window_text
+
+
 def _minhacienda_decree_raw_text(
     *,
     title: str,
@@ -472,6 +572,68 @@ def _minhacienda_decree_raw_text(
     if comment_form_url:
         parts.append(f"Formulario de comentarios: {comment_form_url}")
     return normalize_whitespace(" ".join(parts))
+
+
+def _minhacienda_decree_item_from_fields(
+    *,
+    source: Metasource,
+    fetched_at: str,
+    title: str,
+    published_at: str | None,
+    description_text: str,
+    comment_window_text: str,
+    project_pdf_url: str,
+    comment_form_url: str | None,
+    metadata: dict[str, Any],
+    content_extraction: str,
+) -> RawItem:
+    if description_text:
+        metadata["description"] = description_text
+    if comment_window_text:
+        metadata["comment_window_text"] = comment_window_text
+    if comment_form_url:
+        metadata["comment_form_url"] = comment_form_url
+    if published_at:
+        metadata["project_date"] = published_at
+
+    missing_fields = [
+        name
+        for name, value in (
+            ("title", title),
+            ("date", published_at),
+            ("description_or_comment_window_text", description_text),
+            ("project_pdf_url", project_pdf_url),
+            ("comment_form_url", comment_form_url),
+        )
+        if not value
+    ]
+    if not missing_fields:
+        metadata["content_extraction"] = content_extraction
+    else:
+        metadata["content_extraction_error"] = (
+            "missing required decree project fields: " + ", ".join(missing_fields)
+        )
+
+    return RawItem(
+        id=_make_id(source.id, project_pdf_url, title),
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url=project_pdf_url,
+        title=title,
+        fetched_at=fetched_at,
+        published_at=published_at,
+        raw_text=_minhacienda_decree_raw_text(
+            title=title,
+            published_at=published_at,
+            description_text=description_text,
+            comment_window_text=comment_window_text,
+            project_pdf_url=project_pdf_url,
+            comment_form_url=comment_form_url,
+        )
+        or title,
+        metadata=metadata,
+    )
 
 
 def _extract_minhacienda_decree_projects(
@@ -497,7 +659,7 @@ def _extract_minhacienda_decree_projects(
             continue
         project_pdf_url = urljoin(base_url, href)
         title = _clean_minhacienda_decree_title(link.get_text(" ", strip=True))
-        if not title:
+        if not title or not _looks_like_minhacienda_decree_project_title(title):
             continue
         canon = canonicalize_url(project_pdf_url)
         if canon in seen:
@@ -505,7 +667,7 @@ def _extract_minhacienda_decree_projects(
         seen.add(canon)
         project = _minhacienda_decree_container(link)
         block_text = normalize_whitespace(project.get_text(" ", strip=True))
-        published_at = _parse_date_text_to_iso(block_text[:DATE_CONTEXT_CHARS])
+        published_at = _parse_minhacienda_decree_project_date(block_text)
         description_text, comment_window_text = _minhacienda_decree_text_parts(
             project,
             title,
@@ -513,58 +675,113 @@ def _extract_minhacienda_decree_projects(
         comment_form_url = _minhacienda_decree_comment_form_url(project, base_url)
         metadata: dict[str, Any] = {
             "extraction": "minhacienda_decree_project_index",
+            "source_access": "official_html",
             "source_page_url": base_url,
             "project_pdf_url": project_pdf_url,
         }
-        if description_text:
-            metadata["description"] = description_text
-        if comment_window_text:
-            metadata["comment_window_text"] = comment_window_text
-        if comment_form_url:
-            metadata["comment_form_url"] = comment_form_url
-        if published_at:
-            metadata["project_date"] = published_at
-
-        missing_fields = [
-            name
-            for name, value in (
-                ("title", title),
-                ("date", published_at),
-                ("description_or_comment_window_text", description_text),
-                ("project_pdf_url", project_pdf_url),
-                ("comment_form_url", comment_form_url),
+        item = _minhacienda_decree_item_from_fields(
+            source=source,
+            fetched_at=fetched_at,
+            title=title,
+            published_at=published_at,
+            description_text=description_text,
+            comment_window_text=comment_window_text,
+            project_pdf_url=project_pdf_url,
+            comment_form_url=comment_form_url,
+            metadata=metadata,
+            content_extraction="minhacienda_decree_project_browser",
+        )
+        if item.raw_text == title and block_text:
+            item = RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at,
+                raw_text=block_text,
+                metadata=item.metadata,
             )
-            if not value
-        ]
-        if not missing_fields:
-            metadata["content_extraction"] = "minhacienda_decree_project_browser"
-        else:
-            metadata["content_extraction_error"] = (
-                "missing required decree project fields: "
-                + ", ".join(missing_fields)
-            )
+        items.append(item)
+        if len(items) >= limit:
+            break
+    return items
 
+
+def _extract_minhacienda_decree_projects_from_reader_markdown(
+    markdown_text: str,
+    page_url: str,
+    reader_url: str,
+    source: Metasource,
+    fetched_at: str,
+    *,
+    max_items: int | None = None,
+) -> list[RawItem]:
+    limit = max_items if max_items is not None else (
+        source.max_items or MINHACIENDA_DECREE_PARSE_LIMIT
+    )
+    if limit <= 0:
+        return []
+    project_matches = []
+    for match in _MARKDOWN_LINK_RE.finditer(markdown_text):
+        if not _is_minhacienda_decree_pdf_href(html.unescape(match.group("url"))):
+            continue
+        title = _clean_minhacienda_decree_title(match.group("text"))
+        if not _looks_like_minhacienda_decree_project_title(title):
+            continue
+        project_matches.append(match)
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    for index, match in enumerate(project_matches):
+        project_pdf_url = html.unescape(match.group("url"))
+        canon = canonicalize_url(project_pdf_url)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        title = _clean_minhacienda_decree_title(match.group("text"))
+        if not title:
+            continue
+        next_start = (
+            project_matches[index + 1].start()
+            if index + 1 < len(project_matches)
+            else len(markdown_text)
+        )
+        segment = markdown_text[match.end() : next_start]
+        published_at = _parse_minhacienda_decree_project_date(segment)
+        comment_form_url: str | None = None
+        for link_match in _MARKDOWN_LINK_RE.finditer(segment):
+            link_text = normalize_whitespace(link_match.group("text"))
+            href = html.unescape(link_match.group("url"))
+            folded = fold_accents(link_text.lower())
+            if "comentar proyecto" in folded or "/web/forms/shared/-/form/" in href:
+                comment_form_url = href
+                break
+        description_text, comment_window_text = _minhacienda_decree_reader_description(
+            segment,
+            published_at,
+        )
+        metadata = {
+            "extraction": "minhacienda_decree_project_reader_markdown",
+            "source_access": "jina_reader_proxy",
+            "official_source_url": page_url,
+            "source_page_url": page_url,
+            "reader_proxy_url": reader_url,
+            "project_pdf_url": project_pdf_url,
+        }
         items.append(
-            RawItem(
-                id=_make_id(source.id, project_pdf_url, title),
-                source_id=source.id,
-                source_name=source.name,
-                source_type=source.type,
-                url=project_pdf_url,
-                title=title,
+            _minhacienda_decree_item_from_fields(
+                source=source,
                 fetched_at=fetched_at,
+                title=title,
                 published_at=published_at,
-                raw_text=_minhacienda_decree_raw_text(
-                    title=title,
-                    published_at=published_at,
-                    description_text=description_text,
-                    comment_window_text=comment_window_text,
-                    project_pdf_url=project_pdf_url,
-                    comment_form_url=comment_form_url,
-                )
-                or block_text
-                or title,
+                description_text=description_text,
+                comment_window_text=comment_window_text,
+                project_pdf_url=project_pdf_url,
+                comment_form_url=comment_form_url,
                 metadata=metadata,
+                content_extraction="minhacienda_decree_project_reader",
             )
         )
         if len(items) >= limit:
@@ -965,6 +1182,89 @@ def _fetch_minhacienda_decree_projects_with_browser(
             return items
         finally:
             browser.close()
+
+
+def _fetch_minhacienda_decree_projects_with_jina_reader(
+    source: Metasource,
+    client: httpx.Client,
+    fetched_at: str,
+    *,
+    max_items: int = MINHACIENDA_DECREE_PARSE_LIMIT,
+) -> list[RawItem]:
+    page_urls = [source.url]
+    seen_pages = {canonicalize_url(source.url)}
+    items: list[RawItem] = []
+    page_index = 0
+    while page_index < len(page_urls) and len(items) < max_items:
+        page_url = page_urls[page_index]
+        page_index += 1
+        reader_url = _minhacienda_decree_reader_url(page_url)
+        response = client.get(
+            reader_url,
+            timeout=MINHACIENDA_DECREE_READER_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        text = response.text
+        marker = _detect_bot_block(text)
+        if marker:
+            raise BotBlockError(f"reader proxy returned bot-block page: {marker}")
+        remaining = max_items - len(items)
+        page_items = _extract_minhacienda_decree_projects_from_reader_markdown(
+            text,
+            page_url,
+            reader_url,
+            source,
+            fetched_at,
+            max_items=remaining,
+        )
+        items.extend(page_items)
+        if len(items) >= max_items:
+            break
+        for linked_url in _extract_minhacienda_reader_page_urls(text):
+            canon = canonicalize_url(linked_url)
+            if canon in seen_pages:
+                continue
+            seen_pages.add(canon)
+            page_urls.append(linked_url)
+    return _dedupe_raw_items_by_url(items)[:max_items]
+
+
+def _fetch_minhacienda_decree_projects_with_fallbacks(
+    source: Metasource,
+    client: httpx.Client,
+    fetched_at: str,
+    *,
+    max_items: int = MINHACIENDA_DECREE_PARSE_LIMIT,
+) -> list[RawItem]:
+    browser_error: Exception | None = None
+    try:
+        browser_items = _fetch_minhacienda_decree_projects_with_browser(
+            source,
+            fetched_at,
+            max_items=max_items,
+        )
+    except Exception as exc:  # noqa: BLE001 - fall through to explicit reader proxy
+        browser_error = exc
+        logger.info(
+            "MinHacienda decree browser fallback failed; trying reader proxy: %s: %s",
+            exc.__class__.__name__,
+            exc,
+        )
+    else:
+        if browser_items:
+            return browser_items
+
+    reader_items = _fetch_minhacienda_decree_projects_with_jina_reader(
+        source,
+        client,
+        fetched_at,
+        max_items=max_items,
+    )
+    if reader_items:
+        return reader_items
+    if browser_error is not None:
+        raise browser_error
+    return []
 
 
 

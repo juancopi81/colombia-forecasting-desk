@@ -510,9 +510,18 @@ parsed content only when the parser has the draft title, publication date,
 description/comment-window text, project PDF URL, and comment form URL. If any
 required field is missing, the row remains link-level with
 `content_extraction_error` so source health cannot look fully content-ready.
-As of the M1.27 live smoke, the local CLI browser path is still challenged by
-Radware, so this parser is ready for rendered HTML but the source remains
-fail-closed until the access path is reliable.
+
+M1.28 adds a second fallback for this source. The access order is:
+
+1. direct official HTML from `www.minhacienda.gov.co`;
+2. official HTML rendered with Playwright;
+3. Jina Reader markdown for the same official URL, only when Radware blocks the
+   first two paths.
+
+Rows from the reader fallback keep `official_source_url`, `reader_proxy_url`,
+and `source_access=jina_reader_proxy` metadata so M2/M3 can see that the
+evidence came from the official page through a reader proxy, not from direct
+official transport. The parser still fails closed on incomplete rows.
 
 ## Indicator Watch
 

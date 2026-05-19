@@ -242,6 +242,14 @@ def test_detect_bot_block_flags_radware_marker() -> None:
     assert _detect_bot_block(snippet) is not None
 
 
+def test_detect_bot_block_flags_radware_loader_page() -> None:
+    snippet = (
+        "<html><head><title>Radware Page</title></head>"
+        "<body>Verifying your browser before proceeding...</body></html>"
+    )
+    assert _detect_bot_block(snippet) is not None
+
+
 def test_detect_spa_shell_flags_small_app_root() -> None:
     shell = "<html><body><app-root></app-root></body></html>"
     assert _detect_spa_shell(shell) is True
