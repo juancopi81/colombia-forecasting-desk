@@ -132,10 +132,10 @@ def test_registraduria_fixture_is_cloudflare_challenge() -> None:
     """
     html = _load("registraduria_noticias")
     assert "Just a moment" in html
-    # The challenge page is not currently caught by our BOT_BLOCK_MARKERS
-    # because Cloudflare uses generic copy. Acceptable: the live fetcher gets
-    # a 403 status code which surfaces as an explicit failure already.
-    assert _detect_bot_block(html) is None
+    assert _detect_bot_block(html) in {
+        "challenges.cloudflare.com",
+        "Enable JavaScript and cookies to continue",
+    }
 
 
 def test_diario_oficial_jsf_table_yields_dated_editions(sample_source) -> None:

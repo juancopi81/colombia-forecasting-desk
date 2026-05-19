@@ -133,7 +133,7 @@ metasources:
 
   - id: registraduria_noticias
     name: Registraduría — Noticias
-    url: https://www.registraduria.gov.co/-Noticias-.html
+    url: https://www.registraduria.gov.co/-2026-.html
     type: official_updates
     country_relevance: high
     access_status: html_public
@@ -144,7 +144,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     onboarding_status: needs_parser
-    notes: "High value during election cycles. URL is gated by a Cloudflare interactive challenge (returns 403 + 'Just a moment...' page). Browser-like headers don't help; needs a real browser or a JS-bypass strategy."
+    notes: "High value during election cycles. M1.29 points at the official 2026 news archive and adds a guarded parser: direct official HTML first, then normal Playwright rendering when Cloudflare blocks shell fetches. It emits one row per official news card and enriches the first few rows with article detail text when available, but live validation still shows fresh browser sessions can remain Cloudflare-blocked, so source health must not treat silence as meaningful."
 
   - id: funcion_publica_rss
     name: Función Pública — Noticias RSS

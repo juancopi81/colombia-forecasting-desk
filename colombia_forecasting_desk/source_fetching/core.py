@@ -8,6 +8,7 @@ from .imprenta import *
 from .mincit import *
 from .minhacienda import *
 from .pdf import *
+from .registraduria import *
 from .registries import *
 from .rss import *
 from .senado import *
@@ -18,6 +19,15 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
     if source.id == "dian_proyectos_normas":
         return _fetch_dian_regulatory_projects_api(source, client, fetched_at)
+    if source.id == "registraduria_noticias":
+        return _fetch_registraduria_noticias(
+            source,
+            client,
+            fetched_at,
+            max_items=source.max_items
+            if source.max_items is not None
+            else REGISTRADURIA_NEWS_PARSE_LIMIT,
+        )
     if source.id == "minhacienda_tes_reports" and "irc.gov.co" in source.url:
         return _fetch_minhacienda_tes_reports_with_browser(
             source,

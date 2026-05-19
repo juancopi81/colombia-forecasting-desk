@@ -141,7 +141,8 @@ Ready to flip `enabled: true` (and remove or keep `onboarding_status`) when:
 - `notes` describes any quirks worth knowing for the next contributor.
 
 For sources that connect but never produce rankable content (Cámara agenda
-hub, Corte Constitucional SPA, Registraduría Cloudflare gate), keep
+hub, Corte Constitucional SPA, Registraduría Cloudflare gate when a fresh
+browser session is still challenged), keep
 `onboarding_status: needs_parser` and document the underlying issue in
 `notes`. The brief's source-health table will surface them every run, so
 the gap stays visible without crashing the pipeline.
@@ -209,6 +210,13 @@ Current examples are split by family under
   `banrep_junta_comunicados`; use only after direct HTTP returns a bot-block
   page, then feed the rendered listing and minutas detail HTML into the same
   BanRep parsers.
+- `_fetch_registraduria_noticias` — uses Registraduría's official 2026 news
+  archive, tries direct official HTML first, then falls back to a normal
+  Playwright render when Cloudflare blocks shell fetches. It emits one row per
+  `li.newsmodule` news card with comunicado number, title, date, excerpt, and
+  article URL, and enriches the first few rows with article detail text when
+  available. Keep source health fail-closed if fresh browser sessions are still
+  challenged.
 - `legal_identity.parse_legal_act_records` plus
   `decision_records.link_official_legal_records` — reusable bridge for Diario
   Oficial, SUIN, Gestor Normativo, and MinCIT rows. Use this for official

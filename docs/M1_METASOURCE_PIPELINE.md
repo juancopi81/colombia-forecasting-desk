@@ -523,6 +523,18 @@ and `source_access=jina_reader_proxy` metadata so M2/M3 can see that the
 evidence came from the official page through a reader proxy, not from direct
 official transport. The parser still fails closed on incomplete rows.
 
+M1.29 adds a guarded browser-backed parser for `registraduria_noticias`. The
+source now uses Registraduría's official 2026 news archive (`/-2026-.html`),
+tries direct official HTML first, and falls back to a normal Playwright render
+when Cloudflare blocks shell fetches. The parser emits one row per news card with
+`content_extraction=registraduria_news_card`, comunicado number, title, date,
+excerpt, and article URL; the browser path also enriches the first few rows
+with official article detail text when available using
+`content_extraction=registraduria_news_article_html`. Live validation should
+still be treated fail-closed: if a fresh browser session remains
+Cloudflare-challenged, the source is a source-health failure, not evidence of no
+Registraduría activity.
+
 ## Indicator Watch
 
 Each run writes:

@@ -59,6 +59,8 @@ BOT_BLOCK_MARKERS = (
     "Access denied",
     "Bot Manager Block",
     "Verifying your browser before proceeding",
+    "challenges.cloudflare.com",
+    "Enable JavaScript and cookies to continue",
 )
 SPA_SHELL_MARKERS = ("<app-root></app-root>", "<app-root>")
 PDF_TEXT_PARSE_LIMIT = 5
@@ -99,6 +101,13 @@ BANREP_MINUTAS_BULLET_LIMIT = 6
 BANREP_MINUTAS_BLOC_CHARS = 1_200
 BANREP_JUNTA_BROWSER_TIMEOUT_MS = 30_000
 BANREP_JUNTA_BROWSER_NETWORK_IDLE_MS = 5_000
+REGISTRADURIA_NEWS_ARCHIVE_URL = "https://www.registraduria.gov.co/-2026-.html"
+REGISTRADURIA_NEWS_PARSE_LIMIT = 12
+REGISTRADURIA_NEWS_DETAIL_PARSE_LIMIT = 3
+REGISTRADURIA_NEWS_BROWSER_TIMEOUT_MS = 45_000
+REGISTRADURIA_NEWS_BROWSER_SELECTOR_TIMEOUT_MS = 25_000
+REGISTRADURIA_NEWS_BROWSER_NETWORK_IDLE_MS = 5_000
+REGISTRADURIA_NEWS_BODY_CHARS = 4_000
 
 NAV_TEXT = {
     "inicio", "contacto", "menu", "menú", "buscar", "ver mas", "ver más",
