@@ -183,10 +183,10 @@ Current examples are split by family under
   PDF and emits one structured registry row per approved zona franca. Rows are
   historical snapshot evidence; `registry_changes` promotes only new or changed
   rows across structured snapshots into fresh M1 decision signals.
-- `_extract_dian_regulatory_project_links` — filters DIAN's normativity
-  landing page down to Agenda Reglamentaria / Proyectos de Normas leads so the
-  source-health report shows a precise parser gap instead of generic navigation
-  noise.
+- `_fetch_dian_regulatory_projects_api` — reads DIAN's official SharePoint
+  `Proyectos de normas` list API and emits one dated regulatory-project row per
+  draft norm, including project PDF URL, description, comment-window dates, and
+  observations/annex links when available.
 - `_enrich_minhacienda_tes_reports` — follows MinHacienda / IRC official COP,
   UVR, and TCO auction-result PDFs and emits parsed TES auction facts only when
   the report exposes the auction date, TES type/currency, total issued, demand,

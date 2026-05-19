@@ -400,8 +400,7 @@ metasources:
     trust_role: regulatory_signal
     parsing_difficulty: medium
     enabled: true
-    onboarding_status: needs_parser
-    notes: "Early signal for tax, customs, and exchange-control changes. M1.19 filters the SharePoint landing down to Agenda Reglamentaria / Proyectos de Normas leads instead of broad navigation, but those leads remain undated parser-feasibility records. A rendered page or structured endpoint is still required before DIAN regulatory proposals can become rankable candidates."
+    notes: "Early signal for tax, customs, and exchange-control changes. M1.25 bypasses the fragile SharePoint landing page and reads DIAN's official `Proyectos de normas` SharePoint list API, including project PDF, description, issue date, comment-window dates, mailbox, observations, and annex links."
 
   - id: minhacienda_proyectos_decreto
     name: MinHacienda — Proyectos de Decreto

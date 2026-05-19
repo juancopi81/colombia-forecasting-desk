@@ -16,6 +16,8 @@ from .socrata import *
 
 def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
+    if source.id == "dian_proyectos_normas":
+        return _fetch_dian_regulatory_projects_api(source, client, fetched_at)
     if source.id == "minhacienda_tes_reports" and "irc.gov.co" in source.url:
         return _fetch_minhacienda_tes_reports_with_browser(
             source,
@@ -92,12 +94,6 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             )
     if source.id == "corte_constitucional_comunicados":
         items = _extract_corte_comunicados(
-            response.text, str(response.url), source, fetched_at
-        )
-        if items:
-            return items
-    if source.id == "dian_proyectos_normas":
-        items = _extract_dian_regulatory_project_links(
             response.text, str(response.url), source, fetched_at
         )
         if items:

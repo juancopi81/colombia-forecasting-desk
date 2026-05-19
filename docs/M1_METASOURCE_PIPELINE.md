@@ -402,11 +402,7 @@ M1.19 adds the deterministic decision-record bridge. Raw metadata now survives
 cleaning and clustering, and `decision_records.link_legislative_followups`
 attaches parsed Gaceta follow-up matches to clean Senado agenda records when
 project number, year, and chamber agree. M1 candidates then expose those
-concrete follow-up sources instead of only generic search hints. DIAN regulatory
-projects also get a source-specific scout extractor: the landing page is
-filtered down to Agenda Reglamentaria / Proyectos de Normas leads instead of
-broad site navigation, but those rows remain undated parser-feasibility records
-until a rendered or structured endpoint exposes project-level status.
+concrete follow-up sources instead of only generic search hints.
 
 M1.20 pivots the legislative source hierarchy from PDF-first parsing to official
 registry-first parsing. `senado_leyes_registry` posts Senado's public project
@@ -490,6 +486,13 @@ a data series. The wired official child series are exactly `15272` (TES pesos
 guessed TES series ids. A parsed TES auction with max cutoff rate at or above
 14.0% fires a `tes_funding_cost` M2 seed resolved against the next official
 MinHacienda / IRC auction-result PDF for the same auction type.
+
+M1.25 replaces the DIAN regulatory-project scout link parser with DIAN's
+official SharePoint list API for `Proyectos de normas`. The source now emits one
+dated project row per draft norm, including project PDF URL, description, norm
+type, issue date, comment-window start/end, mailbox, observations link, and annex
+link when DIAN exposes those fields. That makes DIAN regulatory proposals
+project-level M1 evidence instead of undated parser-feasibility links.
 
 ## Indicator Watch
 
