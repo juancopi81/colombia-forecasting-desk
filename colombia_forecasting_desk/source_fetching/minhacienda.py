@@ -385,6 +385,193 @@ def _minhacienda_tes_pdf_url(url: str, *, title: str = "", base_url: str = "") -
     return url
 
 
+def _clean_minhacienda_decree_title(text: str) -> str:
+    title = normalize_whitespace(text)
+    return re.sub(r"^[^\w]+", "", title).strip()
+
+
+def _is_minhacienda_decree_pdf_href(href: str) -> bool:
+    lowered = href.lower()
+    return "/documents/" in lowered and ".pdf" in lowered
+
+
+def _minhacienda_decree_container(link: Any) -> Any:
+    for candidate in link.parents:
+        if not getattr(candidate, "get_text", None):
+            continue
+        text = normalize_whitespace(candidate.get_text(" ", strip=True))
+        if not text:
+            continue
+        project_links = [
+            anchor
+            for anchor in candidate.find_all("a", href=True)
+            if _is_minhacienda_decree_pdf_href(anchor["href"])
+        ]
+        if len(project_links) > 1:
+            continue
+        folded = fold_accents(text.lower())
+        has_comment_context = (
+            "comentar proyecto" in folded
+            or "proyecto de decreto para comentarios" in folded
+        )
+        if has_comment_context and _parse_date_text_to_iso(text[:DATE_CONTEXT_CHARS]):
+            return candidate
+    return link.find_parent(["tr", "li", "article", "div", "section"]) or link
+
+
+def _minhacienda_decree_text_parts(container: Any, title: str) -> tuple[str, str]:
+    parts = [
+        normalize_whitespace(paragraph.get_text(" ", strip=True))
+        for paragraph in container.find_all("p")
+    ]
+    parts = [part for part in parts if part]
+    if not parts:
+        block_text = normalize_whitespace(container.get_text(" ", strip=True))
+        for value in (title, "Comentar proyecto"):
+            block_text = normalize_whitespace(block_text.replace(value, " "))
+        parts = [block_text] if block_text else []
+    description_text = normalize_whitespace(" ".join(parts))
+    comment_parts = [
+        part
+        for part in parts
+        if "comentario" in fold_accents(part.lower())
+        or "comentarios" in fold_accents(part.lower())
+    ]
+    comment_window_text = normalize_whitespace(" ".join(comment_parts))
+    return description_text, comment_window_text
+
+
+def _minhacienda_decree_comment_form_url(container: Any, base_url: str) -> str | None:
+    for link in container.find_all("a", href=True):
+        link_text = normalize_whitespace(link.get_text(" ", strip=True))
+        folded_text = fold_accents(link_text.lower())
+        href = link["href"].strip()
+        if "comentar proyecto" in folded_text or "/web/forms/shared/-/form/" in href:
+            return urljoin(base_url, href)
+    return None
+
+
+def _minhacienda_decree_raw_text(
+    *,
+    title: str,
+    published_at: str | None,
+    description_text: str,
+    comment_window_text: str,
+    project_pdf_url: str | None,
+    comment_form_url: str | None,
+) -> str:
+    parts = [title]
+    if published_at:
+        parts.append(f"Fecha de publicacion: {published_at[:10]}.")
+    if description_text:
+        parts.append(description_text)
+    if comment_window_text and comment_window_text not in description_text:
+        parts.append(f"Ventana de comentarios: {comment_window_text}")
+    if project_pdf_url:
+        parts.append(f"Proyecto PDF: {project_pdf_url}")
+    if comment_form_url:
+        parts.append(f"Formulario de comentarios: {comment_form_url}")
+    return normalize_whitespace(" ".join(parts))
+
+
+def _extract_minhacienda_decree_projects(
+    html_text: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+    *,
+    max_items: int | None = None,
+) -> list[RawItem]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    container = soup.find("main") or soup.body or soup
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    limit = max_items if max_items is not None else (
+        source.max_items or MINHACIENDA_DECREE_PARSE_LIMIT
+    )
+    if limit <= 0:
+        return []
+    for link in container.find_all("a", href=True):
+        href = link["href"].strip()
+        if not _is_minhacienda_decree_pdf_href(href):
+            continue
+        project_pdf_url = urljoin(base_url, href)
+        title = _clean_minhacienda_decree_title(link.get_text(" ", strip=True))
+        if not title:
+            continue
+        canon = canonicalize_url(project_pdf_url)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        project = _minhacienda_decree_container(link)
+        block_text = normalize_whitespace(project.get_text(" ", strip=True))
+        published_at = _parse_date_text_to_iso(block_text[:DATE_CONTEXT_CHARS])
+        description_text, comment_window_text = _minhacienda_decree_text_parts(
+            project,
+            title,
+        )
+        comment_form_url = _minhacienda_decree_comment_form_url(project, base_url)
+        metadata: dict[str, Any] = {
+            "extraction": "minhacienda_decree_project_index",
+            "source_page_url": base_url,
+            "project_pdf_url": project_pdf_url,
+        }
+        if description_text:
+            metadata["description"] = description_text
+        if comment_window_text:
+            metadata["comment_window_text"] = comment_window_text
+        if comment_form_url:
+            metadata["comment_form_url"] = comment_form_url
+        if published_at:
+            metadata["project_date"] = published_at
+
+        missing_fields = [
+            name
+            for name, value in (
+                ("title", title),
+                ("date", published_at),
+                ("description_or_comment_window_text", description_text),
+                ("project_pdf_url", project_pdf_url),
+                ("comment_form_url", comment_form_url),
+            )
+            if not value
+        ]
+        if not missing_fields:
+            metadata["content_extraction"] = "minhacienda_decree_project_browser"
+        else:
+            metadata["content_extraction_error"] = (
+                "missing required decree project fields: "
+                + ", ".join(missing_fields)
+            )
+
+        items.append(
+            RawItem(
+                id=_make_id(source.id, project_pdf_url, title),
+                source_id=source.id,
+                source_name=source.name,
+                source_type=source.type,
+                url=project_pdf_url,
+                title=title,
+                fetched_at=fetched_at,
+                published_at=published_at,
+                raw_text=_minhacienda_decree_raw_text(
+                    title=title,
+                    published_at=published_at,
+                    description_text=description_text,
+                    comment_window_text=comment_window_text,
+                    project_pdf_url=project_pdf_url,
+                    comment_form_url=comment_form_url,
+                )
+                or block_text
+                or title,
+                metadata=metadata,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def _minhacienda_tes_item_with_facts(
     item: RawItem,
     facts: dict[str, Any],
@@ -716,6 +903,68 @@ def _fetch_minhacienda_tes_reports_with_browser(
         finally:
             browser.close()
     return enriched
+
+
+def _fetch_minhacienda_decree_projects_with_browser(
+    source: Metasource,
+    fetched_at: str,
+    *,
+    max_items: int = MINHACIENDA_DECREE_PARSE_LIMIT,
+) -> list[RawItem]:
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise DynamicShellError(
+            "MinHacienda decree projects are Radware-protected and require "
+            "the optional Playwright browser fetch path."
+        ) from exc
+
+    with sync_playwright() as playwright:
+        launch_kwargs: dict[str, Any] = {
+            "headless": True,
+            "args": ["--disable-blink-features=AutomationControlled"],
+        }
+        chrome_path = _chrome_executable_path()
+        if chrome_path:
+            launch_kwargs["executable_path"] = chrome_path
+        browser = playwright.chromium.launch(**launch_kwargs)
+        try:
+            context = browser.new_context(
+                locale="es-CO",
+                user_agent=BROWSER_USER_AGENT,
+            )
+            page = context.new_page()
+            page.goto(
+                source.url,
+                wait_until="domcontentloaded",
+                timeout=MINHACIENDA_DECREE_BROWSER_TIMEOUT_MS,
+            )
+            try:
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=MINHACIENDA_DECREE_BROWSER_NETWORK_IDLE_MS,
+                )
+            except PlaywrightTimeoutError:
+                pass
+            html_text = page.content()
+            marker = _detect_bot_block(html_text)
+            if marker:
+                raise BotBlockError(f"browser fetch still bot-blocked: {marker}")
+            items = _extract_minhacienda_decree_projects(
+                html_text,
+                page.url,
+                source,
+                fetched_at,
+                max_items=max_items,
+            )
+            if not items:
+                raise DynamicShellError(
+                    "browser rendered no MinHacienda decree project rows"
+                )
+            return items
+        finally:
+            browser.close()
 
 
 

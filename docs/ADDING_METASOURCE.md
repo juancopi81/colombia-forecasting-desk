@@ -194,6 +194,13 @@ Current examples are split by family under
   amounts. Numeric/table parsing uses `pdfplumber` when installed and fails
   closed to link-level evidence if the PDF cannot be read. The source uses a
   Playwright browser path because IRC returns 403 to simple shell fetches.
+- `_fetch_minhacienda_decree_projects_with_browser` — source-specific
+  Playwright fallback for `minhacienda_proyectos_decreto`; use only after
+  direct HTTP returns a bot-block page. It emits draft-decree project rows as
+  parsed content only when title, date, description/comment-window text, project
+  PDF URL, and comment form URL are present; otherwise rows stay link-level with
+  `content_extraction_error`. The parser is intentionally fail-closed because
+  the local CLI browser path may still be challenged by Radware.
 - `_enrich_banrep_minutas_html` — keeps BanRep Junta/minutas under the existing
   `banrep_junta_comunicados` source, follows recent minutas detail pages, and
   adds parsed monetary-policy body metadata only when the official HTML exposes

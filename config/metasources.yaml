@@ -415,7 +415,7 @@ metasources:
     parsing_difficulty: hard
     enabled: true
     onboarding_status: needs_parser
-    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. Sandbox: 302 redirect to validate.perfdrive.com (Radware bot manager) then back to a 200 challenge page — bot detector did not catch it because the final response was 200. Needs both a stronger bot-block heuristic and a real-browser fetch path."
+    notes: "Publishes draft decrees with comment windows. High value for debt, budget, pensions, and financial-market questions before the decree is signed. M1.27 adds a source-specific parser for the rendered 2026 page and marks rows parsed only when title, date, description/comment-window text, project PDF URL, and comment form URL are all present. Local live smoke still hits Radware even through Playwright, so this source remains fail-closed until a reliable access path is available."
 
   - id: minhacienda_tes_reports
     name: MinHacienda / IRC — Subastas TES 2026

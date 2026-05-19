@@ -502,6 +502,18 @@ on recent minutas detail pages. This keeps normal runs fast while preventing
 bot-block pages from turning BanRep policy/minutas coverage into a source
 failure.
 
+M1.27 adds a MinHacienda decree-project browser parser for
+`minhacienda_proyectos_decreto`. The source still tries direct HTTP first, but
+if the 2026 page returns Radware the fetcher renders the official page with
+Playwright and emits one row per draft-decree project. A row is treated as
+parsed content only when the parser has the draft title, publication date,
+description/comment-window text, project PDF URL, and comment form URL. If any
+required field is missing, the row remains link-level with
+`content_extraction_error` so source health cannot look fully content-ready.
+As of the M1.27 live smoke, the local CLI browser path is still challenged by
+Radware, so this parser is ready for rendered HTML but the source remains
+fail-closed until the access path is reliable.
+
 ## Indicator Watch
 
 Each run writes:

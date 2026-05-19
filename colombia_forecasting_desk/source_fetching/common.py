@@ -74,6 +74,9 @@ MINHACIENDA_TES_IRC_PAGES = (
     "https://www.irc.gov.co/420",  # Subastas TES Corto Plazo
     "https://www.irc.gov.co/subastas-largo-plazo-uvr-2026",
 )
+MINHACIENDA_DECREE_PARSE_LIMIT = 30
+MINHACIENDA_DECREE_BROWSER_TIMEOUT_MS = 30_000
+MINHACIENDA_DECREE_BROWSER_NETWORK_IDLE_MS = 5_000
 
 
 def _minhacienda_tes_title_slug(title: str) -> str | None:
