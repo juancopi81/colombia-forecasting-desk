@@ -40,7 +40,7 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    notes: "Primary source for monetary policy decisions. With browser-like headers (M1.2) the page serves dated minutas + Junta Directiva announcements; without them BanRep returns a 1.3KB Radware block page."
+    notes: "Primary source for monetary policy decisions. Direct HTTP remains the first path, but M1.26 falls back to Playwright when BanRep returns Radware Bot Manager so the existing Junta/minutas parser still receives official rendered HTML."
 
   - id: dane_rss
     name: DANE — RSS Noticias

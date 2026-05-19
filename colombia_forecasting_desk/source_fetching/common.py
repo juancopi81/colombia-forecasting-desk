@@ -34,6 +34,11 @@ USER_AGENT = (
     "Chrome/126.0.0.0 Safari/537.36 "
     "colombia-forecasting-desk/0.1"
 )
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
 DEFAULT_HEADERS = {
     "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -85,6 +90,8 @@ BANREP_MINUTAS_PARSE_LIMIT = 2
 BANREP_MINUTAS_BODY_CHARS = 4_000
 BANREP_MINUTAS_BULLET_LIMIT = 6
 BANREP_MINUTAS_BLOC_CHARS = 1_200
+BANREP_JUNTA_BROWSER_TIMEOUT_MS = 30_000
+BANREP_JUNTA_BROWSER_NETWORK_IDLE_MS = 5_000
 
 NAV_TEXT = {
     "inicio", "contacto", "menu", "menú", "buscar", "ver mas", "ver más",
@@ -308,6 +315,22 @@ def _detect_spa_shell(text: str) -> bool:
         # The shell itself is small; large pages with <app-root> are probably real.
         return len(text) < 20_000
     return False
+
+
+def _chrome_executable_path() -> str | None:
+    env_path = os.environ.get("COLOMBIA_FORECASTING_CHROME")
+    if env_path and Path(env_path).exists():
+        return env_path
+    for candidate in (
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+    ):
+        if Path(candidate).exists():
+            return candidate
+    return None
 
 
 

@@ -629,8 +629,10 @@ def _enrich_banrep_minutas_html(
             response = _http_get(client, item.url)
             marker = _detect_bot_block(response.text)
             if marker:
-                enriched.append(item)
-                continue
+                return _enrich_banrep_minutas_html_with_browser_session(
+                    items,
+                    max_items=max_items,
+                )
             metadata = _extract_banrep_minutas_metadata(
                 response.text,
                 str(response.url),
@@ -662,6 +664,148 @@ def _enrich_banrep_minutas_html(
             )
         )
     return enriched
+
+
+def _banrep_browser_page() -> Any:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise DynamicShellError(
+            "BanRep Junta is Radware-protected and requires the optional "
+            "Playwright browser fetch path."
+        ) from exc
+    playwright = sync_playwright().start()
+    launch_kwargs: dict[str, Any] = {
+        "headless": True,
+        "args": ["--disable-blink-features=AutomationControlled"],
+    }
+    chrome_path = _chrome_executable_path()
+    if chrome_path:
+        launch_kwargs["executable_path"] = chrome_path
+    try:
+        browser = playwright.chromium.launch(**launch_kwargs)
+        context = browser.new_context(locale="es-CO", user_agent=BROWSER_USER_AGENT)
+    except Exception:
+        playwright.stop()
+        raise
+    page = context.new_page()
+    return playwright, browser, page
+
+
+def _wait_for_browser_network_idle(page: Any) -> None:
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    except ImportError:
+        return
+    try:
+        page.wait_for_load_state(
+            "networkidle",
+            timeout=BANREP_JUNTA_BROWSER_NETWORK_IDLE_MS,
+        )
+    except PlaywrightTimeoutError:
+        pass
+
+
+def _enrich_banrep_minutas_html_with_browser(
+    items: list[RawItem],
+    page: Any,
+    max_items: int = BANREP_MINUTAS_PARSE_LIMIT,
+) -> list[RawItem]:
+    enriched: list[RawItem] = []
+    parsed_count = 0
+    for item in items:
+        if parsed_count >= max_items or not _is_banrep_minutas_item(item):
+            enriched.append(item)
+            continue
+        try:
+            page.goto(
+                item.url,
+                wait_until="domcontentloaded",
+                timeout=BANREP_JUNTA_BROWSER_TIMEOUT_MS,
+            )
+            _wait_for_browser_network_idle(page)
+            html_text = page.content()
+            marker = _detect_bot_block(html_text)
+            if marker:
+                enriched.append(item)
+                continue
+            metadata = _extract_banrep_minutas_metadata(html_text, page.url)
+        except Exception:
+            enriched.append(item)
+            continue
+        if not metadata:
+            enriched.append(item)
+            continue
+        parsed_count += 1
+        merged_metadata = dict(item.metadata)
+        merged_metadata.update(metadata)
+        raw_text = normalize_whitespace(
+            f"{item.raw_text} BanRep minutas detail: {metadata['body_excerpt']}"
+        )
+        enriched.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=item.published_at or metadata.get("publication_date"),
+                raw_text=raw_text,
+                metadata=merged_metadata,
+            )
+        )
+    return enriched
+
+
+def _enrich_banrep_minutas_html_with_browser_session(
+    items: list[RawItem],
+    max_items: int = BANREP_MINUTAS_PARSE_LIMIT,
+) -> list[RawItem]:
+    try:
+        playwright, browser, page = _banrep_browser_page()
+    except Exception:
+        return items
+    try:
+        return _enrich_banrep_minutas_html_with_browser(
+            items,
+            page,
+            max_items=max_items,
+        )
+    finally:
+        browser.close()
+        playwright.stop()
+
+
+def _fetch_banrep_junta_with_browser(
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    playwright, browser, page = _banrep_browser_page()
+    try:
+        page.goto(
+            source.url,
+            wait_until="domcontentloaded",
+            timeout=BANREP_JUNTA_BROWSER_TIMEOUT_MS,
+        )
+        _wait_for_browser_network_idle(page)
+        html_text = page.content()
+        marker = _detect_bot_block(html_text)
+        if marker:
+            raise BotBlockError(f"browser fetch still bot-blocked: {marker}")
+        items = _extract_dated_anchors(
+            html_text,
+            page.url,
+            source,
+            fetched_at,
+            "anchor",
+            require_date=False,
+        )
+        return _enrich_banrep_minutas_html_with_browser(items, page)
+    finally:
+        browser.close()
+        playwright.stop()
 
 
 def _enrich_dane_icoced_xlsx(

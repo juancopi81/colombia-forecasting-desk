@@ -585,22 +585,6 @@ def _enrich_minhacienda_tes_reports(
     return enriched
 
 
-def _chrome_executable_path() -> str | None:
-    env_path = os.environ.get("COLOMBIA_FORECASTING_CHROME")
-    if env_path and Path(env_path).exists():
-        return env_path
-    for candidate in (
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium",
-        "/usr/bin/chromium-browser",
-    ):
-        if Path(candidate).exists():
-            return candidate
-    return None
-
-
 def _fetch_minhacienda_tes_reports_with_browser(
     source: Metasource,
     fetched_at: str,

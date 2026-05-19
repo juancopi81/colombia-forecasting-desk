@@ -39,6 +39,10 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             )
             if browser_items:
                 return browser_items
+        if source.id == "banrep_junta_comunicados":
+            browser_items = _fetch_banrep_junta_with_browser(source, fetched_at)
+            if browser_items:
+                return browser_items
         raise BotBlockError(f"bot block detected: {marker}")
     if _detect_spa_shell(response.text):
         raise DynamicShellError(

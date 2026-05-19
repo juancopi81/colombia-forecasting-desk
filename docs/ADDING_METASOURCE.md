@@ -198,6 +198,10 @@ Current examples are split by family under
   `banrep_junta_comunicados` source, follows recent minutas detail pages, and
   adds parsed monetary-policy body metadata only when the official HTML exposes
   useful decision, vote, reasoning, or attachment context.
+- `_fetch_banrep_junta_with_browser` — source-specific Playwright fallback for
+  `banrep_junta_comunicados`; use only after direct HTTP returns a bot-block
+  page, then feed the rendered listing and minutas detail HTML into the same
+  BanRep parsers.
 - `legal_identity.parse_legal_act_records` plus
   `decision_records.link_official_legal_records` — reusable bridge for Diario
   Oficial, SUIN, Gestor Normativo, and MinCIT rows. Use this for official

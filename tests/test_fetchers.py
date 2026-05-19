@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import httpx
 
 import colombia_forecasting_desk.fetchers as fetchers
+import colombia_forecasting_desk.source_fetching.dane as dane_fetchers
 import colombia_forecasting_desk.source_fetching.imprenta as imprenta_fetchers
 import colombia_forecasting_desk.source_fetching.minhacienda as minhacienda_fetchers
 from colombia_forecasting_desk.fetchers import (
@@ -16,6 +17,7 @@ from colombia_forecasting_desk.fetchers import (
     SocrataAdapter,
     _enrich_dane_icoced_xlsx,
     _enrich_banrep_minutas_html,
+    _enrich_banrep_minutas_html_with_browser,
     _enrich_diario_oficial_pdfs,
     _enrich_gaceta_pdfs,
     _enrich_mincit_zonas_francas,
@@ -470,6 +472,52 @@ def test_fetch_minhacienda_tes_reports_uses_browser_on_bot_block(
     assert calls == [("minhacienda_tes_reports", 1)]
 
 
+def test_fetch_banrep_junta_uses_browser_on_bot_block(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="banrep_junta_comunicados",
+        name="BanRep Junta",
+        type="official_updates",
+        url="https://www.banrep.gov.co/es/comunicados-junta",
+        fetch_method="html",
+    )
+    browser_item = RawItem(
+        id="banrep-browser-item",
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url="https://www.banrep.gov.co/es/minutas",
+        title="Minutas BanRep: decisión de política monetaria",
+        fetched_at="2026-05-19T00:00:00Z",
+        published_at="2026-05-06T00:00:00Z",
+        raw_text="Official BanRep minutas.",
+        metadata={"content_extraction": "banrep_minutas_html"},
+    )
+    calls: list[str] = []
+
+    def fake_browser_fetch(source_arg, fetched_at):
+        calls.append(source_arg.id)
+        return [browser_item]
+
+    monkeypatch.setattr(
+        fetchers,
+        "_fetch_banrep_junta_with_browser",
+        fake_browser_fetch,
+    )
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text="<html>Radware Bot Manager</html>")
+    )
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert items == [browser_item]
+    assert calls == ["banrep_junta_comunicados"]
+
+
 def test_fetch_senado_leyes_registry_parses_search_and_detail(sample_source) -> None:
     source = replace(
         sample_source,
@@ -760,6 +808,14 @@ class _FakeBanrepMinutasClient:
         raise httpx.TransportError("detail unavailable")
 
 
+class _FakeBanrepBotBlockClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        return _FakeBinaryResponse(
+            b"<html><title>Radware Bot Manager</title></html>",
+            url="https://validate.perfdrive.com/challenge",
+        )
+
+
 def test_enrich_banrep_minutas_html_keeps_listing_item_on_detail_failure() -> None:
     minutas = RawItem(
         id="banrep-minutas-1",
@@ -809,6 +865,98 @@ def test_enrich_banrep_minutas_html_keeps_listing_item_on_detail_failure() -> No
     assert enriched[1] == comunicado
     assert enriched[2] == missing
     assert enriched[2].metadata == {"extraction": "anchor"}
+
+
+def test_enrich_banrep_minutas_html_uses_browser_when_detail_is_bot_blocked(
+    monkeypatch,
+) -> None:
+    minutas = RawItem(
+        id="banrep-minutas-1",
+        source_id="banrep_junta_comunicados",
+        source_name="BanRep Junta",
+        source_type="official_updates",
+        url="https://www.banrep.gov.co/es/noticias/minutas-banrep-marzo-2026",
+        title="Minutas BanRep: decisión de política monetaria",
+        fetched_at="2026-04-29T00:00:00Z",
+        published_at="2026-04-07T00:00:00Z",
+        raw_text="07/04/2026 Minutas BanRep",
+        metadata={"extraction": "anchor"},
+    )
+    browser_item = RawItem(
+        id=minutas.id,
+        source_id=minutas.source_id,
+        source_name=minutas.source_name,
+        source_type=minutas.source_type,
+        url=minutas.url,
+        title=minutas.title,
+        fetched_at=minutas.fetched_at,
+        published_at=minutas.published_at,
+        raw_text="Browser parsed BanRep minutas detail.",
+        metadata={"content_extraction": "banrep_minutas_html"},
+    )
+    calls: list[int] = []
+
+    def fake_browser_enrich(items, *, max_items):
+        calls.append(max_items)
+        assert items == [minutas]
+        return [browser_item]
+
+    monkeypatch.setattr(
+        dane_fetchers,
+        "_enrich_banrep_minutas_html_with_browser_session",
+        fake_browser_enrich,
+    )
+
+    enriched = _enrich_banrep_minutas_html(
+        [minutas],
+        _FakeBanrepBotBlockClient(),
+        max_items=1,
+    )
+
+    assert enriched == [browser_item]
+    assert calls == [1]
+
+
+class _FakeBanrepBrowserPage:
+    def __init__(self, html_by_url: dict[str, str]) -> None:
+        self.html_by_url = html_by_url
+        self.url = ""
+
+    def goto(self, url, wait_until=None, timeout=None):  # noqa: ANN001
+        self.url = url
+
+    def wait_for_load_state(self, state, timeout=None):  # noqa: ANN001
+        return None
+
+    def content(self) -> str:
+        return self.html_by_url[self.url]
+
+
+def test_enrich_banrep_minutas_html_with_browser_uses_detail_parser() -> None:
+    minutas_url = "https://www.banrep.gov.co/es/minutas"
+    minutas = RawItem(
+        id="banrep-minutas-browser",
+        source_id="banrep_junta_comunicados",
+        source_name="BanRep Junta",
+        source_type="official_updates",
+        url=minutas_url,
+        title="Minutas BanRep: decisión de política monetaria",
+        fetched_at="2026-05-19T00:00:00Z",
+        published_at="2026-05-06T00:00:00Z",
+        raw_text="06/05/2026 Minutas BanRep",
+        metadata={"extraction": "anchor"},
+    )
+    page = _FakeBanrepBrowserPage({minutas_url: BANREP_MINUTAS_DETAIL_HTML})
+
+    enriched = _enrich_banrep_minutas_html_with_browser(
+        [minutas],
+        page,
+        max_items=1,
+    )
+
+    assert enriched[0].metadata["content_extraction"] == "banrep_minutas_html"
+    assert enriched[0].metadata["vote_result"] == "majority"
+    assert "BanRep minutas detail" in enriched[0].raw_text
 
 
 def test_extract_dane_comunicados_reads_dated_table(sample_source) -> None:

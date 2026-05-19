@@ -494,6 +494,14 @@ type, issue date, comment-window start/end, mailbox, observations link, and anne
 link when DIAN exposes those fields. That makes DIAN regulatory proposals
 project-level M1 evidence instead of undated parser-feasibility links.
 
+M1.26 adds a BanRep Junta browser fallback. `banrep_junta_comunicados` still
+tries direct HTTP first, but if BanRep returns a Radware Bot Manager page the
+fetcher opens the official Junta page with Playwright, passes the rendered HTML
+through the existing dated-anchor parser, and uses the same minutas body parser
+on recent minutas detail pages. This keeps normal runs fast while preventing
+bot-block pages from turning BanRep policy/minutas coverage into a source
+failure.
+
 ## Indicator Watch
 
 Each run writes:
