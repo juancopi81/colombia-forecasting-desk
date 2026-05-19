@@ -371,6 +371,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       audit flags.
 - [x] Generate content-rich `m2_review_packet.json` / `.md` so M2 sees source
       excerpts and structured context before relying on advisory heuristics.
+- [x] Balance `m2_review_packet.json` / `.md` across legislative records,
+      Indicator Watch seeds, event leads, and advisory cross-impact hypotheses
+      so structured bills cannot crowd out macro/fiscal/market review.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

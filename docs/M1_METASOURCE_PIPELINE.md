@@ -538,6 +538,19 @@ Current observed cards:
   thirty-day moves.
 - `ipc_inflation`: DANE IPC headline monthly, year-to-date, annual, and largest
   division movements from the current technical page.
+
+## M2 Review Packet Balance
+
+`m2_review_packet.json` and `.md` are the content-first M2 review surface. The
+packet is deliberately balanced: legislative records are capped, Indicator Watch
+seeds get reserved space, event leads remain visible, and a few cross-impact
+hypotheses can be added when existing metadata suggests that a legal decision
+and an indicator should be reviewed together.
+
+Cross-impact items are advisory only. They are not causal evidence, do not set a
+probability, and should be used only to decide whether an LLM or human reviewer
+should drill back into `indicator_watch.json`, `m1_candidates.json`,
+`legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 - `labor_market`: DANE GEIH national unemployment, participation, occupation,
   and prior-year comparisons from the current labor page.
 - `gdp_growth`: DANE PIB quarterly real GDP annual growth, seasonally adjusted

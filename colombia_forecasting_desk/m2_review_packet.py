@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import hashlib
 from dataclasses import asdict
 from typing import Any
@@ -16,11 +17,56 @@ from .models import (
 
 SCHEMA_VERSION = "m2_review_packet.v1"
 MAX_REVIEW_ITEMS = 24
+MAX_LEGISLATIVE_REVIEW_ITEMS = 10
+MAX_INDICATOR_REVIEW_ITEMS = 6
+MAX_EVENT_REVIEW_ITEMS = 4
+MAX_CROSS_IMPACT_ITEMS = 4
 MAX_EXCERPTS_PER_ITEM = 4
 OFFICIAL_EXCERPT_CHARS = 2600
 MEDIA_EXCERPT_CHARS = 1000
 STRUCTURED_EXCERPT_CHARS = 1800
 NEWS_SOURCE_TYPES = {"news"}
+CROSS_IMPACT_RULES = (
+    {
+        "keywords": (
+            "presupuesto",
+            "pgn",
+            "fiscal",
+            "deuda",
+            "tribut",
+            "hacienda",
+        ),
+        "indicator_ids": ("fiscal_tax_pulse", "policy_rate_ibr"),
+        "reason": (
+            "public-finance legislation can change or reveal fiscal funding "
+            "pressure, TES context, or monetary-policy constraints"
+        ),
+    },
+    {
+        "keywords": (
+            "subsidio",
+            "glp",
+            "gas licuado",
+            "combustible",
+            "energia",
+            "energía",
+            "transporte",
+        ),
+        "indicator_ids": ("fiscal_tax_pulse", "ipc_inflation", "trm_usd_cop"),
+        "reason": (
+            "subsidy or energy-cost legislation can interact with household "
+            "prices, fiscal cost, and imported-cost pressure"
+        ),
+    },
+    {
+        "keywords": ("soat", "tarifa", "seguro", "motocicleta"),
+        "indicator_ids": ("ipc_inflation", "fiscal_tax_pulse"),
+        "reason": (
+            "household transport-cost legislation can interact with inflation "
+            "pressure or public-finance exposure"
+        ),
+    },
+)
 
 
 def build_m2_review_packet(
@@ -49,24 +95,38 @@ def build_m2_review_packet(
         indicator.indicator_id: indicator for indicator in indicator_watch
     }
 
-    review_items: list[dict[str, Any]] = []
-    seen: set[str] = set()
-
-    for ranked in _ranked_review_items(m2_ranked_questions):
-        item = _review_item_from_ranked(
+    ranked_records = _ranked_review_items(m2_ranked_questions)
+    ranked_items = [
+        _review_item_from_ranked(
             ranked,
             legislative_by_id,
             indexes,
         )
-        _append_review_item(review_items, seen, item)
-
+        for ranked in ranked_records
+    ]
+    candidate_items: list[dict[str, Any]] = []
     for candidate in m1_candidates.get("candidates") or []:
         if not isinstance(candidate, dict):
             continue
-        item = _review_item_from_candidate(candidate, indicator_by_id, indexes)
-        _append_review_item(review_items, seen, item)
+        candidate_items.append(
+            _review_item_from_candidate(candidate, indicator_by_id, indexes)
+        )
 
-    review_items = review_items[:MAX_REVIEW_ITEMS]
+    cross_impact_items = _cross_impact_items(
+        ranked_records,
+        legislative_by_id,
+        indicator_by_id,
+        indexes,
+    )
+
+    review_items = _balanced_review_items(
+        ranked_items,
+        candidate_items,
+        cross_impact_items,
+    )
+    item_type_counts = Counter(
+        str(item.get("item_type") or "unknown") for item in review_items
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "run_date": run_summary.run_date,
@@ -84,6 +144,11 @@ def build_m2_review_packet(
             "review_instruction": (
                 "Read the excerpts first, then decide whether the heuristic "
                 "over-ranked, under-ranked, or missed the public-interest angle."
+            ),
+            "composition": (
+                "The packet reserves room for legislative records, indicator "
+                "seeds, event leads, and advisory cross-impact hypotheses so "
+                "structured laws do not crowd out macro/fiscal signals."
             ),
         },
         "inputs": {
@@ -104,6 +169,14 @@ def build_m2_review_packet(
                 1 for item in review_items if item.get("heuristic_risk_flags")
             ),
             "source_caveat_count": len(_source_caveats(source_health)),
+            "item_type_counts": dict(sorted(item_type_counts.items())),
+            "quota_policy": {
+                "max_total": MAX_REVIEW_ITEMS,
+                "max_legislative_ranked_records": MAX_LEGISLATIVE_REVIEW_ITEMS,
+                "max_indicator_seeds": MAX_INDICATOR_REVIEW_ITEMS,
+                "max_event_leads": MAX_EVENT_REVIEW_ITEMS,
+                "max_cross_impact_hypotheses": MAX_CROSS_IMPACT_ITEMS,
+            },
         },
         "source_caveats": _source_caveats(source_health),
         "review_items": review_items,
@@ -135,6 +208,12 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         f"- Source caveats: {summary.get('source_caveat_count', 0)}",
         "",
     ]
+    item_type_counts = summary.get("item_type_counts")
+    if isinstance(item_type_counts, dict) and item_type_counts:
+        lines.extend(["Composition:", ""])
+        for item_type, count in sorted(item_type_counts.items()):
+            lines.append(f"- `{item_type}`: {count}")
+        lines.append("")
     caveats = packet.get("source_caveats") or []
     if caveats:
         lines.extend(["## Source Caveats", ""])
@@ -223,6 +302,47 @@ def _ranked_review_items(
     return _unique_ranked(selected)
 
 
+def _balanced_review_items(
+    ranked_items: list[dict[str, Any]],
+    candidate_items: list[dict[str, Any]],
+    cross_impact_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build a compact but balanced queue for human/LLM review."""
+    review_items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    indicator_items = [
+        item for item in candidate_items if item.get("item_type") == "indicator_seed"
+    ]
+    event_items = [
+        item
+        for item in candidate_items
+        if item.get("item_type") not in {"indicator_seed", "legislative_bill"}
+    ]
+
+    for group, limit in (
+        (ranked_items, MAX_LEGISLATIVE_REVIEW_ITEMS),
+        (indicator_items, MAX_INDICATOR_REVIEW_ITEMS),
+        (event_items, MAX_EVENT_REVIEW_ITEMS),
+        (cross_impact_items, MAX_CROSS_IMPACT_ITEMS),
+    ):
+        added = 0
+        for item in group:
+            if added >= limit:
+                break
+            before = len(review_items)
+            _append_review_item(review_items, seen, item)
+            if len(review_items) > before:
+                added += 1
+
+    for item in [*candidate_items, *cross_impact_items]:
+        if len(review_items) >= MAX_REVIEW_ITEMS:
+            break
+        _append_review_item(review_items, seen, item)
+
+    return review_items[:MAX_REVIEW_ITEMS]
+
+
 def _review_item_from_ranked(
     ranked: dict[str, Any],
     legislative_by_id: dict[str, dict[str, Any]],
@@ -259,6 +379,22 @@ def _review_item_from_ranked(
         "source_ids": list(ranked.get("source_ids") or []),
         "source_urls": _unique_preserve_order(urls),
         "source_excerpts": excerpts,
+        "traceability": _traceability(
+            [
+                {
+                    "artifact": "m2_ranked_questions.json",
+                    "key": "rank_id",
+                    "value": str(ranked.get("rank_id") or ""),
+                },
+                {
+                    "artifact": "legislative_reconciler.json",
+                    "key": "canonical_bill_id",
+                    "value": canonical_id,
+                },
+            ],
+            excerpts,
+            urls,
+        ),
         "structured_context": {
             "ranked_record": _compact_dict(ranked),
             "legislative_reconciler_record": _compact_dict(record),
@@ -288,6 +424,29 @@ def _review_item_from_candidate(
     if indicator is not None:
         structured_context["indicator_observation"] = asdict(indicator)
         excerpts.append(_indicator_excerpt(indicator))
+    artifact_refs = [
+        {
+            "artifact": "m1_candidates.json",
+            "key": "candidate_id",
+            "value": str(candidate.get("candidate_id") or ""),
+        }
+    ]
+    if indicator is not None:
+        artifact_refs.append(
+            {
+                "artifact": "indicator_watch.json",
+                "key": "indicator_id",
+                "value": indicator.indicator_id,
+            }
+        )
+    if item_ids:
+        artifact_refs.append(
+            {
+                "artifact": "raw_items.json / cleaned_items.json",
+                "key": "item_ids",
+                "value": item_ids,
+            }
+        )
     return {
         "packet_item_id": _packet_item_id(
             "candidate",
@@ -312,7 +471,170 @@ def _review_item_from_candidate(
         "source_ids": list(candidate.get("source_ids") or []),
         "source_urls": _unique_preserve_order(urls),
         "source_excerpts": excerpts[:MAX_EXCERPTS_PER_ITEM],
+        "traceability": _traceability(
+            artifact_refs,
+            excerpts[:MAX_EXCERPTS_PER_ITEM],
+            urls,
+        ),
         "structured_context": structured_context,
+    }
+
+
+def _cross_impact_items(
+    ranked_records: list[dict[str, Any]],
+    legislative_by_id: dict[str, dict[str, Any]],
+    indicator_by_id: dict[str, IndicatorObservation],
+    indexes: _EvidenceIndexes,
+) -> list[dict[str, Any]]:
+    observed_indicators = {
+        indicator_id: indicator
+        for indicator_id, indicator in indicator_by_id.items()
+        if indicator.status == "observed"
+    }
+    if not observed_indicators:
+        return []
+
+    items: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+    for ranked in ranked_records:
+        canonical_id = str(ranked.get("canonical_bill_id") or "")
+        if not canonical_id:
+            continue
+        record = legislative_by_id.get(canonical_id, {})
+        text = _cross_impact_search_text(ranked, record)
+        if not text:
+            continue
+        for rule in CROSS_IMPACT_RULES:
+            if not any(keyword in text for keyword in rule["keywords"]):
+                continue
+            for indicator_id in rule["indicator_ids"]:
+                indicator = observed_indicators.get(indicator_id)
+                if indicator is None:
+                    continue
+                pair = (canonical_id, indicator_id)
+                if pair in seen_pairs:
+                    continue
+                seen_pairs.add(pair)
+                items.append(
+                    _review_item_from_cross_impact(
+                        ranked,
+                        record,
+                        indicator,
+                        str(rule["reason"]),
+                        indexes,
+                    )
+                )
+                break
+            break
+        if len(items) >= MAX_CROSS_IMPACT_ITEMS:
+            break
+    return items
+
+
+def _review_item_from_cross_impact(
+    ranked: dict[str, Any],
+    record: dict[str, Any],
+    indicator: IndicatorObservation,
+    reason: str,
+    indexes: _EvidenceIndexes,
+) -> dict[str, Any]:
+    canonical_id = str(ranked.get("canonical_bill_id") or "")
+    title = str(
+        ranked.get("display_title")
+        or record.get("display_title")
+        or canonical_id
+        or "legislative item"
+    )
+    source_evidence = [
+        item for item in record.get("source_evidence") or [] if isinstance(item, dict)
+    ]
+    urls = [str(item.get("url") or "") for item in source_evidence]
+    legislative_excerpts = _source_excerpts(indexes.by_urls(urls), preferred_urls=urls)
+    if not legislative_excerpts and source_evidence:
+        legislative_excerpts = [
+            _summary_excerpt(item)
+            for item in source_evidence[: MAX_EXCERPTS_PER_ITEM - 1]
+        ]
+    excerpts = [
+        *legislative_excerpts[: MAX_EXCERPTS_PER_ITEM - 1],
+        _indicator_excerpt(indicator),
+    ][:MAX_EXCERPTS_PER_ITEM]
+    question_seed = (
+        f"Should {title} be reviewed alongside {indicator.name} because {reason}?"
+    )
+    indicator_correlations = list(indicator.correlations or [])[:2]
+    reasons = [
+        "Advisory cross-impact hypothesis generated from existing metadata.",
+        f"Potential link: {reason}.",
+    ]
+    if indicator_correlations:
+        reasons.append(
+            "Indicator context: " + "; ".join(indicator_correlations)
+        )
+    return {
+        "packet_item_id": _packet_item_id(
+            "cross",
+            f"{canonical_id}:{indicator.indicator_id}:{reason}",
+        ),
+        "item_type": "cross_impact_hypothesis",
+        "origin_id": f"cross:{canonical_id}:{indicator.indicator_id}",
+        "question_seed": question_seed,
+        "recommendation": "review_hypothesis",
+        "bucket": "cross_domain_hypothesis",
+        "heuristic_score": None,
+        "heuristic_reasons": reasons,
+        "heuristic_penalties": [
+            "This is not causal evidence and should not set a probability.",
+            "Needs timing, mechanism, and resolution criteria before M3.",
+        ],
+        "heuristic_risk_flags": ["advisory_cross_impact"],
+        "llm_review_hint": (
+            "Use this only to decide whether the legal item and indicator "
+            "should be researched together; do not treat it as a causal claim."
+        ),
+        "missing_evidence": [
+            "causal mechanism",
+            "timing alignment",
+            "forecastable threshold or resolution source",
+        ],
+        "source_ids": _unique_preserve_order(
+            [
+                *[str(item.get("source_id") or "") for item in source_evidence],
+                indicator.indicator_id,
+            ]
+        ),
+        "source_urls": _unique_preserve_order([*urls, indicator.source_url]),
+        "source_excerpts": excerpts,
+        "traceability": _traceability(
+            [
+                {
+                    "artifact": "m2_ranked_questions.json",
+                    "key": "rank_id",
+                    "value": str(ranked.get("rank_id") or ""),
+                },
+                {
+                    "artifact": "legislative_reconciler.json",
+                    "key": "canonical_bill_id",
+                    "value": canonical_id,
+                },
+                {
+                    "artifact": "indicator_watch.json",
+                    "key": "indicator_id",
+                    "value": indicator.indicator_id,
+                },
+            ],
+            excerpts,
+            [*urls, indicator.source_url],
+        ),
+        "structured_context": {
+            "hypothesis": {
+                "relationship": reason,
+                "review_policy": "advisory_only_not_causal_evidence",
+            },
+            "ranked_record": _compact_dict(ranked),
+            "legislative_reconciler_record": _compact_dict(record),
+            "indicator_observation": asdict(indicator),
+        },
     }
 
 
@@ -342,6 +664,40 @@ def _review_item_keys(item: dict[str, Any]) -> set[str]:
     if question_seed:
         keys.add(f"question:{question_seed}")
     return keys
+
+
+def _cross_impact_search_text(ranked: dict[str, Any], record: dict[str, Any]) -> str:
+    parts = [
+        ranked.get("display_title"),
+        ranked.get("question_seed"),
+        " ".join(str(item) for item in ranked.get("public_interest_signals") or []),
+        record.get("display_title"),
+        record.get("title_normalized"),
+    ]
+    return normalize_whitespace(" ".join(str(part or "") for part in parts)).lower()
+
+
+def _traceability(
+    artifact_refs: list[dict[str, Any]],
+    excerpts: list[dict[str, Any]],
+    source_urls: list[str],
+) -> dict[str, Any]:
+    source_item_ids = _unique_preserve_order(
+        [
+            str(excerpt.get("item_id") or "")
+            for excerpt in excerpts
+            if isinstance(excerpt, dict) and excerpt.get("item_id")
+        ]
+    )
+    return {
+        "artifact_refs": [
+            ref
+            for ref in artifact_refs
+            if isinstance(ref, dict) and str(ref.get("value") or "").strip()
+        ],
+        "source_item_ids": source_item_ids,
+        "source_urls": _unique_preserve_order(source_urls),
+    }
 
 
 def _source_excerpts(
@@ -512,13 +868,15 @@ def _source_caveats(source_health: list[SourceHealth]) -> list[dict[str, str]]:
 
 
 def _render_review_item(index: int, item: dict[str, Any]) -> list[str]:
+    score = item.get("heuristic_score")
+    score_text = "n/a" if score is None else str(score)
     lines = [
         f"### {index}. {item.get('question_seed', item.get('origin_id', ''))}",
         "",
         f"- Type: `{item.get('item_type', '')}`",
         f"- Bucket: `{item.get('bucket', '')}`",
         f"- Recommendation: `{item.get('recommendation', '')}`",
-        f"- Heuristic score: `{item.get('heuristic_score', 'n/a')}`",
+        f"- Heuristic score: `{score_text}`",
         f"- Risk flags: "
         f"{', '.join(item.get('heuristic_risk_flags') or []) or 'none'}",
         f"- LLM review hint: {item.get('llm_review_hint', '')}",
@@ -536,6 +894,11 @@ def _render_review_item(index: int, item: dict[str, Any]) -> list[str]:
         lines.append("Missing evidence:")
         lines.extend(f"- {reason}" for reason in item["missing_evidence"])
         lines.append("")
+    traceability = item.get("traceability")
+    if isinstance(traceability, dict):
+        trace_lines = _render_traceability(traceability)
+        if trace_lines:
+            lines.extend(trace_lines)
     excerpts = [ex for ex in item.get("source_excerpts") or [] if isinstance(ex, dict)]
     if excerpts:
         lines.append("Source excerpts:")
@@ -551,6 +914,36 @@ def _render_review_item(index: int, item: dict[str, Any]) -> list[str]:
                 "",
             ]
         )
+    return lines
+
+
+def _render_traceability(traceability: dict[str, Any]) -> list[str]:
+    lines = ["Original artifacts:"]
+    artifact_refs = [
+        ref for ref in traceability.get("artifact_refs") or [] if isinstance(ref, dict)
+    ]
+    for ref in artifact_refs[:6]:
+        artifact = str(ref.get("artifact") or "")
+        key = str(ref.get("key") or "")
+        value = ref.get("value")
+        if isinstance(value, list):
+            value_text = ", ".join(str(item) for item in value[:8])
+        else:
+            value_text = str(value or "")
+        if artifact and key and value_text:
+            lines.append(f"- `{artifact}`: `{key}={value_text}`")
+    item_ids = traceability.get("source_item_ids") or []
+    if item_ids:
+        lines.append(
+            "- `raw_items.json` / `cleaned_items.json`: "
+            f"`item_ids={', '.join(str(item_id) for item_id in item_ids[:8])}`"
+        )
+    source_urls = traceability.get("source_urls") or []
+    if source_urls:
+        lines.append(f"- source URLs: {len(source_urls)}")
+    if len(lines) == 1:
+        return []
+    lines.append("")
     return lines
 
 

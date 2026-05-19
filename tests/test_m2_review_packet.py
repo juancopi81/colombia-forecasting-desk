@@ -106,6 +106,49 @@ def _ranked_question() -> dict:
     }
 
 
+def _indicator_candidate(
+    indicator_id: str = "ise_activity",
+    question: str = "Will the next DANE ISE release show growth above 3%?",
+) -> dict:
+    return {
+        "candidate_id": f"cand_{indicator_id}",
+        "candidate_type": "indicator_seed",
+        "origin_id": indicator_id,
+        "question_seed": question,
+        "decision_hint": "monitor",
+        "m1_scores": {"forecastability_score": 0.6},
+        "reasons": ["Observed current official indicator."],
+        "noise_reasons": [],
+        "missing_evidence": ["Sector contribution detail."],
+        "source_ids": ["dane_ise"],
+        "evidence": {"item_ids": [], "links": []},
+    }
+
+
+def _indicator_observation(
+    indicator_id: str = "ise_activity",
+    name: str = "DANE ISE",
+    headline: str = "ISE grew 4.0% year over year.",
+) -> IndicatorObservation:
+    return IndicatorObservation(
+        indicator_id=indicator_id,
+        name=name,
+        category="activity",
+        status="observed",
+        frequency="monthly",
+        source_name="DANE",
+        source_url=f"https://example.com/{indicator_id}",
+        period="2026-03",
+        release_date="2026-05-15",
+        headline=headline,
+        values={"annual_growth_pct": 4.0},
+        freshness_status="current",
+        why_it_matters="Activity acceleration can shift fiscal and rates context.",
+        correlations=["activity + tax collection can reveal fiscal pressure"],
+        next_step="Check next release.",
+    )
+
+
 def test_m2_review_packet_packages_source_excerpts_for_llm_review() -> None:
     duplicate_candidate = {
         "candidate_id": "m1c_legislative_560",
@@ -166,35 +209,8 @@ def test_m2_review_packet_packages_source_excerpts_for_llm_review() -> None:
 
 
 def test_m2_review_packet_adds_structured_indicator_context() -> None:
-    indicator = IndicatorObservation(
-        indicator_id="ise_activity",
-        name="DANE ISE",
-        category="activity",
-        status="observed",
-        frequency="monthly",
-        source_name="DANE",
-        source_url="https://example.com/ise",
-        period="2026-03",
-        release_date="2026-05-15",
-        headline="ISE grew 4.0% year over year.",
-        values={"annual_growth_pct": 4.0},
-        freshness_status="current",
-        why_it_matters="Activity acceleration can shift fiscal and rates context.",
-        next_step="Check next ISE release.",
-    )
-    candidate = {
-        "candidate_id": "cand_ise_activity",
-        "candidate_type": "indicator_seed",
-        "origin_id": "ise_activity",
-        "question_seed": "Will the next DANE ISE release show growth above 3%?",
-        "decision_hint": "monitor",
-        "m1_scores": {"forecastability_score": 0.6},
-        "reasons": ["Observed current official indicator."],
-        "noise_reasons": [],
-        "missing_evidence": ["Sector contribution detail."],
-        "source_ids": ["dane_ise"],
-        "evidence": {"item_ids": [], "links": []},
-    }
+    indicator = _indicator_observation()
+    candidate = _indicator_candidate()
 
     packet = build_m2_review_packet(
         _summary(),
@@ -211,3 +227,104 @@ def test_m2_review_packet_adds_structured_indicator_context() -> None:
     assert item["item_type"] == "indicator_seed"
     assert item["source_excerpts"][0]["content_kind"] == "structured_indicator"
     assert "ISE grew 4.0%" in item["source_excerpts"][0]["excerpt"]
+
+
+def test_m2_review_packet_reserves_space_for_indicator_seeds() -> None:
+    ranked_questions = []
+    legislative_records = []
+    for index in range(30):
+        canonical_id = f"bill:2026:camara:{index}"
+        ranked_questions.append(
+            {
+                **_ranked_question(),
+                "rank_id": f"m2q_bill_{index}",
+                "canonical_bill_id": canonical_id,
+                "question_seed": f"Will Proyecto de Ley {index} advance?",
+                "bucket": "watchlist",
+                "overall_score": 0.6,
+                "heuristic_risk_flags": ["possible_false_negative"],
+            }
+        )
+        legislative_records.append(
+            {
+                **_legislative_record(),
+                "canonical_bill_id": canonical_id,
+                "display_title": f"Proyecto de Ley {index}",
+                "source_evidence": [],
+            }
+        )
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [],
+        [],
+        {"candidates": [_indicator_candidate()]},
+        {
+            "ranked_questions": ranked_questions,
+            "heuristic_audit": {"possible_false_negatives": ranked_questions},
+        },
+        legislative_records,
+        [],
+        [_indicator_observation()],
+    )
+
+    item_types = [item["item_type"] for item in packet["review_items"]]
+    assert "indicator_seed" in item_types
+    assert item_types.count("legislative_ranked_record") <= 10
+    assert packet["summary"]["item_type_counts"]["indicator_seed"] == 1
+    rendered = render_m2_review_packet(packet)
+    assert "Composition:" in rendered
+    assert "`indicator_seed`: 1" in rendered
+    assert "`indicator_watch.json`: `indicator_id=ise_activity`" in rendered
+
+
+def test_m2_review_packet_adds_advisory_cross_impact_hypothesis() -> None:
+    ranked = {
+        **_ranked_question(),
+        "rank_id": "m2q_budget",
+        "canonical_bill_id": "bill:2026:camara:550",
+        "display_title": "Proyecto de Ley 550 de 2026 Cámara - adiciona el Presupuesto General de la Nación",
+        "question_seed": "Could the budget-addition bill advance?",
+        "bucket": "watchlist",
+        "public_interest_signals": ["public_finance:fiscal/presupuesto"],
+    }
+    record = {
+        **_legislative_record(),
+        "canonical_bill_id": "bill:2026:camara:550",
+        "display_title": ranked["display_title"],
+        "title_normalized": "adiciona presupuesto general nacion 2026",
+        "source_evidence": [],
+    }
+    indicator = _indicator_observation(
+        indicator_id="fiscal_tax_pulse",
+        name="Fiscal / tax pulse",
+        headline="TES cutoff rates remain elevated.",
+    )
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [],
+        [],
+        {"candidates": []},
+        {"ranked_questions": [ranked], "heuristic_audit": {}},
+        [record],
+        [],
+        [indicator],
+    )
+
+    cross_items = [
+        item
+        for item in packet["review_items"]
+        if item["item_type"] == "cross_impact_hypothesis"
+    ]
+    assert len(cross_items) == 1
+    cross = cross_items[0]
+    assert cross["recommendation"] == "review_hypothesis"
+    assert cross["heuristic_risk_flags"] == ["advisory_cross_impact"]
+    assert "not_causal_evidence" in cross["structured_context"]["hypothesis"][
+        "review_policy"
+    ]
+    assert any(
+        excerpt["content_kind"] == "structured_indicator"
+        for excerpt in cross["source_excerpts"]
+    )
