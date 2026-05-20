@@ -155,3 +155,66 @@ def test_legislative_m2_ranking_penalizes_active_forecast_duplicates(tmp_path) -
     assert item["bucket"] == "watchlist"
     assert item["dimension_scores"]["novelty"] == 0.25
     assert "Likely duplicate of an active forecast-log item." in item["penalties"]
+
+
+def test_public_interest_signals_do_not_match_substrings(tmp_path) -> None:
+    gasto_metadata_record = _ready_record(
+        canonical_bill_id="bill:2026:camara:554",
+        display_title=(
+            "Proyecto de Ley 554 de 2026 Cámara - prohibición del uso de "
+            "recursos públicos por ordenadores del gasto"
+        ),
+        title_normalized=(
+            "prohibicion uso recursos publicos ordenadores del gasto"
+        ),
+        latest_movement={
+            "date": "2026-05-12T00:00:00Z",
+            "action_type": "registry_publication",
+            "label": "Publication or follow-up metadata listed in official registry",
+            "source_id": "camara_proyectos_ley_registry",
+            "source_name": "Cámara de Representantes",
+            "url": "https://example.com/gestoras-sociales",
+        },
+        source_evidence=[
+            {
+                "source_id": "camara_proyectos_ley_registry",
+                "role": "identity_status",
+                "date": "2026-05-12T00:00:00Z",
+                "url": "https://example.com/gestoras-sociales",
+                "summary": "Registry metadata row with project number and active status.",
+            },
+        ],
+    )
+
+    ranking = build_legislative_m2_ranking(
+        [gasto_metadata_record],
+        _summary(),
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    item = ranking["ranked_questions"][0]
+    assert item["public_interest_signals"] == []
+    assert item["dimension_scores"]["public_interest"] == 0.1
+    assert not any(
+        "Public-interest terms detected" in reason
+        for reason in item["score_reasons"]
+    )
+
+
+def test_public_interest_signals_still_match_real_terms(tmp_path) -> None:
+    glp_record = _ready_record(
+        display_title=(
+            "Proyecto de Ley 560 de 2025 Cámara - subsidio al transporte de "
+            "gas GLP para San Andrés"
+        ),
+        title_normalized="subsidio transporte gas glp san andres",
+    )
+    ranking = build_legislative_m2_ranking(
+        [glp_record],
+        _summary(),
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    item = ranking["ranked_questions"][0]
+    assert "household_costs:gas/glp/subsidio" in item["public_interest_signals"]
+    assert "regional_impact:san andres" in item["public_interest_signals"]

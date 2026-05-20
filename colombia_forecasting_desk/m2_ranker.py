@@ -277,14 +277,14 @@ def _public_interest_score(record: dict[str, Any]) -> float:
     matched_groups = 0
     matched_terms = 0
     for terms in PUBLIC_INTEREST_TERMS.values():
-        group_matches = [term for term in terms if term in text]
+        group_matches = _matched_public_interest_terms(text, terms)
         if group_matches:
             matched_groups += 1
             matched_terms += min(len(group_matches), 3)
     score = 0.1 + matched_groups * 0.15 + matched_terms * 0.035
-    if "subsidio" in text or "tarifa" in text:
+    if _term_matches(text, "subsidio") or _term_matches(text, "tarifa"):
         score += 0.1
-    if "san andres" in text:
+    if _term_matches(text, "san andres"):
         score += 0.08
     return _clamp(score)
 
@@ -691,10 +691,37 @@ def _public_interest_signals(record: dict[str, Any]) -> list[str]:
     text = _record_text(record)
     signals: list[str] = []
     for group, terms in PUBLIC_INTEREST_TERMS.items():
-        matches = [term for term in terms if term in text]
+        matches = _matched_public_interest_terms(text, terms)
         if matches:
             signals.append(f"{group}:{'/'.join(matches[:3])}")
     return signals
+
+
+def _matched_public_interest_terms(
+    text: str,
+    terms: tuple[str, ...],
+) -> list[str]:
+    return [term for term in terms if _term_matches(text, term)]
+
+
+def _term_matches(text: str, term: str) -> bool:
+    normalized_term = fold_accents(normalize_whitespace(term).lower())
+    if not normalized_term:
+        return False
+
+    parts = normalized_term.split()
+    if len(parts) > 1:
+        pattern = r"\b" + r"\s+".join(_word_pattern(part) for part in parts) + r"\b"
+    else:
+        pattern = r"\b" + _word_pattern(normalized_term) + r"\b"
+    return re.search(pattern, text) is not None
+
+
+def _word_pattern(word: str) -> str:
+    escaped = re.escape(word)
+    if len(word) <= 5:
+        return escaped
+    return escaped + r"\w*"
 
 
 def _record_text(record: dict[str, Any]) -> str:
