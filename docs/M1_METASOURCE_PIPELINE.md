@@ -687,6 +687,15 @@ The dedupe layer preserves these semantic document fragments for Imprenta row
 types so multiple acts or bill items from the same PDF edition do not collapse
 back into one edition-level row.
 
+The parser metadata contract is intentionally narrow. A parser may mark an item
+as parsed only by setting a stable `metadata.content_extraction` parser id, or
+by setting `metadata.parsed_content` for structured records that already have a
+clear source-specific shape. If a parser reaches a document or source-specific
+record but cannot recover usable content, it must leave `content_extraction`
+unset and write `metadata.content_extraction_error` instead. Source health,
+candidate gates, Indicator Watch seeds, and M2 review packets all rely on that
+fail-closed distinction.
+
 ## Daily Brief Structure
 
 Generate:

@@ -1,3 +1,21 @@
+"""Indicator Watch parsing, fetching, and assembly.
+
+Responsibility inventory:
+- Define the durable indicator card catalog and bundle component defaults.
+- Parse supported official HTML/API/XLSX snippets into observations/components.
+- Fetch live structured indicator inputs with fail-closed source-specific cards.
+- Convert selected RawItem families, such as ICOCED, TES auctions, and SECOP, into
+  indicator observations.
+- Merge observed, extra, and pending cards into the stable ordered watch consumed
+  by the M1 brief, strict acceptance gates, and M2 review packet.
+
+Maintainability blocker:
+Broader module extraction should wait for fixture coverage around live fetch
+orchestration and exact failure-card wording. Those strings feed operator-facing
+briefs and strict gates, so splitting fetch families without that coverage would
+turn an apparent cleanup into a behavior-change risk.
+"""
+
 from __future__ import annotations
 
 import io

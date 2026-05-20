@@ -94,6 +94,9 @@ can be moved behind clearer boundaries without changing the daily command. The
 current split keeps shared helpers in `common.py`, dispatcher functions in
 `core.py`, and source-family logic in modules such as `dane.py`, `imprenta.py`,
 `minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, and `socrata.py`.
+Fetcher parser tests mirror that boundary: generic dispatcher/facade coverage
+stays in `tests/test_fetchers.py`, while source-family parser cases live in
+`tests/test_fetchers_*.py` files.
 
 ## Status
 

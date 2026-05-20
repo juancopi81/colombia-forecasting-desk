@@ -229,7 +229,27 @@ a small source-specific function, move that source family into a dedicated
 module under `colombia_forecasting_desk/source_fetching/` and keep
 `colombia_forecasting_desk.fetchers` compatibility intact.
 
-## 7. Document parsers
+## 7. RawItem parser metadata contract
+
+Source-family parsers communicate parse quality through `RawItem.metadata`.
+Keep this contract stable because `source_health.json`, candidate gates,
+Indicator Watch, and M2 review packets all use it to distinguish parsed
+evidence from link-level coverage:
+
+| Metadata key                 | Contract                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `content_extraction`         | Stable parser id set only after the parser extracts usable record text, title, table data, or structured fields. |
+| `parsed_content`             | Optional boolean for structured records that should count as parsed content; prefer pairing source-family parsers with a named `content_extraction`. |
+| `content_extraction_error`   | Fail-closed reason when a parser attempts a document/source-specific read but cannot extract usable content. Do not set this alongside `content_extraction`. |
+| `source_access`              | Optional access path such as `browser_official_html` or `jina_reader_proxy` when direct official HTTP was not enough. |
+| `source_pdf_url` / URLs      | Preserve the official attachment or record URL so later evidence review can trace the parsed row back to the original document. |
+
+Parser tests should cover both sides of this contract for every touched parser
+path: a successful parsed row with the expected `content_extraction` value, and
+a guarded failure or incomplete row that remains link-level with
+`content_extraction_error`.
+
+## 8. Document parsers
 
 Some sources are only useful after following a PDF, spreadsheet, or attachment
 link. The pipeline now reports this explicitly in `source_health.json`:
@@ -245,10 +265,9 @@ link. The pipeline now reports this explicitly in `source_health.json`:
 | `mixed_with_parsed_content`     | Some raw items were document-parsed and some were link-level.                  |
 | `no_items` / `failed`           | No raw items were available to classify.                                       |
 
-For a document parser to count as parsed content, set either
-`metadata.content_extraction` or `metadata.parsed_content` on the emitted
-`RawItem`. Prefer adding one document parser at a time and keeping the original
-attachment URL in `RawItem.url`.
+For a document parser to count as parsed content, follow the RawItem metadata
+contract above. Prefer adding one document parser at a time and keeping the
+original attachment URL in `RawItem.url`.
 
 For document-heavy sources, the proof loop is:
 
