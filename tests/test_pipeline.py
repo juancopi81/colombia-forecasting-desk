@@ -106,6 +106,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.source_health[0].acceptance_status == "untagged"
     assert result.run_dir == tmp_path / "2026-04-27"
     assert (result.run_dir / "source_health.json").exists()
+    assert (result.run_dir / "indicator_tension_cards.json").exists()
+    assert (result.run_dir / "indicator_tension_cards.md").exists()
     assert (result.run_dir / "m2_handoff.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()
     assert (result.run_dir / "m2_review_packet.json").exists()
@@ -116,6 +118,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "run_manifest.json").exists()
     assert result.m2_ranked_questions["schema_version"] == "m2_legislative_ranking.v1"
     assert result.m2_review_packet["schema_version"] == "m2_review_packet.v1"
+    assert isinstance(result.indicator_tension_cards, list)
     assert result.run_trace["schema_version"] == "run_trace.v1"
     assert result.run_trace["mode"] == "daily"
     assert result.run_trace["metadata"]["strict_requested"] is False
@@ -128,13 +131,20 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     )
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
     assert result.run_manifest["artifact_schemas"]["run_trace.json"] == "run_trace.v1"
+    assert (
+        result.run_manifest["artifact_schemas"]["indicator_tension_cards.json"]
+        == "indicator_tension_cards.v1"
+    )
     assert result.run_manifest["capabilities"]["legislative_m2_ranking"] is True
     assert result.run_manifest["capabilities"]["m2_review_packet"] is True
+    assert result.run_manifest["capabilities"]["indicator_tension_cards"] is True
     manifest_artifacts = {
         artifact["path"]: artifact["exists"]
         for artifact in result.run_manifest["artifacts"]
     }
     assert manifest_artifacts["run_trace.json"] is True
+    assert manifest_artifacts["indicator_tension_cards.json"] is True
+    assert manifest_artifacts["indicator_tension_cards.md"] is True
 
 
 def test_run_keeps_future_calendar_items_inside_planning_window(
@@ -213,6 +223,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert (result.run_dir / "source_health.json").exists()
     assert result.source_health[0].source_id == "test_source"
     assert result.source_health[0].rankable_count == 1
+    assert (result.run_dir / "indicator_tension_cards.json").exists()
+    assert (result.run_dir / "indicator_tension_cards.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()
     assert (result.run_dir / "m2_review_packet.json").exists()
     assert (result.run_dir / "m2_review_packet.md").exists()

@@ -229,6 +229,51 @@ def test_m2_review_packet_adds_structured_indicator_context() -> None:
     assert "ISE grew 4.0%" in item["source_excerpts"][0]["excerpt"]
 
 
+def test_m2_review_packet_surfaces_indicator_tension_cards() -> None:
+    tension_card = {
+        "schema_version": "indicator_tension_cards.v1",
+        "card_id": "tes_policy_spread",
+        "family": "sovereign_funding",
+        "title": "TES-policy spread tension",
+        "severity": "review",
+        "trigger": "TES 5y minus policy rate is +3.23 pp.",
+        "why_it_matters": "Government funding rates are elevated.",
+        "agent_prompt": "Check whether this is fiscal risk or term premium.",
+        "evidence": [
+            {
+                "label": "BanRep policy rate",
+                "value": "11.25%",
+                "source": "Banco de la República",
+            }
+        ],
+        "caveats": ["This is not proof of fiscal stress."],
+        "suggested_questions": [
+            "Will the next COP TES auction clear above 14.0%?"
+        ],
+    }
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [],
+        [],
+        {"candidates": []},
+        {"ranked_questions": [], "heuristic_audit": {}},
+        [],
+        [],
+        [],
+        [tension_card],
+    )
+
+    assert packet["summary"]["indicator_tension_card_count"] == 1
+    assert packet["indicator_tension_cards"] == [tension_card]
+
+    rendered = render_m2_review_packet(packet)
+    assert "## Indicator Tension Cards" in rendered
+    assert "TES-policy spread tension" in rendered
+    assert "Family: `sovereign_funding`" in rendered
+    assert "not conclusions or probability inputs" in rendered
+
+
 def test_m2_review_packet_reserves_space_for_indicator_seeds() -> None:
     ranked_questions = []
     legislative_records = []

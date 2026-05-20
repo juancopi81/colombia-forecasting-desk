@@ -22,6 +22,10 @@ from .indicator_watch import (
     build_indicator_watch,
     fetch_structured_indicator_observations,
 )
+from .indicator_tension_cards import (
+    build_indicator_tension_cards,
+    render_indicator_tension_cards,
+)
 from .legislative_reconciler import build_legislative_reconciliations
 from .m2_review_packet import build_m2_review_packet, render_m2_review_packet
 from .m2_ranker import build_legislative_m2_ranking
@@ -61,6 +65,7 @@ class PipelineResult:
     failures: list[SourceFailure]
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
+    indicator_tension_cards: list[dict]
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
     m2_review_packet: dict
@@ -385,6 +390,9 @@ def run_single_source(
                 1 for indicator in indicator_watch if indicator.status == "observed"
             ),
         )
+    with trace.span("build_indicator_tension_cards") as span:
+        indicator_tension_cards = build_indicator_tension_cards(indicator_watch)
+        span.set_counts(cards=len(indicator_tension_cards))
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -428,6 +436,7 @@ def run_single_source(
             legislative_reconciliations,
             source_health,
             indicator_watch,
+            indicator_tension_cards,
             generated_at=finished_at,
         )
         span.set_counts(
@@ -461,6 +470,14 @@ def run_single_source(
         _write_json(
             run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
         )
+        _write_json(run_dir / "indicator_tension_cards.json", indicator_tension_cards)
+        (run_dir / "indicator_tension_cards.md").write_text(
+            render_indicator_tension_cards(
+                indicator_tension_cards,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
         _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
         _write_json(
@@ -475,7 +492,7 @@ def run_single_source(
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=13)
+        span.set_counts(artifacts_written=15)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -488,6 +505,7 @@ def run_single_source(
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
+        indicator_tension_cards=indicator_tension_cards,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -500,6 +518,7 @@ def run_single_source(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        indicator_tension_cards=indicator_tension_cards,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
@@ -596,6 +615,9 @@ def run(
                 1 for indicator in indicator_watch if indicator.status == "observed"
             ),
         )
+    with trace.span("build_indicator_tension_cards") as span:
+        indicator_tension_cards = build_indicator_tension_cards(indicator_watch)
+        span.set_counts(cards=len(indicator_tension_cards))
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -638,6 +660,7 @@ def run(
             legislative_reconciliations,
             source_health,
             indicator_watch,
+            indicator_tension_cards,
             generated_at=finished_at,
         )
         span.set_counts(
@@ -670,6 +693,14 @@ def run(
         _write_json(run_dir / "clusters.json", [asdict(c) for c in ranked])
         _write_json(
             run_dir / "indicator_watch.json", [asdict(i) for i in indicator_watch]
+        )
+        _write_json(run_dir / "indicator_tension_cards.json", indicator_tension_cards)
+        (run_dir / "indicator_tension_cards.md").write_text(
+            render_indicator_tension_cards(
+                indicator_tension_cards,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
         )
         _write_json(
             run_dir / "source_failures.json", [asdict(f) for f in failures]
@@ -714,7 +745,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=15)
+        span.set_counts(artifacts_written=17)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -727,6 +758,7 @@ def run(
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
+        indicator_tension_cards=indicator_tension_cards,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -739,6 +771,7 @@ def run(
         failures=failures,
         source_health=source_health,
         indicator_watch=indicator_watch,
+        indicator_tension_cards=indicator_tension_cards,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,

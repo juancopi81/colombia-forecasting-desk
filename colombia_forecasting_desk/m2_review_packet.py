@@ -78,6 +78,7 @@ def build_m2_review_packet(
     legislative_reconciliations: list[dict[str, Any]],
     source_health: list[SourceHealth],
     indicator_watch: list[IndicatorObservation],
+    indicator_tension_cards: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
     """Build an evidence-rich packet for LLM/human M2 review.
@@ -119,6 +120,7 @@ def build_m2_review_packet(
         indexes,
     )
 
+    tension_cards = list(indicator_tension_cards or [])
     review_items = _balanced_review_items(
         ranked_items,
         candidate_items,
@@ -147,8 +149,9 @@ def build_m2_review_packet(
             ),
             "composition": (
                 "The packet reserves room for legislative records, indicator "
-                "seeds, event leads, and advisory cross-impact hypotheses so "
-                "structured laws do not crowd out macro/fiscal signals."
+                "seeds, event leads, advisory cross-impact hypotheses, and "
+                "Indicator Tension Cards so structured laws do not crowd out "
+                "macro/fiscal signals."
             ),
         },
         "inputs": {
@@ -158,6 +161,7 @@ def build_m2_review_packet(
             "raw_items_artifact": "raw_items.json",
             "cleaned_items_artifact": "cleaned_items.json",
             "indicator_watch_artifact": "indicator_watch.json",
+            "indicator_tension_cards_artifact": "indicator_tension_cards.json",
             "source_health_artifact": "source_health.json",
         },
         "summary": {
@@ -169,6 +173,7 @@ def build_m2_review_packet(
                 1 for item in review_items if item.get("heuristic_risk_flags")
             ),
             "source_caveat_count": len(_source_caveats(source_health)),
+            "indicator_tension_card_count": len(tension_cards),
             "item_type_counts": dict(sorted(item_type_counts.items())),
             "quota_policy": {
                 "max_total": MAX_REVIEW_ITEMS,
@@ -179,6 +184,7 @@ def build_m2_review_packet(
             },
         },
         "source_caveats": _source_caveats(source_health),
+        "indicator_tension_cards": tension_cards,
         "review_items": review_items,
     }
 
@@ -206,6 +212,7 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         f"- Items with source excerpts: {summary.get('items_with_source_excerpts', 0)}",
         f"- Heuristic challenge items: {summary.get('heuristic_challenge_count', 0)}",
         f"- Source caveats: {summary.get('source_caveat_count', 0)}",
+        f"- Indicator tension cards: {summary.get('indicator_tension_card_count', 0)}",
         "",
     ]
     item_type_counts = summary.get("item_type_counts")
@@ -224,6 +231,21 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
                 f"- `{caveat.get('source_id', '')}`: {caveat.get('reason', '')}"
             )
         lines.append("")
+
+    tension_cards = [
+        card
+        for card in packet.get("indicator_tension_cards") or []
+        if isinstance(card, dict)
+    ]
+    if tension_cards:
+        lines.extend(["## Indicator Tension Cards", ""])
+        lines.append(
+            "Advisory screens that flag official indicator contrasts for review; "
+            "they are not conclusions or probability inputs."
+        )
+        lines.append("")
+        for index, card in enumerate(tension_cards[:5], 1):
+            lines.extend(_render_tension_card(index, card))
 
     lines.extend(["## Review Items", ""])
     for index, item in enumerate(packet.get("review_items") or [], 1):
@@ -865,6 +887,40 @@ def _source_caveats(source_health: list[SourceHealth]) -> list[dict[str, str]]:
                 }
             )
     return caveats
+
+
+def _render_tension_card(index: int, card: dict[str, Any]) -> list[str]:
+    lines = [
+        f"### {index}. {card.get('title', card.get('card_id', 'Indicator tension'))}",
+        "",
+        f"- Card id: `{card.get('card_id', '')}`",
+        f"- Family: `{card.get('family', '')}`",
+        f"- Severity: `{card.get('severity', 'review')}`",
+        f"- Trigger: {card.get('trigger', '')}",
+        f"- Why it matters: {card.get('why_it_matters', '')}",
+        f"- Agent prompt: {card.get('agent_prompt', '')}",
+        "",
+    ]
+    evidence = [item for item in card.get("evidence") or [] if isinstance(item, dict)]
+    if evidence:
+        lines.append("Evidence:")
+        for item in evidence[:8]:
+            label = str(item.get("label") or "")
+            value = str(item.get("value") or "")
+            source = str(item.get("source") or "")
+            lines.append(f"- {label}: {value} ({source})")
+        lines.append("")
+    caveats = [str(caveat) for caveat in card.get("caveats") or []]
+    if caveats:
+        lines.append("Caveats:")
+        lines.extend(f"- {caveat}" for caveat in caveats)
+        lines.append("")
+    questions = [str(question) for question in card.get("suggested_questions") or []]
+    if questions:
+        lines.append("Suggested questions:")
+        lines.extend(f"- {question}" for question in questions)
+        lines.append("")
+    return lines
 
 
 def _render_review_item(index: int, item: dict[str, Any]) -> list[str]:

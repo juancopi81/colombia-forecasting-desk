@@ -76,6 +76,8 @@ runs/YYYY-MM-DD/raw_items.json
 runs/YYYY-MM-DD/cleaned_items.json
 runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/indicator_watch.json
+runs/YYYY-MM-DD/indicator_tension_cards.json
+runs/YYYY-MM-DD/indicator_tension_cards.md
 runs/YYYY-MM-DD/m1_candidates.json
 runs/YYYY-MM-DD/metasource_brief.md
 runs/YYYY-MM-DD/m2_handoff.md
@@ -588,19 +590,6 @@ Current observed cards:
   thirty-day moves.
 - `ipc_inflation`: DANE IPC headline monthly, year-to-date, annual, and largest
   division movements from the current technical page.
-
-## M2 Review Packet Balance
-
-`m2_review_packet.json` and `.md` are the content-first M2 review surface. The
-packet is deliberately balanced: legislative records are capped, Indicator Watch
-seeds get reserved space, event leads remain visible, and a few cross-impact
-hypotheses can be added when existing metadata suggests that a legal decision
-and an indicator should be reviewed together.
-
-Cross-impact items are advisory only. They are not causal evidence, do not set a
-probability, and should be used only to decide whether an LLM or human reviewer
-should drill back into `indicator_watch.json`, `m1_candidates.json`,
-`legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 - `labor_market`: DANE GEIH national unemployment, participation, occupation,
   and prior-year comparisons from the current labor page.
 - `gdp_growth`: DANE PIB quarterly real GDP annual growth, seasonally adjusted
@@ -655,6 +644,54 @@ M1.13 adds deterministic alert rendering for known high-value conditions:
   months behind the run date.
 - `stale_observation`: the card is observed but no longer fresh by its expected
   release cadence.
+
+## Indicator Tension Cards
+
+Each run also writes:
+
+```text
+runs/YYYY-MM-DD/indicator_tension_cards.json
+runs/YYYY-MM-DD/indicator_tension_cards.md
+```
+
+These cards are cheap deterministic screens over observed Indicator Watch
+values. They surface possible official-data tensions for human/LLM inspection,
+but they do not make causal claims, set probabilities, or promote a forecast by
+themselves.
+
+The first rules are intentionally few and explicit:
+
+- `tes_policy_spread`: BanRep TES 5y/10y zero-coupon rates are at least 3.0
+  percentage points above the policy rate.
+- `real_policy_rate`: BanRep policy rate minus DANE annual IPC is at least 4.0
+  percentage points.
+- `real_tax_revenue_squeeze`: DIAN nominal gross tax-revenue annual growth
+  minus DANE annual IPC is at or below 0.0 percentage points.
+- `tes_auction_high_funding_cost`: the latest official COP TES auction maximum
+  cutoff rate is at least 14.0%.
+- `construction_cost_vs_ipc`: DANE ICOCED annual variation is at least 0.5
+  percentage points above the latest annual IPC rate.
+
+Every card includes a stable `family`, the triggering calculation, source
+references, caveats, and suggested questions. The intended consumer is both the
+machine and the human: the JSON gives the agent a compact review prompt, and the
+Markdown lets the editor quickly decide whether the tension is real, stale,
+explainable, or worth turning into M3 research.
+
+## M2 Review Packet Balance
+
+`m2_review_packet.json` and `.md` are the content-first M2 review surface. The
+packet is deliberately balanced: legislative records are capped, Indicator Watch
+seeds get reserved space, event leads remain visible, a few cross-impact
+hypotheses can be added when existing metadata suggests that a legal decision
+and an indicator should be reviewed together, and Indicator Tension Cards are
+embedded when official-data thresholds trigger.
+
+Cross-impact items and Indicator Tension Cards are advisory only. They are not
+causal evidence, do not set a probability, and should be used only to decide
+whether an LLM or human reviewer should drill back into `indicator_watch.json`,
+`indicator_tension_cards.json`, `m1_candidates.json`,
+`legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 
 ## Source Health
 
@@ -863,6 +900,7 @@ Links:
 - [x] Add latest update timestamp.
 - [x] Save `clusters.json`.
 - [x] Save `indicator_watch.json`.
+- [x] Save `indicator_tension_cards.json` and `.md`.
 
 ### Step 6 — Rank clusters
 
@@ -894,6 +932,7 @@ M1 is complete when:
 - [x] `cleaned_items.json` is generated.
 - [x] `clusters.json` is generated.
 - [x] `indicator_watch.json` is generated.
+- [x] `indicator_tension_cards.json` / `.md` are generated.
 - [x] `metasource_brief.md` is generated.
 - [x] `m2_handoff.md` is generated.
 - [x] `m1_candidates.json` is generated.

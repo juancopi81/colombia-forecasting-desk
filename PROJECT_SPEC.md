@@ -158,6 +158,8 @@ colombia-forecasting-desk/
       cleaned_items.json
       clusters.json
       indicator_watch.json
+      indicator_tension_cards.json
+      indicator_tension_cards.md
       legislative_reconciler.json
       m2_ranked_questions.json
       m2_review_packet.json
@@ -377,6 +379,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Balance `m2_review_packet.json` / `.md` across legislative records,
       Indicator Watch seeds, event leads, and advisory cross-impact hypotheses
       so structured bills cannot crowd out macro/fiscal/market review.
+- [x] Generate `indicator_tension_cards.json` / `.md` for advisory official-data
+      tension prompts and surface them in the M2 review packet without treating
+      them as conclusions or probability inputs.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

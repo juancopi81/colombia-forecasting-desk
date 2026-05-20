@@ -22,6 +22,7 @@ def build_run_manifest(
     legislative_reconciliations: list[dict[str, Any]],
     m2_ranked_questions: dict[str, Any],
     m2_review_packet: dict[str, Any],
+    indicator_tension_cards: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Describe which code and artifact contracts produced a run."""
     return {
@@ -45,6 +46,7 @@ def build_run_manifest(
                 m2_ranked_questions.get("ranked_questions") or []
             ),
             "m2_review_items": len(m2_review_packet.get("review_items") or []),
+            "indicator_tension_cards": len(indicator_tension_cards or []),
         },
         "capabilities": {
             "source_health": True,
@@ -54,6 +56,7 @@ def build_run_manifest(
             "legislative_m2_ranking": True,
             "heuristic_audit": bool(m2_ranked_questions.get("heuristic_audit")),
             "m2_review_packet": True,
+            "indicator_tension_cards": True,
         },
         "artifact_schemas": {
             "m1_candidates.json": str(
@@ -67,6 +70,9 @@ def build_run_manifest(
             ),
             "m2_review_packet.json": str(
                 m2_review_packet.get("schema_version") or "unknown"
+            ),
+            "indicator_tension_cards.json": _schema_from_cards(
+                indicator_tension_cards or []
             ),
             "acceptance_report.json": str(
                 acceptance_report.get("schema_version") or "unknown"
@@ -116,12 +122,21 @@ def _schema_from_records(records: list[dict[str, Any]]) -> str:
     return "unknown"
 
 
+def _schema_from_cards(cards: list[dict[str, Any]]) -> str:
+    for card in cards:
+        if isinstance(card, dict) and card.get("schema_version"):
+            return str(card["schema_version"])
+    return "indicator_tension_cards.v1"
+
+
 def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
     expected = [
         "raw_items.json",
         "cleaned_items.json",
         "clusters.json",
         "indicator_watch.json",
+        "indicator_tension_cards.json",
+        "indicator_tension_cards.md",
         "source_failures.json",
         "source_health.json",
         "legislative_reconciler.json",

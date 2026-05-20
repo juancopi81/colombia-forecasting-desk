@@ -19,6 +19,7 @@ DEFAULT_ARTIFACTS = (
     "cleaned_items.json",
     "clusters.json",
     "indicator_watch.json",
+    "indicator_tension_cards.json",
     "source_failures.json",
     "source_health.json",
     "legislative_reconciler.json",
@@ -32,6 +33,7 @@ DEFAULT_ARTIFACTS = (
     "metasource_brief.md",
     "m2_handoff.md",
     "m2_review_packet.md",
+    "indicator_tension_cards.md",
 )
 
 VOLATILE_KEYS = {
