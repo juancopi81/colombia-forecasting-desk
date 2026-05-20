@@ -405,6 +405,9 @@ one clean bill-status record before M2 ranks them.
 
 Goal: produce one human-reviewable forecast draft.
 
+- [ ] Start each evidence pack with an M3 case file that records the selected
+      question, resolution source, criteria, deadline/window, source excerpts,
+      missing evidence, duplicate check, and readiness gate.
 - [ ] Build an evidence pack for one selected question.
 - [ ] Ask the LLM for probability, reasoning, uncertainty, and counterarguments.
 - [ ] Generate a draft X post.
