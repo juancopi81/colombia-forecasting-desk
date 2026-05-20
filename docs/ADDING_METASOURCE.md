@@ -249,6 +249,12 @@ path: a successful parsed row with the expected `content_extraction` value, and
 a guarded failure or incomplete row that remains link-level with
 `content_extraction_error`.
 
+If the new source becomes part of Indicator Watch, keep the static card/catalog
+text in `colombia_forecasting_desk/data/indicator_catalog.json` and update the
+golden fixtures under `tests/fixtures/indicator_watch/` only when the resulting
+card order, component defaults, or selected runtime summaries are intentionally
+changed.
+
 ## 8. Document parsers
 
 Some sources are only useful after following a PDF, spreadsheet, or attachment

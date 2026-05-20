@@ -1,0 +1,371 @@
+[
+  {
+    "category": "prices",
+    "components": [],
+    "correlations": [
+      "food IPC + TRM + fuel prices can reveal imported and logistics inflation before the headline narrative catches up",
+      "rent/utilities IPC + labor income helps separate demand pressure from regulated-price pressure"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "ipc_inflation",
+    "name": "IPC / inflation",
+    "next_step": "Headline HTML is wired; add category/city annex drivers when the watch needs deeper inflation decomposition.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
+    "status": "pending_source",
+    "why_it_matters": "Inflation pressure drives BanRep policy, wages, household stress, and political salience."
+  },
+  {
+    "category": "markets",
+    "components": [],
+    "correlations": [
+      "TRM + Brent/oil production separates commodity-revenue support from domestic currency pressure",
+      "TRM + IPC imported baskets helps identify inflation pressure that may not look domestic"
+    ],
+    "frequency": "daily",
+    "freshness_status": "pending",
+    "indicator_id": "trm_usd_cop",
+    "name": "TRM / USD-COP",
+    "next_step": "Observed from datos.gov.co TRM dataset; add intraday market proxies only if needed later.",
+    "source_name": "Superintendencia Financiera de Colombia",
+    "source_url": "https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3",
+    "status": "pending_source",
+    "why_it_matters": "The exchange rate transmits into imports, fuel, food, external debt, and fiscal oil revenue."
+  },
+  {
+    "category": "monetary",
+    "components": [],
+    "correlations": [
+      "IBR-policy spread can flag liquidity stress or market repricing",
+      "policy rate + inflation surprise frames likelihood of cuts or pauses"
+    ],
+    "frequency": "daily/monthly",
+    "freshness_status": "pending",
+    "indicator_id": "policy_rate_ibr",
+    "name": "Policy rate + IBR",
+    "next_step": "Observed from BanRep SUAMECA policy-rate and IBR series; add IBR term structure if liquidity stress needs more depth.",
+    "source_name": "Banco de la República",
+    "source_url": "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/59/tasas_interes_politica_monetaria/",
+    "status": "pending_source",
+    "why_it_matters": "Shows monetary stance and short-term peso liquidity."
+  },
+  {
+    "category": "labor",
+    "components": [],
+    "correlations": [
+      "unemployment + participation distinguishes real labor improvement from discouraged-worker effects",
+      "informality + IPC reveals purchasing-power stress hidden by headline employment"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "labor_market",
+    "name": "Labor market",
+    "next_step": "Headline HTML is wired; add informality, youth, and city details from GEIH annexes when needed.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo",
+    "status": "pending_source",
+    "why_it_matters": "Employment, participation, informality, and youth unemployment drive household pressure and politics."
+  },
+  {
+    "category": "macro_activity",
+    "components": [],
+    "correlations": [
+      "GDP + ISE separates broad quarterly momentum from the faster monthly activity pulse",
+      "GDP + tax collection helps distinguish real activity growth from nominal fiscal stress"
+    ],
+    "frequency": "quarterly",
+    "freshness_status": "pending",
+    "indicator_id": "gdp_growth",
+    "name": "GDP / PIB growth",
+    "next_step": "Headline HTML is wired; add sector contribution annex drivers when GDP growth becomes a selected forecast theme.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/cuentas-nacionales-trimestrales/pib-informacion-tecnica",
+    "status": "pending_source",
+    "why_it_matters": "GDP is the broadest official read on Colombia's real economy and anchors public narratives about growth, fiscal space, and policy."
+  },
+  {
+    "category": "macro_activity",
+    "components": [],
+    "correlations": [
+      "ISE + retail/manufacturing/electricity demand can test whether activity strength is broad-based",
+      "ISE + tax collection can flag growth that is not translating into fiscal revenue"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "ise_activity",
+    "name": "ISE / monthly activity",
+    "next_step": "Headline HTML is wired; add activity-group contribution details when the watch needs a deeper nowcast.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise",
+    "status": "pending_source",
+    "why_it_matters": "ISE is DANE's monthly proxy for economic activity, so it can reveal growth acceleration or slowdown before the next GDP release."
+  },
+  {
+    "category": "activity",
+    "components": [],
+    "correlations": [
+      "retail ex-fuel + employment shows whether consumption is broad-based",
+      "vehicle sales + rates gives an early stress signal for durable goods demand"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "retail_sales",
+    "name": "Retail sales",
+    "next_step": "Headline HTML is wired; add vehicle, department, and ecommerce annex drivers when needed.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-interno/encuesta-mensual-de-comercio-emc",
+    "status": "pending_source",
+    "why_it_matters": "Retail sales are a timely read on household demand, credit stress, and consumption momentum."
+  },
+  {
+    "category": "activity",
+    "components": [],
+    "correlations": [
+      "manufacturing sales + electricity demand can nowcast real activity before GDP",
+      "production down + employment stable can indicate margin pressure before layoffs"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "manufacturing",
+    "name": "Manufacturing",
+    "next_step": "Headline HTML is wired; add subsector and territory contribution annex drivers when needed.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/industria/encuesta-mensual-manufacturera-con-enfoque-territorial-emmet",
+    "status": "pending_source",
+    "why_it_matters": "Manufacturing production, sales, and employment give an early read on industrial momentum."
+  },
+  {
+    "category": "construction",
+    "components": [
+      {
+        "component_id": "icoced",
+        "freshness_status": "pending",
+        "name": "ICOCED costs",
+        "next_step": "Parsed from the latest XLSX annex.",
+        "source_name": "DANE",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-costos-de-la-construccion-de-edificaciones-icoced",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "cement",
+        "freshness_status": "pending",
+        "name": "Cement production and shipments",
+        "next_step": "Headline HTML is wired; add regional/channel annex details later.",
+        "source_name": "DANE",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/construccion/estadisticas-de-cemento-gris",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "licenses",
+        "freshness_status": "pending",
+        "name": "Construction licenses",
+        "next_step": "Headline HTML is wired; add destination/municipality annex details later.",
+        "source_name": "DANE",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/construccion/licencias-de-construccion",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "housing_finance",
+        "freshness_status": "pending",
+        "name": "Housing finance",
+        "next_step": "Headline HTML is wired; add credit type and geography annex details later.",
+        "source_name": "DANE",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/construccion/financiacion-de-vivienda",
+        "status": "pending_source"
+      }
+    ],
+    "correlations": [
+      "ICOCED + cement dispatches + licenses detects slowdown or margin squeeze earlier than one metric alone",
+      "ICOCED + SECOP infrastructure contracts flags public-works budget pressure"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "construction_bundle",
+    "name": "Construction bundle",
+    "next_step": "ICOCED, cement, licenses, and housing finance headline HTML are wired; add deeper annex drivers when needed.",
+    "source_name": "DANE",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/construccion/estadisticas-de-cemento-gris",
+    "status": "pending_source",
+    "why_it_matters": "Costs, licenses, cement, housing finance, and prices reveal building-cycle stress."
+  },
+  {
+    "category": "fiscal_governance",
+    "components": [],
+    "correlations": [
+      "contract additions + construction costs can flag budget pressure in public works",
+      "direct contracting concentration + electoral calendar can flag governance risk"
+    ],
+    "frequency": "daily",
+    "freshness_status": "pending",
+    "indicator_id": "secop_procurement",
+    "name": "SECOP public procurement pulse",
+    "next_step": "Day/entity/process-type aggregation is wired; add sector fields by extending the Socrata column selects.",
+    "source_name": "SECOP / Colombia Compra Eficiente",
+    "source_url": "https://operaciones.colombiacompra.gov.co/datos-abiertos",
+    "status": "pending_source",
+    "why_it_matters": "Procurement volume, amendments, and direct contracting can reveal fiscal impulse and execution risk."
+  },
+  {
+    "category": "energy",
+    "components": [
+      {
+        "component_id": "electricity_demand",
+        "freshness_status": "pending",
+        "name": "Electricity demand",
+        "next_step": "Public XM API is wired; add regulated/non-regulated split later.",
+        "source_name": "XM",
+        "source_url": "https://github.com/EquipoAnaliticaXM/API_XM",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "reservoir_useful_volume",
+        "freshness_status": "pending",
+        "name": "Reservoir useful volume",
+        "next_step": "Public XM API is wired; add reservoir-level stress detail later.",
+        "source_name": "XM",
+        "source_url": "https://github.com/EquipoAnaliticaXM/API_XM",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "spot_price",
+        "freshness_status": "pending",
+        "name": "Spot price",
+        "next_step": "Public XM API is wired; add scarcity price spread later.",
+        "source_name": "XM",
+        "source_url": "https://github.com/EquipoAnaliticaXM/API_XM",
+        "status": "pending_source"
+      }
+    ],
+    "correlations": [
+      "energy demand + manufacturing + retail sales can nowcast real activity",
+      "reservoirs + spot price + weather signals power-system stress before policy announcements"
+    ],
+    "frequency": "daily",
+    "freshness_status": "pending",
+    "indicator_id": "energy_system",
+    "name": "Energy demand / reservoirs / spot price",
+    "next_step": "XM demand, useful reservoir volume, and spot-price API components are wired; add thermal generation and non-regulated demand if the watch needs a stress decomposition.",
+    "source_name": "XM / UPME",
+    "source_url": "https://portalxm-cal.xm.com.co/",
+    "status": "pending_source",
+    "why_it_matters": "Electricity demand is an activity proxy; reservoirs and spot prices reveal drought and reliability stress."
+  },
+  {
+    "category": "external",
+    "components": [
+      {
+        "component_id": "exports",
+        "freshness_status": "pending",
+        "name": "Goods exports",
+        "next_step": "Headline HTML is wired; add destination/product annex drivers later.",
+        "source_name": "DANE / DIAN",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "imports",
+        "freshness_status": "pending",
+        "name": "Goods imports",
+        "next_step": "Headline HTML is wired; add origin/CUODE/product annex drivers later.",
+        "source_name": "DANE / DIAN",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/importaciones",
+        "status": "pending_source"
+      }
+    ],
+    "correlations": [
+      "capital goods imports + manufacturing predicts investment and production capacity",
+      "fuel exports + TRM frames external-account and fiscal sensitivity"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "external_trade",
+    "name": "External trade",
+    "next_step": "DANE headline exports and imports pages are wired; add annex country/product drivers when needed.",
+    "source_name": "DANE / DIAN",
+    "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones",
+    "status": "pending_source",
+    "why_it_matters": "Imports, exports, and trade balance connect domestic demand, FX pressure, and industrial investment."
+  },
+  {
+    "category": "energy_fiscal",
+    "components": [
+      {
+        "component_id": "oil_production",
+        "freshness_status": "pending",
+        "name": "Crude oil production",
+        "next_step": "Socrata aggregate is wired; add field/operator contribution shifts later.",
+        "source_name": "ANH / datos.gov.co",
+        "source_url": "https://www.datos.gov.co/Minas-y-Energ-a/Produccion-Fiscalizada-Crudo-Consolidada/fdvb-hsrf",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "gas_production",
+        "freshness_status": "pending",
+        "name": "Fiscalized gas production",
+        "next_step": "Socrata aggregate is wired; add commercialized gas and demand balance later.",
+        "source_name": "ANH / datos.gov.co",
+        "source_url": "https://www.datos.gov.co/Minas-y-Energ-a/Produccion-Fiscalizada-Gas-Consolidada/5dux-bfvx",
+        "status": "pending_source"
+      }
+    ],
+    "correlations": [
+      "oil production + Brent + TRM estimates fiscal and external-account cushion",
+      "gas production + reservoir/energy demand flags reliability and import needs"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "oil_gas_production",
+    "name": "Oil and gas production",
+    "next_step": "ANH datos.gov.co crude and gas production components are wired; add royalties and Brent when fiscal sensitivity needs more depth.",
+    "source_name": "Agencia Nacional de Hidrocarburos",
+    "source_url": "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/sistemas-integrados-operaciones/estad%C3%ADsticas-de-producci%C3%B3n/",
+    "status": "pending_source",
+    "why_it_matters": "Hydrocarbon production affects exports, fiscal revenue, royalties, and energy security."
+  },
+  {
+    "category": "fiscal",
+    "components": [
+      {
+        "component_id": "tax_collection",
+        "freshness_status": "pending",
+        "name": "DIAN tax collection",
+        "next_step": "Parsed from DIAN's official monthly tax-collection XLSX ZIP.",
+        "source_name": "DIAN",
+        "source_url": "https://www.dian.gov.co/dian/cifras/Paginas/EstadisticasRecaudo.aspx",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "tes_auction",
+        "freshness_status": "pending",
+        "name": "MinHacienda TES auction",
+        "next_step": "Parsed from official MinHacienda TES auction report PDFs.",
+        "source_name": "Ministerio de Hacienda y Crédito Público",
+        "source_url": "https://www.minhacienda.gov.co/informes-tes-2026",
+        "status": "pending_source"
+      },
+      {
+        "component_id": "banrep_tes_curve",
+        "freshness_status": "pending",
+        "name": "BanRep TES zero-coupon curve",
+        "next_step": "Uses verified SUAMECA child series 15272, 15273, and 15274 only.",
+        "source_name": "Banco de la República",
+        "source_url": "https://suameca.banrep.gov.co/estadisticas-economicas/informacionSerie/220002/tasas_interes_cero_cupon_tes",
+        "status": "pending_source"
+      }
+    ],
+    "correlations": [
+      "tax collection + retail/manufacturing separates nominal inflation lift from real activity",
+      "TES yields + fiscal deficit flags market concern before budget headlines"
+    ],
+    "frequency": "monthly",
+    "freshness_status": "pending",
+    "indicator_id": "fiscal_tax_pulse",
+    "name": "Fiscal / tax pulse",
+    "next_step": "DIAN monthly tax-collection XLSX, MinHacienda TES auction reports, and BanRep TES 1y/5y/10y zero-coupon series are wired; add deficit and broader debt-stock components when needed.",
+    "source_name": "DIAN / Minhacienda",
+    "source_url": "https://www.dian.gov.co/dian/cifras/Paginas/EstadisticasRecaudo.aspx",
+    "status": "pending_source",
+    "why_it_matters": "Tax collection, deficit, debt, and TES conditions reveal spending capacity and fiscal stress."
+  }
+]

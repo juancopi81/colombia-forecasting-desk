@@ -1,7 +1,7 @@
 """Indicator Watch parsing, fetching, and assembly.
 
 Responsibility inventory:
-- Define the durable indicator card catalog and bundle component defaults.
+- Load the durable indicator card catalog and bundle component defaults.
 - Parse supported official HTML/API/XLSX snippets into observations/components.
 - Fetch live structured indicator inputs with fail-closed source-specific cards.
 - Convert selected RawItem families, such as ICOCED, TES auctions, and SECOP, into
@@ -9,21 +9,20 @@ Responsibility inventory:
 - Merge observed, extra, and pending cards into the stable ordered watch consumed
   by the M1 brief, strict acceptance gates, and M2 review packet.
 
-Maintainability blocker:
-Broader module extraction should wait for fixture coverage around live fetch
-orchestration and exact failure-card wording. Those strings feed operator-facing
-briefs and strict gates, so splitting fetch families without that coverage would
-turn an apparent cleanup into a behavior-change risk.
+The static catalog lives in `data/indicator_catalog.json`; keep parser/fetch
+logic here so source-specific behavior remains testable in Python.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
 from calendar import monthrange
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
+from importlib import resources
 from typing import Any, Callable, Iterable
 from urllib.parse import urljoin
 from xml.etree import ElementTree
@@ -170,296 +169,51 @@ class IndicatorDefinition:
     next_step: str
 
 
-INDICATOR_DEFINITIONS: tuple[IndicatorDefinition, ...] = (
-    IndicatorDefinition(
-        indicator_id="ipc_inflation",
-        name="IPC / inflation",
-        category="prices",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=IPC_URL,
-        why_it_matters=(
-            "Inflation pressure drives BanRep policy, wages, household stress, "
-            "and political salience."
-        ),
-        correlations=(
-            "food IPC + TRM + fuel prices can reveal imported and logistics "
-            "inflation before the headline narrative catches up",
-            "rent/utilities IPC + labor income helps separate demand pressure "
-            "from regulated-price pressure",
-        ),
-        next_step=(
-            "Headline HTML is wired; add category/city annex drivers when the "
-            "watch needs deeper inflation decomposition."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="trm_usd_cop",
-        name="TRM / USD-COP",
-        category="markets",
-        frequency="daily",
-        source_name="Superintendencia Financiera de Colombia",
-        source_url=TRM_SOURCE_URL,
-        why_it_matters=(
-            "The exchange rate transmits into imports, fuel, food, external "
-            "debt, and fiscal oil revenue."
-        ),
-        correlations=(
-            "TRM + Brent/oil production separates commodity-revenue support "
-            "from domestic currency pressure",
-            "TRM + IPC imported baskets helps identify inflation pressure "
-            "that may not look domestic",
-        ),
-        next_step=(
-            "Observed from datos.gov.co TRM dataset; add intraday market proxies "
-            "only if needed later."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="policy_rate_ibr",
-        name="Policy rate + IBR",
-        category="monetary",
-        frequency="daily/monthly",
-        source_name="Banco de la República",
-        source_url=BANREP_POLICY_RATE_SOURCE_URL,
-        why_it_matters="Shows monetary stance and short-term peso liquidity.",
-        correlations=(
-            "IBR-policy spread can flag liquidity stress or market repricing",
-            "policy rate + inflation surprise frames likelihood of cuts or pauses",
-        ),
-        next_step=(
-            "Observed from BanRep SUAMECA policy-rate and IBR series; add "
-            "IBR term structure if liquidity stress needs more depth."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="labor_market",
-        name="Labor market",
-        category="labor",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=LABOR_MARKET_URL,
-        why_it_matters=(
-            "Employment, participation, informality, and youth unemployment "
-            "drive household pressure and politics."
-        ),
-        correlations=(
-            "unemployment + participation distinguishes real labor improvement "
-            "from discouraged-worker effects",
-            "informality + IPC reveals purchasing-power stress hidden by "
-            "headline employment",
-        ),
-        next_step=(
-            "Headline HTML is wired; add informality, youth, and city details "
-            "from GEIH annexes when needed."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="gdp_growth",
-        name="GDP / PIB growth",
-        category="macro_activity",
-        frequency="quarterly",
-        source_name="DANE",
-        source_url=GDP_URL,
-        why_it_matters=(
-            "GDP is the broadest official read on Colombia's real economy and "
-            "anchors public narratives about growth, fiscal space, and policy."
-        ),
-        correlations=(
-            "GDP + ISE separates broad quarterly momentum from the faster monthly activity pulse",
-            "GDP + tax collection helps distinguish real activity growth from nominal fiscal stress",
-        ),
-        next_step=(
-            "Headline HTML is wired; add sector contribution annex drivers when "
-            "GDP growth becomes a selected forecast theme."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="ise_activity",
-        name="ISE / monthly activity",
-        category="macro_activity",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=ISE_URL,
-        why_it_matters=(
-            "ISE is DANE's monthly proxy for economic activity, so it can reveal "
-            "growth acceleration or slowdown before the next GDP release."
-        ),
-        correlations=(
-            "ISE + retail/manufacturing/electricity demand can test whether activity strength is broad-based",
-            "ISE + tax collection can flag growth that is not translating into fiscal revenue",
-        ),
-        next_step=(
-            "Headline HTML is wired; add activity-group contribution details "
-            "when the watch needs a deeper nowcast."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="retail_sales",
-        name="Retail sales",
-        category="activity",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=EMC_URL,
-        why_it_matters=(
-            "Retail sales are a timely read on household demand, credit stress, "
-            "and consumption momentum."
-        ),
-        correlations=(
-            "retail ex-fuel + employment shows whether consumption is broad-based",
-            "vehicle sales + rates gives an early stress signal for durable goods demand",
-        ),
-        next_step=(
-            "Headline HTML is wired; add vehicle, department, and ecommerce "
-            "annex drivers when needed."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="manufacturing",
-        name="Manufacturing",
-        category="activity",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=EMMET_URL,
-        why_it_matters=(
-            "Manufacturing production, sales, and employment give an early read "
-            "on industrial momentum."
-        ),
-        correlations=(
-            "manufacturing sales + electricity demand can nowcast real activity before GDP",
-            "production down + employment stable can indicate margin pressure before layoffs",
-        ),
-        next_step=(
-            "Headline HTML is wired; add subsector and territory contribution "
-            "annex drivers when needed."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="construction_bundle",
-        name="Construction bundle",
-        category="construction",
-        frequency="monthly",
-        source_name="DANE",
-        source_url=CEMENT_URL,
-        why_it_matters=(
-            "Costs, licenses, cement, housing finance, and prices reveal "
-            "building-cycle stress."
-        ),
-        correlations=(
-            "ICOCED + cement dispatches + licenses detects slowdown or margin "
-            "squeeze earlier than one metric alone",
-            "ICOCED + SECOP infrastructure contracts flags public-works budget pressure",
-        ),
-        next_step=(
-            "ICOCED, cement, licenses, and housing finance headline HTML are "
-            "wired; add deeper annex drivers when needed."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="secop_procurement",
-        name="SECOP public procurement pulse",
-        category="fiscal_governance",
-        frequency="daily",
-        source_name="SECOP / Colombia Compra Eficiente",
-        source_url="https://operaciones.colombiacompra.gov.co/datos-abiertos",
-        why_it_matters=(
-            "Procurement volume, amendments, and direct contracting can reveal "
-            "fiscal impulse and execution risk."
-        ),
-        correlations=(
-            "contract additions + construction costs can flag budget pressure in public works",
-            "direct contracting concentration + electoral calendar can flag governance risk",
-        ),
-        next_step=(
-            "Day/entity/process-type aggregation is wired; add sector fields by "
-            "extending the Socrata column selects."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="energy_system",
-        name="Energy demand / reservoirs / spot price",
-        category="energy",
-        frequency="daily",
-        source_name="XM / UPME",
-        source_url="https://portalxm-cal.xm.com.co/",
-        why_it_matters=(
-            "Electricity demand is an activity proxy; reservoirs and spot prices "
-            "reveal drought and reliability stress."
-        ),
-        correlations=(
-            "energy demand + manufacturing + retail sales can nowcast real activity",
-            "reservoirs + spot price + weather signals power-system stress "
-            "before policy announcements",
-        ),
-        next_step=(
-            "XM demand, useful reservoir volume, and spot-price API components "
-            "are wired; add thermal generation and non-regulated demand if the "
-            "watch needs a stress decomposition."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="external_trade",
-        name="External trade",
-        category="external",
-        frequency="monthly",
-        source_name="DANE / DIAN",
-        source_url=EXPORTS_URL,
-        why_it_matters=(
-            "Imports, exports, and trade balance connect domestic demand, FX "
-            "pressure, and industrial investment."
-        ),
-        correlations=(
-            "capital goods imports + manufacturing predicts investment and production capacity",
-            "fuel exports + TRM frames external-account and fiscal sensitivity",
-        ),
-        next_step=(
-            "DANE headline exports and imports pages are wired; add annex "
-            "country/product drivers when needed."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="oil_gas_production",
-        name="Oil and gas production",
-        category="energy_fiscal",
-        frequency="monthly",
-        source_name="Agencia Nacional de Hidrocarburos",
-        source_url=ANH_PRODUCTION_URL,
-        why_it_matters=(
-            "Hydrocarbon production affects exports, fiscal revenue, royalties, "
-            "and energy security."
-        ),
-        correlations=(
-            "oil production + Brent + TRM estimates fiscal and external-account cushion",
-            "gas production + reservoir/energy demand flags reliability and import needs",
-        ),
-        next_step=(
-            "ANH datos.gov.co crude and gas production components are wired; "
-            "add royalties and Brent when fiscal sensitivity needs more depth."
-        ),
-    ),
-    IndicatorDefinition(
-        indicator_id="fiscal_tax_pulse",
-        name="Fiscal / tax pulse",
-        category="fiscal",
-        frequency="monthly",
-        source_name="DIAN / Minhacienda",
-        source_url=DIAN_TAX_REVENUE_PAGE_URL,
-        why_it_matters=(
-            "Tax collection, deficit, debt, and TES conditions reveal spending "
-            "capacity and fiscal stress."
-        ),
-        correlations=(
-            "tax collection + retail/manufacturing separates nominal inflation "
-            "lift from real activity",
-            "TES yields + fiscal deficit flags market concern before budget headlines",
-        ),
-        next_step=(
-            "DIAN monthly tax-collection XLSX, MinHacienda TES auction reports, "
-            "and BanRep TES 1y/5y/10y zero-coupon series are wired; add deficit "
-            "and broader debt-stock components when needed."
-        ),
-    ),
-)
+INDICATOR_CATALOG_RESOURCE = "indicator_catalog.json"
+
+
+def _load_indicator_catalog() -> tuple[
+    tuple[IndicatorDefinition, ...],
+    dict[str, tuple[dict[str, str], ...]],
+]:
+    catalog_path = resources.files("colombia_forecasting_desk").joinpath(
+        "data",
+        INDICATOR_CATALOG_RESOURCE,
+    )
+    with catalog_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    definitions = tuple(
+        IndicatorDefinition(
+            indicator_id=str(entry["indicator_id"]),
+            name=str(entry["name"]),
+            category=str(entry["category"]),
+            frequency=str(entry["frequency"]),
+            source_name=str(entry["source_name"]),
+            source_url=str(entry["source_url"]),
+            why_it_matters=str(entry["why_it_matters"]),
+            correlations=tuple(str(item) for item in entry.get("correlations", ())),
+            next_step=str(entry["next_step"]),
+        )
+        for entry in data.get("indicators", ())
+    )
+
+    bundle_components: dict[str, tuple[dict[str, str], ...]] = {}
+    for indicator_id, components in data.get("bundle_components", {}).items():
+        bundle_components[str(indicator_id)] = tuple(
+            {
+                "component_id": str(component["component_id"]),
+                "name": str(component["name"]),
+                "source_name": str(component["source_name"]),
+                "source_url": str(component["source_url"]),
+                "next_step": str(component["next_step"]),
+            }
+            for component in components
+        )
+    return definitions, bundle_components
+
+
+INDICATOR_DEFINITIONS, _BUNDLE_COMPONENTS = _load_indicator_catalog()
 
 
 def _definition_map() -> dict[str, IndicatorDefinition]:
@@ -684,122 +438,6 @@ _FRESHNESS_DAYS_BY_FREQUENCY = {
     "monthly": 95,
     "quarterly": 150,
     "daily/monthly": 95,
-}
-
-
-_BUNDLE_COMPONENTS = {
-    "construction_bundle": (
-        {
-            "component_id": "icoced",
-            "name": "ICOCED costs",
-            "source_name": "DANE",
-            "source_url": (
-                "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
-                "precios-y-costos/indice-de-costos-de-la-construccion-de-"
-                "edificaciones-icoced"
-            ),
-            "next_step": "Parsed from the latest XLSX annex.",
-        },
-        {
-            "component_id": "cement",
-            "name": "Cement production and shipments",
-            "source_name": "DANE",
-            "source_url": CEMENT_URL,
-            "next_step": "Headline HTML is wired; add regional/channel annex details later.",
-        },
-        {
-            "component_id": "licenses",
-            "name": "Construction licenses",
-            "source_name": "DANE",
-            "source_url": CONSTRUCTION_LICENSES_URL,
-            "next_step": "Headline HTML is wired; add destination/municipality annex details later.",
-        },
-        {
-            "component_id": "housing_finance",
-            "name": "Housing finance",
-            "source_name": "DANE",
-            "source_url": HOUSING_FINANCE_URL,
-            "next_step": "Headline HTML is wired; add credit type and geography annex details later.",
-        },
-    ),
-    "energy_system": (
-        {
-            "component_id": "electricity_demand",
-            "name": "Electricity demand",
-            "source_name": "XM",
-            "source_url": XM_API_SOURCE_URL,
-            "next_step": "Public XM API is wired; add regulated/non-regulated split later.",
-        },
-        {
-            "component_id": "reservoir_useful_volume",
-            "name": "Reservoir useful volume",
-            "source_name": "XM",
-            "source_url": XM_API_SOURCE_URL,
-            "next_step": "Public XM API is wired; add reservoir-level stress detail later.",
-        },
-        {
-            "component_id": "spot_price",
-            "name": "Spot price",
-            "source_name": "XM",
-            "source_url": XM_API_SOURCE_URL,
-            "next_step": "Public XM API is wired; add scarcity price spread later.",
-        },
-    ),
-    "oil_gas_production": (
-        {
-            "component_id": "oil_production",
-            "name": "Crude oil production",
-            "source_name": "ANH / datos.gov.co",
-            "source_url": ANH_CRUDE_SOURCE_URL,
-            "next_step": "Socrata aggregate is wired; add field/operator contribution shifts later.",
-        },
-        {
-            "component_id": "gas_production",
-            "name": "Fiscalized gas production",
-            "source_name": "ANH / datos.gov.co",
-            "source_url": ANH_GAS_SOURCE_URL,
-            "next_step": "Socrata aggregate is wired; add commercialized gas and demand balance later.",
-        },
-    ),
-    "external_trade": (
-        {
-            "component_id": "exports",
-            "name": "Goods exports",
-            "source_name": "DANE / DIAN",
-            "source_url": EXPORTS_URL,
-            "next_step": "Headline HTML is wired; add destination/product annex drivers later.",
-        },
-        {
-            "component_id": "imports",
-            "name": "Goods imports",
-            "source_name": "DANE / DIAN",
-            "source_url": IMPORTS_URL,
-            "next_step": "Headline HTML is wired; add origin/CUODE/product annex drivers later.",
-        },
-    ),
-    "fiscal_tax_pulse": (
-        {
-            "component_id": "tax_collection",
-            "name": "DIAN tax collection",
-            "source_name": "DIAN",
-            "source_url": DIAN_TAX_REVENUE_PAGE_URL,
-            "next_step": "Parsed from DIAN's official monthly tax-collection XLSX ZIP.",
-        },
-        {
-            "component_id": "tes_auction",
-            "name": "MinHacienda TES auction",
-            "source_name": "Ministerio de Hacienda y Crédito Público",
-            "source_url": "https://www.minhacienda.gov.co/informes-tes-2026",
-            "next_step": "Parsed from official MinHacienda TES auction report PDFs.",
-        },
-        {
-            "component_id": "banrep_tes_curve",
-            "name": "BanRep TES zero-coupon curve",
-            "source_name": "Banco de la República",
-            "source_url": BANREP_TES_CURVE_SOURCE_URL,
-            "next_step": "Uses verified SUAMECA child series 15272, 15273, and 15274 only.",
-        },
-    ),
 }
 
 

@@ -576,6 +576,12 @@ Each card contains:
 }
 ```
 
+The static card catalog and bundle component defaults live in
+`colombia_forecasting_desk/data/indicator_catalog.json`. Behavior-sensitive
+catalog edits should update the golden fixtures under
+`tests/fixtures/indicator_watch/` only when the changed order, text, component
+defaults, or runtime summary is intentional.
+
 Current observed cards:
 
 - `trm_usd_cop`: official datos.gov.co TRM rows with daily, seven-day, and

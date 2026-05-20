@@ -1,0 +1,134 @@
+[
+  {
+    "components": [
+      {
+        "component_id": "icoced",
+        "freshness_status": "current",
+        "headline": "DANE ICOCED headline.",
+        "period": "2026-03",
+        "release_date": "2026-04-30T00:00:00Z",
+        "status": "observed",
+        "values": {
+          "icoced_non_residential_monthly_variation_pct": 0.72,
+          "icoced_residential_monthly_variation_pct": 0.77,
+          "icoced_total_annual_variation_pct": 6.33,
+          "icoced_total_index": 135.44,
+          "icoced_total_monthly_variation_pct": 0.75,
+          "icoced_total_year_to_date_variation_pct": 6.47
+        }
+      },
+      {
+        "component_id": "cement",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      },
+      {
+        "component_id": "licenses",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      },
+      {
+        "component_id": "housing_finance",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      }
+    ],
+    "freshness_status": "current",
+    "headline": "DANE ICOCED headline.",
+    "indicator_id": "construction_bundle",
+    "period": "2026-03",
+    "release_date": "2026-04-30T00:00:00Z",
+    "status": "observed",
+    "values": {
+      "icoced_non_residential_monthly_variation_pct": 0.72,
+      "icoced_residential_monthly_variation_pct": 0.77,
+      "icoced_total_annual_variation_pct": 6.33,
+      "icoced_total_index": 135.44,
+      "icoced_total_monthly_variation_pct": 0.75,
+      "icoced_total_year_to_date_variation_pct": 6.47
+    }
+  },
+  {
+    "components": [],
+    "freshness_status": "current",
+    "headline": "SECOP pulse captured 2 rankable procurement records in the freshness window (1 secop_ii_additions, 1 secop_ii_contracts). Top entity: Alcaldia de Cali (1 records).",
+    "indicator_id": "secop_procurement",
+    "period": "freshness_window",
+    "release_date": "2026-05-18T00:00:00Z",
+    "status": "observed",
+    "values": {
+      "rankable_records": 2,
+      "records_by_day": {
+        "2026-05-18": 2
+      },
+      "records_by_process_type": {
+        "secop_ii_additions": 1,
+        "secop_ii_contracts": 1
+      },
+      "records_by_source": {
+        "secop_ii_adiciones": 1,
+        "secop_ii_contratos": 1
+      },
+      "top_entities": [
+        {
+          "name": "Alcaldia de Cali",
+          "records": 1
+        },
+        {
+          "name": "Gobernacion del Meta",
+          "records": 1
+        }
+      ]
+    }
+  },
+  {
+    "components": [
+      {
+        "component_id": "tax_collection",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      },
+      {
+        "component_id": "tes_auction",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      },
+      {
+        "component_id": "banrep_tes_curve",
+        "freshness_status": "pending",
+        "headline": "",
+        "period": "",
+        "release_date": null,
+        "status": "pending_source",
+        "values": {}
+      }
+    ],
+    "freshness_status": "pending",
+    "headline": "",
+    "indicator_id": "fiscal_tax_pulse",
+    "period": "",
+    "release_date": null,
+    "status": "pending_source",
+    "values": {}
+  }
+]

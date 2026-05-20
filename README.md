@@ -97,6 +97,10 @@ current split keeps shared helpers in `common.py`, dispatcher functions in
 Fetcher parser tests mirror that boundary: generic dispatcher/facade coverage
 stays in `tests/test_fetchers.py`, while source-family parser cases live in
 `tests/test_fetchers_*.py` files.
+Indicator Watch's static catalog lives in
+`colombia_forecasting_desk/data/indicator_catalog.json`; golden fixtures under
+`tests/fixtures/indicator_watch/` pin the card order, component defaults, and
+selected runtime summaries before catalog edits.
 
 ## Status
 
