@@ -136,6 +136,7 @@ colombia-forecasting-desk/
   scripts/
     scan_metasources.py
     check_artifact_parity.py
+    validate_m3_case_file.py
     clean_items.py
     cluster_signals.py
     build_daily_brief.py
@@ -259,6 +260,8 @@ It should contain:
 - prior forecast, if any
 
 The evidence pack should be readable by both a human and an LLM.
+Every M3 evidence pack should start with an `## M3 Case File` section and pass
+`scripts/validate_m3_case_file.py` before probability or draft-post work.
 
 ### Forecast
 
@@ -408,6 +411,7 @@ Goal: produce one human-reviewable forecast draft.
 - [ ] Start each evidence pack with an M3 case file that records the selected
       question, resolution source, criteria, deadline/window, source excerpts,
       missing evidence, duplicate check, and readiness gate.
+- [ ] Validate the M3 case file with `scripts/validate_m3_case_file.py`.
 - [ ] Build an evidence pack for one selected question.
 - [ ] Ask the LLM for probability, reasoning, uncertainty, and counterarguments.
 - [ ] Generate a draft X post.

@@ -22,6 +22,12 @@ If the selected candidate is not ready for probability work, set
 `m3_gate: research_more` or `m3_gate: reject` and explain what is missing. Do
 not assign a probability unless `m3_gate: ready_for_m3`.
 
+After writing the pack, validate it with:
+
+```bash
+./.venv/bin/python scripts/validate_m3_case_file.py runs/YYYY-MM-DD/evidence_packs/<slug>.md
+```
+
 ## Required First Section
 
 The first level-2 section must be exactly:

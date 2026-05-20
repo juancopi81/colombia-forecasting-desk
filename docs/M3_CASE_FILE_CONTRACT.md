@@ -64,6 +64,19 @@ artifact_refs:
 
 Probability and draft-post work should only happen after `ready_for_m3`.
 
+## Validation
+
+Validate evidence packs with:
+
+```bash
+./.venv/bin/python scripts/validate_m3_case_file.py runs/YYYY-MM-DD/evidence_packs/<slug>.md
+```
+
+The validator prints the detected gate and exits nonzero when the pack is
+missing the first-section case file, has invalid YAML, or claims
+`ready_for_m3` without the required resolution, source, deadline, excerpt, or
+duplicate-check fields.
+
 ## Why This Exists
 
 The case file should not narrow the LLM's M2 input. It is the LLM's accountable

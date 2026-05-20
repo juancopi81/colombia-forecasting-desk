@@ -27,6 +27,13 @@ with the stable artifact parity guard:
 uv run python scripts/check_artifact_parity.py runs/YYYY-MM-DD runs/YYYY-MM-DD-candidate
 ```
 
+For M3 evidence packs, validate the required `## M3 Case File` section before
+probability or draft-post work:
+
+```bash
+uv run python scripts/validate_m3_case_file.py runs/YYYY-MM-DD/evidence_packs/<slug>.md
+```
+
 The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 
 - `raw_items.json` — every item fetched from each enabled metasource
@@ -81,6 +88,7 @@ colombia_forecasting_desk/   # core package (config, cleaner, dedupe, cluster, r
 config/metasources.yaml      # registry of public sources (enabled/disabled, fetch_method, priority, trust_role)
 scripts/scan_metasources.py  # M1 entry point
 scripts/check_artifact_parity.py # stable generated-artifact comparison guard
+scripts/validate_m3_case_file.py # M3 evidence-pack readiness contract guard
 prompts/                     # placeholder prompts (used in later milestones)
 runs/YYYY-MM-DD/             # generated run artifacts (gitignored content)
 forecasts/                   # forecast log (used in later milestones)
