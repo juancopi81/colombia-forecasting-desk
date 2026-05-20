@@ -2525,7 +2525,6 @@ def _fetch_anh_component(
 
 
 def _fetch_dian_tax_observation(client: httpx.Client) -> IndicatorObservation:
-    definition = _definition_map()["fiscal_tax_pulse"]
     try:
         response = client.get(DIAN_MONTHLY_TAX_ZIP_URL, follow_redirects=True)
         response.raise_for_status()
@@ -2535,15 +2534,28 @@ def _fetch_dian_tax_observation(client: httpx.Client) -> IndicatorObservation:
         )
         observation = fiscal_tax_observation_from_dian_xlsx(archive.read(xlsx_name))
     except (httpx.HTTPError, ValueError, KeyError, StopIteration, zipfile.BadZipFile) as exc:
-        return _failed_observation(
-            definition,
-            f"DIAN tax collection fetch failed: {exc.__class__.__name__}: {exc}",
+        return _failed_tax_collection_observation(
+            f"DIAN tax collection fetch failed: {exc.__class__.__name__}: {exc}"
         )
     if observation is None:
-        return _failed_observation(
-            definition,
+        return _failed_tax_collection_observation(
             "DIAN tax collection XLSX returned no parseable latest monthly row.",
         )
+    return observation
+
+
+def _failed_tax_collection_observation(message: str) -> IndicatorObservation:
+    observation = fiscal_tax_observation_from_components(
+        [
+            _failed_component(
+                "fiscal_tax_pulse",
+                component_id="tax_collection",
+                headline=message,
+            )
+        ]
+    )
+    if observation is None:
+        return _failed_observation(_definition_map()["fiscal_tax_pulse"], message)
     return observation
 
 

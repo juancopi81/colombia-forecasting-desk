@@ -33,7 +33,7 @@ from colombia_forecasting_desk.indicator_watch import (
     spot_price_component_from_xm_response,
     trm_observation_from_rows,
 )
-from colombia_forecasting_desk.models import IndicatorObservation
+from colombia_forecasting_desk.models import IndicatorComponent, IndicatorObservation
 
 
 def test_indicator_watch_registers_all_core_indicators() -> None:
@@ -998,6 +998,51 @@ def test_fiscal_tax_observation_from_components_merges_banrep_tes_curve() -> Non
     assert observation.values["components"]["banrep_tes_curve"][
         "banrep_tes_10y_zero_coupon_pct"
     ] == 14.0
+
+
+def test_fiscal_tax_merge_preserves_failed_tax_collection_component() -> None:
+    failed_tax = fiscal_tax_observation_from_components(
+        [
+            IndicatorComponent(
+                component_id="tax_collection",
+                name="DIAN tax collection",
+                status="failed",
+                source_name="DIAN",
+                source_url="https://www.dian.gov.co/dian/cifras/Paginas/EstadisticasRecaudo.aspx",
+                headline="DIAN tax collection fetch failed: ConnectError: DNS failed",
+                freshness_status="failed",
+                next_step="Parsed from DIAN's official monthly tax-collection XLSX ZIP.",
+            )
+        ]
+    )
+    tes_curve = banrep_tes_curve_component_from_rows(
+        {
+            "tes_1y": [{"fecha": "11/05/2026", "valor": 13.43, "isSerie": "SI"}],
+            "tes_5y": [{"fecha": "11/05/2026", "valor": 14.1, "isSerie": "SI"}],
+            "tes_10y": [{"fecha": "11/05/2026", "valor": 14.0, "isSerie": "SI"}],
+        }
+    )
+    assert failed_tax is not None
+    assert tes_curve is not None
+    fiscal_tes = fiscal_tax_observation_from_components([tes_curve])
+    assert fiscal_tes is not None
+
+    fiscal = next(
+        item
+        for item in build_indicator_watch(
+            [],
+            [],
+            [failed_tax, fiscal_tes],
+            now=datetime(2026, 5, 16, tzinfo=timezone.utc),
+        )
+        if item.indicator_id == "fiscal_tax_pulse"
+    )
+
+    by_id = {component.component_id: component for component in fiscal.components}
+    assert fiscal.status == "observed"
+    assert by_id["tax_collection"].status == "failed"
+    assert "ConnectError" in by_id["tax_collection"].headline
+    assert by_id["banrep_tes_curve"].status == "observed"
 
 
 def test_indicator_watch_marks_stale_observation_but_keeps_it_visible() -> None:
