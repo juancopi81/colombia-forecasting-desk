@@ -78,6 +78,8 @@ runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/indicator_watch.json
 runs/YYYY-MM-DD/indicator_tension_cards.json
 runs/YYYY-MM-DD/indicator_tension_cards.md
+runs/YYYY-MM-DD/analyst_leads.json
+runs/YYYY-MM-DD/analyst_leads.md
 runs/YYYY-MM-DD/m1_candidates.json
 runs/YYYY-MM-DD/metasource_brief.md
 runs/YYYY-MM-DD/m2_handoff.md
@@ -678,6 +680,30 @@ machine and the human: the JSON gives the agent a compact review prompt, and the
 Markdown lets the editor quickly decide whether the tension is real, stale,
 explainable, or worth turning into M3 research.
 
+## Analyst Leads
+
+Each run also writes:
+
+```text
+runs/YYYY-MM-DD/analyst_leads.json
+runs/YYYY-MM-DD/analyst_leads.md
+```
+
+These artifacts apply the [Final Output Contract](FINAL_OUTPUT_CONTRACT.md) to
+the M2 review surface. They separate three lanes:
+
+- `forecast_question`: evidenced M2 items that can move to an M3 Case File.
+- `analyst_insight`: source-backed findings that matter but do not need to be a
+  probability question.
+- `investigation_lead`: plausible but underqualified leads that need more
+  source work before M3.
+
+The first version is intentionally conservative. Ready M2 items with source
+evidence can become forecast-question leads, Indicator Tension Cards become
+analyst insights, and advisory cross-impact or incomplete M2 items remain
+investigation leads. This keeps civic/economic discoveries visible without
+turning every finding into a forecast or forecast-log entry.
+
 ## M2 Review Packet Balance
 
 `m2_review_packet.json` and `.md` are the content-first M2 review surface. The
@@ -901,6 +927,7 @@ Links:
 - [x] Save `clusters.json`.
 - [x] Save `indicator_watch.json`.
 - [x] Save `indicator_tension_cards.json` and `.md`.
+- [x] Save `analyst_leads.json` and `.md`.
 
 ### Step 6 — Rank clusters
 
@@ -933,6 +960,7 @@ M1 is complete when:
 - [x] `clusters.json` is generated.
 - [x] `indicator_watch.json` is generated.
 - [x] `indicator_tension_cards.json` / `.md` are generated.
+- [x] `analyst_leads.json` / `.md` are generated.
 - [x] `metasource_brief.md` is generated.
 - [x] `m2_handoff.md` is generated.
 - [x] `m1_candidates.json` is generated.

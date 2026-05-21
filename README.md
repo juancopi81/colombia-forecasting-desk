@@ -45,6 +45,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
 - `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
 - `m2_review_packet.md` — paste-ready M2 review packet that tells the reviewer to read excerpts before trusting heuristic scores or cross-impact prompts
+- `analyst_leads.json` / `.md` — final output-surface v0 that separates forecast-question candidates from analyst insights and investigation leads
 - `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
@@ -67,6 +68,12 @@ structured bills do not crowd out macro/fiscal/market signals.
 probability inputs. They currently look for TES-policy spread pressure, high
 ex-post real policy rates, real tax-revenue squeeze, high TES auction cutoff
 rates, and construction-cost pressure versus headline IPC.
+`analyst_leads.json` / `.md` apply the
+[`Final Output Contract`](docs/FINAL_OUTPUT_CONTRACT.md): `forecast_question`
+for evidenced M3-ready questions, `analyst_insight` for source-backed findings
+that do not need to become forecasts, and `investigation_lead` for plausible
+but underqualified leads. This keeps useful civic/economic insights visible
+without adding them to the forecast log or assigning probabilities too early.
 `run_trace.json` is diagnostic only; it helps explain how a run executed, but it
 does not feed candidate ranking, acceptance gates, or M2 question selection.
 
@@ -117,7 +124,7 @@ selected runtime summaries before catalog edits.
 
 ## Status
 
-Currently at **M2.4 — advisory indicator tension cards**, building on the
+Currently at **M2.5 — final output surface v0**, building on the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now

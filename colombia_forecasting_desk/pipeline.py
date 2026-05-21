@@ -9,6 +9,7 @@ from typing import Iterable
 from urllib.parse import urlsplit
 
 from .acceptance import build_acceptance_report
+from .analyst_leads import build_analyst_leads, render_analyst_leads
 from .brief import render_brief, render_m2_handoff
 from .candidates import build_m1_candidates
 from .cleaner import clean
@@ -69,6 +70,7 @@ class PipelineResult:
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
     m2_review_packet: dict
+    analyst_leads: dict
     m1_candidates: dict
     acceptance_report: dict
     run_manifest: dict
@@ -443,6 +445,20 @@ def run_single_source(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
         )
+    with trace.span("build_analyst_leads") as span:
+        analyst_leads = build_analyst_leads(
+            summary,
+            m2_review_packet,
+            indicator_tension_cards,
+            generated_at=finished_at,
+        )
+        analyst_summary = analyst_leads.get("summary") or {}
+        span.set_counts(
+            leads=analyst_summary.get("lead_count"),
+            forecast_questions=analyst_summary.get("forecast_question_count"),
+            analyst_insights=analyst_summary.get("analyst_insight_count"),
+            investigation_leads=analyst_summary.get("investigation_lead_count"),
+        )
     with trace.span("build_acceptance_report") as span:
         acceptance_report = build_acceptance_report(
             summary,
@@ -489,10 +505,15 @@ def run_single_source(
             render_m2_review_packet(m2_review_packet),
             encoding="utf-8",
         )
+        _write_json(run_dir / "analyst_leads.json", analyst_leads)
+        (run_dir / "analyst_leads.md").write_text(
+            render_analyst_leads(analyst_leads),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=15)
+        span.set_counts(artifacts_written=17)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -506,6 +527,7 @@ def run_single_source(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -522,6 +544,7 @@ def run_single_source(
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
+        analyst_leads=analyst_leads,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,
@@ -667,6 +690,20 @@ def run(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
         )
+    with trace.span("build_analyst_leads") as span:
+        analyst_leads = build_analyst_leads(
+            summary,
+            m2_review_packet,
+            indicator_tension_cards,
+            generated_at=finished_at,
+        )
+        analyst_summary = analyst_leads.get("summary") or {}
+        span.set_counts(
+            leads=analyst_summary.get("lead_count"),
+            forecast_questions=analyst_summary.get("forecast_question_count"),
+            analyst_insights=analyst_summary.get("analyst_insight_count"),
+            investigation_leads=analyst_summary.get("investigation_lead_count"),
+        )
     with trace.span("build_acceptance_report") as span:
         acceptance_report = build_acceptance_report(
             summary,
@@ -715,6 +752,11 @@ def run(
             render_m2_review_packet(m2_review_packet),
             encoding="utf-8",
         )
+        _write_json(run_dir / "analyst_leads.json", analyst_leads)
+        (run_dir / "analyst_leads.md").write_text(
+            render_analyst_leads(analyst_leads),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         brief_text = render_brief(
@@ -745,7 +787,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=17)
+        span.set_counts(artifacts_written=19)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -759,6 +801,7 @@ def run(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
 
@@ -775,6 +818,7 @@ def run(
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
+        analyst_leads=analyst_leads,
         m1_candidates=m1_candidates,
         acceptance_report=acceptance_report,
         run_manifest=run_manifest,

@@ -164,6 +164,8 @@ colombia-forecasting-desk/
       m2_ranked_questions.json
       m2_review_packet.json
       m2_review_packet.md
+      analyst_leads.json
+      analyst_leads.md
       m1_candidates.json
       metasource_brief.md
       m2_handoff.md
@@ -382,6 +384,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate `indicator_tension_cards.json` / `.md` for advisory official-data
       tension prompts and surface them in the M2 review packet without treating
       them as conclusions or probability inputs.
+- [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
+      separating M3-ready forecast-question candidates from source-backed
+      analyst insights and underqualified investigation leads.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.
@@ -403,6 +408,8 @@ one clean bill-status record before M2 ranks them.
 - [ ] Read daily brief.
 - [x] Generate deterministic advisory legislative question ranking from
       structured M1 records.
+- [x] Generate an analyst-leads review surface that keeps non-forecast insights
+      visible without adding them to the forecast log.
 - [ ] Generate final candidate questions.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.
