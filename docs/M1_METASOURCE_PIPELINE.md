@@ -431,6 +431,11 @@ legal follow-up sources for MinCIT press, Diario Oficial, SUIN, and Gestor
 Normativo. These registry rows are historical snapshot evidence. They become
 current M1 decision signals only when `registry_changes` can compare them with
 a prior structured run and detect a new row or changed resolution field.
+The same new/changed rows also feed the final `analyst_leads` surface as
+zona-franca land-use/economic-development insights. The lead should name the
+zone, municipality, department, NIT, resolution, changed fields, and official
+follow-up path, but it must stay in `monitor_or_research` until a human or M3
+case file verifies the legal text and local implications.
 
 M1.22 adds the official legal-resolution bridge. `legal_identity` normalizes
 acts such as `Resolución 2118 de 2025`, `Ley 1474 de 2011`, and

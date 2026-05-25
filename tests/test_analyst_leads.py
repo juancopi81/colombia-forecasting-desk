@@ -223,3 +223,58 @@ def test_procurement_concentration_leads_render_as_analyst_insights() -> None:
     rendered = render_analyst_leads(payload)
     assert "SECOP repeated supplier-entity pair" in rendered
     assert "not evidence of wrongdoing" in rendered
+
+
+def test_zona_franca_land_use_leads_render_as_analyst_insights() -> None:
+    land_use_lead = {
+        "lead_id": "analyst_insight:zona-franca:abc123",
+        "lead_type": "analyst_insight",
+        "title": "Zona franca land-use signal — Rionegro MRO",
+        "claim_or_question": (
+            "MinCIT's approved-zones registry added a named zona franca in Rionegro."
+        ),
+        "disposition": "monitor_or_research",
+        "evidence": [
+            {
+                "label": "MinCIT zona franca registry change",
+                "value": "location: Rionegro, Antioquia",
+                "source": "MinCIT",
+                "url": "https://example.com/zf",
+            }
+        ],
+        "caveats": ["This is not investment advice."],
+        "next_check": "Open the official resolution.",
+        "source_refs": {
+            "artifact_refs": [
+                {
+                    "artifact": "raw_items.json",
+                    "key": "source_id",
+                    "value": "mincit_zonas_francas",
+                }
+            ],
+            "source_item_ids": ["mincit-zf-change-1"],
+            "source_urls": ["https://example.com/zf"],
+        },
+        "review_context": {
+            "family": "land_use_zona_franca",
+            "pattern": "new_zona_franca_registry_row",
+        },
+    }
+
+    payload = build_analyst_leads(
+        _summary(),
+        {"review_items": []},
+        [],
+        [],
+        [land_use_lead],
+    )
+
+    assert payload["summary"]["forecast_question_count"] == 0
+    assert payload["summary"]["analyst_insight_count"] == 1
+    assert payload["summary"]["zona_franca_land_use_lead_count"] == 1
+    assert payload["leads"][0]["review_context"]["family"] == "land_use_zona_franca"
+    assert _required_fields_present(payload["leads"][0])
+
+    rendered = render_analyst_leads(payload)
+    assert "Zona franca land-use signal" in rendered
+    assert "not investment advice" in rendered

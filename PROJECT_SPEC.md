@@ -390,6 +390,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
       separating M3-ready forecast-question candidates from source-backed
       analyst insights and underqualified investigation leads.
+- [x] Surface SECOP procurement concentration and MinCIT zona-franca land-use
+      screens as conservative analyst insights, not fraud claims or investment
+      recommendations.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

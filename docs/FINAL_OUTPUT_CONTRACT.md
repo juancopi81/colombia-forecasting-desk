@@ -12,7 +12,9 @@ runs/YYYY-MM-DD/analyst_leads.json
 runs/YYYY-MM-DD/analyst_leads.md
 ```
 
-They are built from `m2_review_packet.json` and `indicator_tension_cards.json`.
+They are built from `m2_review_packet.json`, `indicator_tension_cards.json`,
+and selected structured lead builders such as SECOP concentration and
+zona-franca land-use screens.
 They do not replace `candidate_questions.md`, M3 evidence packs, or the forecast
 log. They are a review surface for the human and the next LLM step.
 
@@ -39,6 +41,8 @@ Examples:
 - A SECOP screen showing repeated supplier/entity pairs, direct-contracting
   concentration, low-competition process clusters, or cancelled-process
   clusters, framed only as a review prompt.
+- A MinCIT approved-zonas-francas registry change naming a company/zone,
+  municipality, resolution, and official follow-up path.
 - A regulatory or land-use document that changes the public map but has no
   natural probability question yet.
 
@@ -46,6 +50,9 @@ Promotion rule: an `analyst_insight` may cite deterministic screens or
 source-backed patterns, but it must not receive a probability or forecast-log
 treatment. Procurement screens must not be framed as fraud findings without
 separate legal, audit, or investigative evidence.
+Zona-franca land-use screens must not be framed as investment recommendations;
+they are prompts to verify the legal act, local planning context, and public
+impact.
 
 ### `investigation_lead`
 

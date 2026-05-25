@@ -78,6 +78,10 @@ SECOP procurement concentration screens can now contribute conservative
 `analyst_insight` leads when recent official rows show repeated supplier/entity
 pairs, direct-contracting concentration, low-competition process clusters, or
 cancelled-process clusters. These are review prompts, not fraud findings.
+MinCIT zona-franca registry diffs can also contribute land-use/economic
+development insights when the approved-zones registry adds or changes a named
+zone. These are not investment recommendations; they are prompts to verify the
+resolution text and local implications.
 `run_trace.json` is diagnostic only; it helps explain how a run executed, but it
 does not feed candidate ranking, acceptance gates, or M2 question selection.
 
@@ -137,6 +141,8 @@ Gacetas remain fallback/follow-up evidence. The MinCIT zonas francas source
 parses the official approved-zones PDF into named registry rows with NIT,
 location, declaratory/prórroga resolutions, and legal follow-up sources, while
 promoting only future new/changed snapshot rows as current decision signals.
+Those registry changes now feed `analyst_leads` as conservative zona-franca
+land-use insights before any M3 forecast decision.
 Diario Oficial PDFs, SUIN/Gestor legal rows, and MinCIT rows now share
 normalized legal-act identities so official resolution matches can be attached
 only when the act number/year and MinCIT or zone-name context agree. DIAN
