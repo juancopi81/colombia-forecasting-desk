@@ -16,6 +16,11 @@ from .cleaner import clean
 from .cluster import cluster as cluster_items
 from .cluster import topic_keywords
 from .config_loader import load_metasources
+from .cooccurrence_bundles import (
+    attach_cooccurrence_bundles,
+    build_cooccurrence_bundles,
+    render_cooccurrence_bundles,
+)
 from .dedupe import dedupe
 from .decision_records import link_legislative_followups, link_official_legal_records
 from .fetchers import fetch_all
@@ -69,6 +74,7 @@ class PipelineResult:
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
     indicator_tension_cards: list[dict]
+    cooccurrence_bundles: list[dict]
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
     m2_review_packet: dict
@@ -447,6 +453,17 @@ def run_single_source(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
         )
+    with trace.span("build_cooccurrence_bundles") as span:
+        cooccurrence_bundles = build_cooccurrence_bundles(
+            indicator_watch,
+            indicator_tension_cards,
+            m2_review_packet,
+        )
+        m2_review_packet = attach_cooccurrence_bundles(
+            m2_review_packet,
+            cooccurrence_bundles,
+        )
+        span.set_counts(bundles=len(cooccurrence_bundles))
     with trace.span("build_analyst_leads") as span:
         procurement_concentration_leads = build_procurement_concentration_leads(
             raw_items,
@@ -508,6 +525,14 @@ def run_single_source(
             ),
             encoding="utf-8",
         )
+        _write_json(run_dir / "cooccurrence_bundles.json", cooccurrence_bundles)
+        (run_dir / "cooccurrence_bundles.md").write_text(
+            render_cooccurrence_bundles(
+                cooccurrence_bundles,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
         _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
         _write_json(
@@ -527,7 +552,7 @@ def run_single_source(
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=17)
+        span.set_counts(artifacts_written=19)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -541,6 +566,7 @@ def run_single_source(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        cooccurrence_bundles=cooccurrence_bundles,
         analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
@@ -555,6 +581,7 @@ def run_single_source(
         source_health=source_health,
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
+        cooccurrence_bundles=cooccurrence_bundles,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
@@ -704,6 +731,17 @@ def run(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
         )
+    with trace.span("build_cooccurrence_bundles") as span:
+        cooccurrence_bundles = build_cooccurrence_bundles(
+            indicator_watch,
+            indicator_tension_cards,
+            m2_review_packet,
+        )
+        m2_review_packet = attach_cooccurrence_bundles(
+            m2_review_packet,
+            cooccurrence_bundles,
+        )
+        span.set_counts(bundles=len(cooccurrence_bundles))
     with trace.span("build_analyst_leads") as span:
         procurement_concentration_leads = build_procurement_concentration_leads(
             raw_items,
@@ -765,6 +803,14 @@ def run(
             ),
             encoding="utf-8",
         )
+        _write_json(run_dir / "cooccurrence_bundles.json", cooccurrence_bundles)
+        (run_dir / "cooccurrence_bundles.md").write_text(
+            render_cooccurrence_bundles(
+                cooccurrence_bundles,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
+        )
         _write_json(
             run_dir / "source_failures.json", [asdict(f) for f in failures]
         )
@@ -813,7 +859,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=19)
+        span.set_counts(artifacts_written=21)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -827,6 +873,7 @@ def run(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        cooccurrence_bundles=cooccurrence_bundles,
         analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
@@ -841,6 +888,7 @@ def run(
         source_health=source_health,
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
+        cooccurrence_bundles=cooccurrence_bundles,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,

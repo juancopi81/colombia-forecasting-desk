@@ -4,8 +4,9 @@ M3 turns a selected candidate into a human-reviewable forecast package. It is
 not the exploratory M2 layer.
 
 M2 should stay broad and content-rich: `metasource_brief.md`,
-`m2_review_packet.md`, `m1_candidates.json`, `source_health.json`, and the
-forecast log are all available for reasoning and heuristic challenge.
+`m2_review_packet.md`, `cooccurrence_bundles.md`, `m1_candidates.json`,
+`source_health.json`, and the forecast log are all available for reasoning and
+heuristic challenge.
 
 The M3 case file is the first section of an evidence pack. It records the
 selected forecast in a structured way before probability or draft-post work.

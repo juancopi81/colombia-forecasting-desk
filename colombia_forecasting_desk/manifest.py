@@ -23,6 +23,7 @@ def build_run_manifest(
     m2_ranked_questions: dict[str, Any],
     m2_review_packet: dict[str, Any],
     indicator_tension_cards: list[dict[str, Any]] | None = None,
+    cooccurrence_bundles: list[dict[str, Any]] | None = None,
     analyst_leads: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Describe which code and artifact contracts produced a run."""
@@ -49,6 +50,7 @@ def build_run_manifest(
             ),
             "m2_review_items": len(m2_review_packet.get("review_items") or []),
             "indicator_tension_cards": len(indicator_tension_cards or []),
+            "cooccurrence_bundles": len(cooccurrence_bundles or []),
             "analyst_leads": len(analyst_leads.get("leads") or []),
         },
         "capabilities": {
@@ -60,6 +62,7 @@ def build_run_manifest(
             "heuristic_audit": bool(m2_ranked_questions.get("heuristic_audit")),
             "m2_review_packet": True,
             "indicator_tension_cards": True,
+            "cooccurrence_bundles": True,
             "analyst_leads": True,
         },
         "artifact_schemas": {
@@ -77,6 +80,9 @@ def build_run_manifest(
             ),
             "indicator_tension_cards.json": _schema_from_cards(
                 indicator_tension_cards or []
+            ),
+            "cooccurrence_bundles.json": _schema_from_bundles(
+                cooccurrence_bundles or []
             ),
             "analyst_leads.json": str(
                 analyst_leads.get("schema_version") or "unknown"
@@ -136,6 +142,13 @@ def _schema_from_cards(cards: list[dict[str, Any]]) -> str:
     return "indicator_tension_cards.v1"
 
 
+def _schema_from_bundles(bundles: list[dict[str, Any]]) -> str:
+    for bundle in bundles:
+        if isinstance(bundle, dict) and bundle.get("schema_version"):
+            return str(bundle["schema_version"])
+    return "cooccurrence_bundles.v1"
+
+
 def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
     expected = [
         "raw_items.json",
@@ -144,6 +157,8 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "indicator_watch.json",
         "indicator_tension_cards.json",
         "indicator_tension_cards.md",
+        "cooccurrence_bundles.json",
+        "cooccurrence_bundles.md",
         "source_failures.json",
         "source_health.json",
         "legislative_reconciler.json",

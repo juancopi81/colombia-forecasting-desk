@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from colombia_forecasting_desk.cooccurrence_bundles import (
+    attach_cooccurrence_bundles,
+)
 from colombia_forecasting_desk.m2_review_packet import (
     build_m2_review_packet,
     render_m2_review_packet,
@@ -272,6 +275,42 @@ def test_m2_review_packet_surfaces_indicator_tension_cards() -> None:
     assert "TES-policy spread tension" in rendered
     assert "Family: `sovereign_funding`" in rendered
     assert "not conclusions or probability inputs" in rendered
+
+
+def test_m2_review_packet_surfaces_cooccurrence_bundles() -> None:
+    bundle = {
+        "schema_version": "cooccurrence_bundles.v1",
+        "bundle_id": "fiscal_sovereign_funding",
+        "title": "Fiscal / sovereign funding bundle",
+        "disposition": "review_context_only",
+        "description": "Fiscal and TES inputs co-occurred.",
+        "input_count": 2,
+        "inputs": [
+            {
+                "kind": "tension_card",
+                "input_id": "real_tax_revenue_squeeze",
+                "title": "Real tax revenue squeeze",
+                "summary": "Tax revenue growth below IPC.",
+            }
+        ],
+        "review_questions": ["Are these inputs related or independent?"],
+        "guardrails": ["Co-occurrence is not causality."],
+    }
+    packet = attach_cooccurrence_bundles(
+        {
+            "summary": {"review_item_count": 0},
+            "inputs": {},
+            "review_items": [],
+        },
+        [bundle],
+    )
+
+    rendered = render_m2_review_packet(packet)
+
+    assert packet["summary"]["cooccurrence_bundle_count"] == 1
+    assert "## Co-Occurrence Bundles" in rendered
+    assert "Fiscal / sovereign funding bundle" in rendered
+    assert "not conclusions, thesis labels" in rendered
 
 
 def test_m2_review_packet_reserves_space_for_indicator_seeds() -> None:

@@ -41,6 +41,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `clusters.json` — clusters of related items, ranked by simple heuristics
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `indicator_tension_cards.json` / `.md` — advisory cross-indicator screens that flag official-data tensions for M2 review without making conclusions
+- `cooccurrence_bundles.json` / `.md` — neutral M2 context bundles that package related ingredients that co-occurred today without choosing a thesis
 - `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
 - `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
 - `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
@@ -68,6 +69,11 @@ structured bills do not crowd out macro/fiscal/market signals.
 probability inputs. They currently look for TES-policy spread pressure, high
 ex-post real policy rates, real tax-revenue squeeze, high TES auction cutoff
 rates, and construction-cost pressure versus headline IPC.
+`cooccurrence_bundles.json` / `.md` group related active ingredients such as
+fiscal/TES pressure, monetary/credit transmission, construction/housing costs,
+and energy/tariff/subsidy context. They are neutral routing aids for M2: the
+agent must review cross-bundle links and unbundled items instead of treating the
+bundles as the only possible stories.
 `analyst_leads.json` / `.md` apply the
 [`Final Output Contract`](docs/FINAL_OUTPUT_CONTRACT.md): `forecast_question`
 for evidenced M3-ready questions, `analyst_insight` for source-backed findings
@@ -132,7 +138,7 @@ selected runtime summaries before catalog edits.
 
 ## Status
 
-Currently at **M2.5 — final output surface v0**, building on the
+Currently at **M2.6 — neutral context bundles for M2**, building on the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now

@@ -13,8 +13,8 @@ runs/YYYY-MM-DD/analyst_leads.md
 ```
 
 They are built from `m2_review_packet.json`, `indicator_tension_cards.json`,
-and selected structured lead builders such as SECOP concentration and
-zona-franca land-use screens.
+`cooccurrence_bundles.json`, and selected structured lead builders such as
+SECOP concentration and zona-franca land-use screens.
 They do not replace `candidate_questions.md`, M3 evidence packs, or the forecast
 log. They are a review surface for the human and the next LLM step.
 
@@ -91,6 +91,7 @@ The intended path is:
 
 ```text
 m2_review_packet
+  -> cooccurrence_bundles
   -> analyst_leads
   -> candidate_questions / selected M3 Case File
   -> evidence pack

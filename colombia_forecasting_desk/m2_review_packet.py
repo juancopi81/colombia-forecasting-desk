@@ -213,6 +213,7 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         f"- Heuristic challenge items: {summary.get('heuristic_challenge_count', 0)}",
         f"- Source caveats: {summary.get('source_caveat_count', 0)}",
         f"- Indicator tension cards: {summary.get('indicator_tension_card_count', 0)}",
+        f"- Co-occurrence bundles: {summary.get('cooccurrence_bundle_count', 0)}",
         "",
     ]
     item_type_counts = summary.get("item_type_counts")
@@ -246,6 +247,25 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         lines.append("")
         for index, card in enumerate(tension_cards[:5], 1):
             lines.extend(_render_tension_card(index, card))
+
+    cooccurrence_bundles = [
+        bundle
+        for bundle in packet.get("cooccurrence_bundles") or []
+        if isinstance(bundle, dict)
+    ]
+    if cooccurrence_bundles:
+        lines.extend(["## Co-Occurrence Bundles", ""])
+        lines.append(
+            "Neutral context bundles that package related ingredients for M2; "
+            "they are not conclusions, thesis labels, forecast questions, or "
+            "probability inputs."
+        )
+        lines.append(
+            "Review these alongside cross-bundle links and unbundled M2 items."
+        )
+        lines.append("")
+        for index, bundle in enumerate(cooccurrence_bundles[:4], 1):
+            lines.extend(_render_cooccurrence_bundle(index, bundle))
 
     lines.extend(["## Review Items", ""])
     for index, item in enumerate(packet.get("review_items") or [], 1):
@@ -919,6 +939,44 @@ def _render_tension_card(index: int, card: dict[str, Any]) -> list[str]:
     if questions:
         lines.append("Suggested questions:")
         lines.extend(f"- {question}" for question in questions)
+        lines.append("")
+    return lines
+
+
+def _render_cooccurrence_bundle(index: int, bundle: dict[str, Any]) -> list[str]:
+    lines = [
+        f"### {index}. {bundle.get('title', bundle.get('bundle_id', 'Bundle'))}",
+        "",
+        f"- Bundle id: `{bundle.get('bundle_id', '')}`",
+        f"- Disposition: `{bundle.get('disposition', 'review_context_only')}`",
+        f"- Inputs: {bundle.get('input_count', 0)}",
+        f"- Description: {bundle.get('description', '')}",
+        "",
+    ]
+    inputs = [
+        item for item in bundle.get("inputs") or [] if isinstance(item, dict)
+    ]
+    if inputs:
+        lines.extend(["Inputs:", ""])
+        for item in inputs[:8]:
+            lines.append(
+                f"- `{item.get('kind', '')}` `{item.get('input_id', '')}`: "
+                f"{item.get('title', '')} — {item.get('summary', '')}"
+            )
+        lines.append("")
+    questions = [
+        str(question) for question in bundle.get("review_questions") or [] if question
+    ]
+    if questions:
+        lines.extend(["Review questions:", ""])
+        lines.extend(f"- {question}" for question in questions[:8])
+        lines.append("")
+    guardrails = [
+        str(guardrail) for guardrail in bundle.get("guardrails") or [] if guardrail
+    ]
+    if guardrails:
+        lines.extend(["Guardrails:", ""])
+        lines.extend(f"- {guardrail}" for guardrail in guardrails[:6])
         lines.append("")
     return lines
 

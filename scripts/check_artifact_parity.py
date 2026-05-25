@@ -20,6 +20,7 @@ DEFAULT_ARTIFACTS = (
     "clusters.json",
     "indicator_watch.json",
     "indicator_tension_cards.json",
+    "cooccurrence_bundles.json",
     "source_failures.json",
     "source_health.json",
     "legislative_reconciler.json",
@@ -35,6 +36,7 @@ DEFAULT_ARTIFACTS = (
     "m2_handoff.md",
     "m2_review_packet.md",
     "indicator_tension_cards.md",
+    "cooccurrence_bundles.md",
     "analyst_leads.md",
 )
 

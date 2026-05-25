@@ -163,6 +163,8 @@ colombia-forecasting-desk/
       indicator_watch.json
       indicator_tension_cards.json
       indicator_tension_cards.md
+      cooccurrence_bundles.json
+      cooccurrence_bundles.md
       legislative_reconciler.json
       m2_ranked_questions.json
       m2_review_packet.json
@@ -387,6 +389,10 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate `indicator_tension_cards.json` / `.md` for advisory official-data
       tension prompts and surface them in the M2 review packet without treating
       them as conclusions or probability inputs.
+- [x] Generate `cooccurrence_bundles.json` / `.md` for neutral M2 context
+      packaging across fiscal/funding, monetary/credit, construction/housing,
+      and energy/tariff/subsidy ingredients without treating bundles as thesis
+      labels or hard filters.
 - [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
       separating M3-ready forecast-question candidates from source-backed
       analyst insights and underqualified investigation leads.

@@ -257,6 +257,9 @@ def _render_m2_review_packet_summary(m2_review_packet: dict | None) -> str:
         "- `m2_review_packet.json` / `m2_review_packet.md`: "
         f"{summary.get('review_item_count', 0)} content-rich review items; "
         f"{summary.get('items_with_source_excerpts', 0)} include source excerpts.",
+        "- Co-occurrence bundles: "
+        f"{summary.get('cooccurrence_bundle_count', 0)} neutral context packages "
+        "for M2 review.",
         "- M2.2 policy: source excerpts are the primary input; deterministic "
         "scores and buckets are advisory only.",
     ]
@@ -913,8 +916,9 @@ def render_brief(
         "## Source Failures\n\n"
         f"{_render_failures(failures)}\n\n"
         "## Suggested Next Step\n\n"
-        "- Paste `m2_review_packet.md`, `m2_handoff.md`, and "
-        "`prompts/question_selection.md` into an AI to run M2 question selection.\n"
+        "- Paste `m2_review_packet.md`, `cooccurrence_bundles.md`, "
+        "`m2_handoff.md`, and `prompts/question_selection.md` into an AI to run "
+        "M2 question selection.\n"
     )
 
 
@@ -929,7 +933,9 @@ def _render_handoff_instructions() -> str:
         "question must have clear resolution criteria, a likely resolution "
         "source, a deadline/window, and missing evidence. If "
         "`m2_review_packet.md` is available, read its source excerpts before "
-        "trusting deterministic scores or buckets."
+        "trusting deterministic scores or buckets. Treat Co-Occurrence Bundles "
+        "as neutral context only: inspect cross-bundle links and unbundled "
+        "items before choosing a thesis path."
     )
 
 
