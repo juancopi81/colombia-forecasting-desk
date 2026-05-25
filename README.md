@@ -74,6 +74,10 @@ for evidenced M3-ready questions, `analyst_insight` for source-backed findings
 that do not need to become forecasts, and `investigation_lead` for plausible
 but underqualified leads. This keeps useful civic/economic insights visible
 without adding them to the forecast log or assigning probabilities too early.
+SECOP procurement concentration screens can now contribute conservative
+`analyst_insight` leads when recent official rows show repeated supplier/entity
+pairs, direct-contracting concentration, low-competition process clusters, or
+cancelled-process clusters. These are review prompts, not fraud findings.
 `run_trace.json` is diagnostic only; it helps explain how a run executed, but it
 does not feed candidate ranking, acceptance gates, or M2 question selection.
 

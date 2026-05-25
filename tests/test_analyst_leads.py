@@ -175,3 +175,51 @@ def test_tension_cards_become_analyst_insights_not_forecasts() -> None:
     rendered = render_analyst_leads(payload)
     assert "## Forecast Questions\n\nNo leads in this class." in rendered
     assert "Real tax revenue squeeze" in rendered
+
+
+def test_procurement_concentration_leads_render_as_analyst_insights() -> None:
+    procurement_lead = {
+        "lead_id": "analyst_insight:procurement:abc123",
+        "lead_type": "analyst_insight",
+        "title": "SECOP repeated supplier-entity pair",
+        "claim_or_question": (
+            "Recent SECOP rows show repeated supplier-entity records worth review."
+        ),
+        "disposition": "monitor_or_research",
+        "evidence": [
+            {
+                "label": "SECOP II Contrato",
+                "value": "supplier: Demo SAS",
+                "source": "SECOP II",
+                "url": "https://example.com/secop",
+            }
+        ],
+        "caveats": ["This is a concentration screen, not evidence of wrongdoing."],
+        "next_check": "Open the underlying SECOP rows.",
+        "source_refs": {
+            "artifact_refs": [{"artifact": "raw_items.json", "key": "source_id", "value": "secop_*"}],
+            "source_item_ids": ["secop-1"],
+            "source_urls": ["https://example.com/secop"],
+        },
+        "review_context": {
+            "family": "procurement_concentration",
+            "pattern": "repeated_supplier_entity_pair",
+        },
+    }
+
+    payload = build_analyst_leads(
+        _summary(),
+        {"review_items": []},
+        [],
+        [procurement_lead],
+    )
+
+    assert payload["summary"]["forecast_question_count"] == 0
+    assert payload["summary"]["analyst_insight_count"] == 1
+    assert payload["summary"]["procurement_concentration_lead_count"] == 1
+    assert payload["leads"][0]["review_context"]["family"] == "procurement_concentration"
+    assert _required_fields_present(payload["leads"][0])
+
+    rendered = render_analyst_leads(payload)
+    assert "SECOP repeated supplier-entity pair" in rendered
+    assert "not evidence of wrongdoing" in rendered

@@ -43,6 +43,9 @@ Prefer M2/M3 candidates with one or more of these hooks:
   story is closer to reality.
 - **Named entity plus institutional path:** a company, municipality, project,
   bill, agency, court, or regulator is tied to a clear next step.
+- **Civic visibility pattern:** procurement, registry, licensing, budget, or
+  legal-publication data reveals a repeated entity/supplier, concentration,
+  cancellation, or administrative pattern worth review.
 - **Public consequence:** the outcome would matter for households, firms,
   investors as observers, public finances, elections, public services, or
   institutional credibility without becoming personalized advice.

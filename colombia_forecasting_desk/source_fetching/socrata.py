@@ -21,6 +21,7 @@ class SocrataAdapter:
     id_field: str
     label: str
     entity_field: str | None = None
+    extra_fields: tuple[str, ...] = ()
     title_max_chars: int = 160
 
 
@@ -30,6 +31,19 @@ SOCRATA_ADAPTERS: dict[str, SocrataAdapter] = {
         title_field="nombre_del_procedimiento",
         id_field="id_del_proceso",
         entity_field="entidad",
+        extra_fields=(
+            "modalidad_de_contratacion",
+            "estado_del_procedimiento",
+            "adjudicado",
+            "nombre_del_proveedor",
+            "nit_del_proveedor_adjudicado",
+            "valor_total_adjudicacion",
+            "precio_base",
+            "proveedores_unicos_con",
+            "respuestas_al_procedimiento",
+            "conteo_de_respuestas_a_ofertas",
+            "urlproceso",
+        ),
         label="SECOP II Proceso",
     ),
     "secop_ii_contratos": SocrataAdapter(
@@ -37,6 +51,15 @@ SOCRATA_ADAPTERS: dict[str, SocrataAdapter] = {
         title_field="descripcion_del_proceso",
         id_field="id_contrato",
         entity_field="nombre_entidad",
+        extra_fields=(
+            "modalidad_de_contratacion",
+            "tipo_de_contrato",
+            "estado_contrato",
+            "proveedor_adjudicado",
+            "documento_proveedor",
+            "valor_del_contrato",
+            "urlproceso",
+        ),
         label="SECOP II Contrato",
     ),
     "secop_i_procesos": SocrataAdapter(
@@ -109,6 +132,13 @@ def _socrata_row_to_item(
         "date_field": adapter.date_field,
         "title_field": adapter.title_field,
     }
+    socrata_fields = {
+        field: value
+        for field in adapter.extra_fields
+        if (value := row.get(field)) not in (None, "")
+    }
+    if socrata_fields:
+        metadata["socrata_fields"] = socrata_fields
     if entity:
         metadata["entity"] = entity
     return RawItem(
@@ -135,6 +165,7 @@ def _socrata_params(
         adapter.date_field,
         adapter.title_field,
         adapter.id_field,
+        *adapter.extra_fields,
     }
     if adapter.entity_field:
         select_cols.add(adapter.entity_field)

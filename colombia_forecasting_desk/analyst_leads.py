@@ -9,7 +9,7 @@ from .models import RunSummary
 
 SCHEMA_VERSION = "analyst_leads.v1"
 MAX_FORECAST_QUESTIONS = 4
-MAX_ANALYST_INSIGHTS = 5
+MAX_ANALYST_INSIGHTS = 6
 MAX_INVESTIGATION_LEADS = 5
 MAX_EVIDENCE_ITEMS = 4
 MAX_CAVEATS = 6
@@ -73,6 +73,7 @@ def build_analyst_leads(
     run_summary: RunSummary,
     m2_review_packet: dict[str, Any],
     indicator_tension_cards: list[dict[str, Any]] | None = None,
+    procurement_concentration_leads: list[dict[str, Any]] | None = None,
     *,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
@@ -85,9 +86,14 @@ def build_analyst_leads(
     tension_cards = [
         card for card in indicator_tension_cards or [] if isinstance(card, dict)
     ]
+    procurement_leads = [
+        lead
+        for lead in procurement_concentration_leads or []
+        if isinstance(lead, dict) and lead.get("lead_type") == "analyst_insight"
+    ]
 
     forecast_questions = _forecast_question_leads(review_items)
-    analyst_insights = _analyst_insight_leads(tension_cards)
+    analyst_insights = _analyst_insight_leads(tension_cards, procurement_leads)
     investigation_leads = _investigation_leads(review_items)
     leads = [*forecast_questions, *analyst_insights, *investigation_leads]
 
@@ -113,6 +119,8 @@ def build_analyst_leads(
             "m1_candidates_artifact": "m1_candidates.json",
             "m2_ranked_questions_artifact": "m2_ranked_questions.json",
             "indicator_watch_artifact": "indicator_watch.json",
+            "raw_items_artifact": "raw_items.json",
+            "cleaned_items_artifact": "cleaned_items.json",
         },
         "summary": {
             "lead_count": len(leads),
@@ -121,6 +129,7 @@ def build_analyst_leads(
             "investigation_lead_count": len(investigation_leads),
             "review_item_count": len(review_items),
             "indicator_tension_card_count": len(tension_cards),
+            "procurement_concentration_lead_count": len(procurement_leads),
         },
         "leads": leads,
     }
@@ -197,10 +206,17 @@ def _forecast_question_leads(review_items: list[dict[str, Any]]) -> list[dict[st
 
 def _analyst_insight_leads(
     tension_cards: list[dict[str, Any]],
+    procurement_leads: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     leads: list[dict[str, Any]] = []
-    for card in tension_cards[:MAX_ANALYST_INSIGHTS]:
+    for card in tension_cards:
+        if len(leads) >= MAX_ANALYST_INSIGHTS:
+            break
         leads.append(_lead_from_tension_card(card))
+    for lead in procurement_leads:
+        if len(leads) >= MAX_ANALYST_INSIGHTS:
+            break
+        leads.append(lead)
     return leads
 
 

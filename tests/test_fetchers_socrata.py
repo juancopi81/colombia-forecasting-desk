@@ -55,6 +55,9 @@ def test_socrata_row_to_item_synthesizes_url_and_title(sample_source) -> None:
         "nombre_del_procedimiento": "ADQUISICIÓN DE EQUIPOS DE COMPUTO",
         "id_del_proceso": "CO1.REQ.10337260",
         "entidad": "MUNICIPIO DE SUCRE",
+        "modalidad_de_contratacion": "Contratación directa",
+        "proveedores_unicos_con": "1",
+        "valor_total_adjudicacion": "50000000",
     }
     item = _socrata_row_to_item(row, source, "2026-04-30T12:00:00Z", adapter)
     assert item is not None
@@ -67,6 +70,11 @@ def test_socrata_row_to_item_synthesizes_url_and_title(sample_source) -> None:
     )
     assert item.metadata["extraction"] == "socrata_api"
     assert item.metadata["id_value"] == "CO1.REQ.10337260"
+    assert item.metadata["socrata_fields"] == {
+        "modalidad_de_contratacion": "Contratación directa",
+        "proveedores_unicos_con": "1",
+        "valor_total_adjudicacion": "50000000",
+    }
 
 
 def test_socrata_row_to_item_skips_rows_missing_required_fields(sample_source) -> None:

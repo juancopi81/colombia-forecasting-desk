@@ -42,6 +42,7 @@ from .models import (
     SourceHealth,
 )
 from .observability import RunTrace
+from .procurement_leads import build_procurement_concentration_leads
 from .ranker import parse_iso, rank
 from .registry_changes import add_mincit_zonas_francas_change_events
 
@@ -446,10 +447,15 @@ def run_single_source(
             review_items=len(m2_review_packet.get("review_items") or []),
         )
     with trace.span("build_analyst_leads") as span:
+        procurement_concentration_leads = build_procurement_concentration_leads(
+            raw_items,
+            cleaned,
+        )
         analyst_leads = build_analyst_leads(
             summary,
             m2_review_packet,
             indicator_tension_cards,
+            procurement_concentration_leads,
             generated_at=finished_at,
         )
         analyst_summary = analyst_leads.get("summary") or {}
@@ -458,6 +464,7 @@ def run_single_source(
             forecast_questions=analyst_summary.get("forecast_question_count"),
             analyst_insights=analyst_summary.get("analyst_insight_count"),
             investigation_leads=analyst_summary.get("investigation_lead_count"),
+            procurement_concentration_leads=len(procurement_concentration_leads),
         )
     with trace.span("build_acceptance_report") as span:
         acceptance_report = build_acceptance_report(
@@ -691,10 +698,15 @@ def run(
             review_items=len(m2_review_packet.get("review_items") or []),
         )
     with trace.span("build_analyst_leads") as span:
+        procurement_concentration_leads = build_procurement_concentration_leads(
+            raw_items,
+            cleaned,
+        )
         analyst_leads = build_analyst_leads(
             summary,
             m2_review_packet,
             indicator_tension_cards,
+            procurement_concentration_leads,
             generated_at=finished_at,
         )
         analyst_summary = analyst_leads.get("summary") or {}
@@ -703,6 +715,7 @@ def run(
             forecast_questions=analyst_summary.get("forecast_question_count"),
             analyst_insights=analyst_summary.get("analyst_insight_count"),
             investigation_leads=analyst_summary.get("investigation_lead_count"),
+            procurement_concentration_leads=len(procurement_concentration_leads),
         )
     with trace.span("build_acceptance_report") as span:
         acceptance_report = build_acceptance_report(

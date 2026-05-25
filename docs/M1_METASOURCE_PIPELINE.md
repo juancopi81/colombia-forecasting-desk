@@ -266,7 +266,10 @@ instead of letting them fail silently. See
 
 M1.5 adds Socrata API fetchers for public procurement datasets, making SECOP
 signals available through structured datos.gov.co endpoints where the source
-data is fresh enough to rank.
+data is fresh enough to rank. The adapters preserve selected official fields
+such as supplier, modality, status, value, response count, and process URL so
+later review surfaces can detect concentration screens without scraping SECOP
+HTML pages.
 
 M1.6 adds the first document-content parser. The DANE ICOCED source now follows
 the latest XLSX annex and extracts headline total, residential, and
@@ -608,7 +611,9 @@ Current observed cards:
   non-residential cost metrics plus DANE headline HTML components for cement,
   construction licenses, and housing finance.
 - `secop_procurement`: existing Socrata procurement adapters aggregated by day,
-  source, process type, and top entity.
+  source, process type, and top entity. SECOP rows can also feed conservative
+  analyst-insight leads for repeated supplier/entity pairs, direct-contracting
+  concentration, low-competition clusters, or cancelled-process clusters.
 - `energy_system`: XM public API components for SIN electricity demand, useful
   reservoir volume, and weighted national spot price.
 - `policy_rate_ibr`: BanRep SUAMECA latest policy rate and IBR overnight

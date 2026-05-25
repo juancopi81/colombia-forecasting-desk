@@ -36,12 +36,16 @@ Examples:
 - An official-data tension card showing tax collection growing below IPC.
 - A procurement concentration pattern, once entity matching and contract totals
   are reliable enough.
+- A SECOP screen showing repeated supplier/entity pairs, direct-contracting
+  concentration, low-competition process clusters, or cancelled-process
+  clusters, framed only as a review prompt.
 - A regulatory or land-use document that changes the public map but has no
   natural probability question yet.
 
 Promotion rule: an `analyst_insight` may cite deterministic screens or
 source-backed patterns, but it must not receive a probability or forecast-log
-treatment.
+treatment. Procurement screens must not be framed as fraud findings without
+separate legal, audit, or investigative evidence.
 
 ### `investigation_lead`
 
