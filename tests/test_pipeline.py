@@ -41,6 +41,15 @@ def _raw(**overrides) -> RawItem:
     return RawItem(**base)
 
 
+@pytest.fixture(autouse=True)
+def _stub_market_pricing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pipeline,
+        "fetch_market_pricing_observations",
+        lambda now=None: [],
+    )
+
+
 def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     monkeypatch,
     tmp_path,
@@ -108,6 +117,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "source_health.json").exists()
     assert (result.run_dir / "indicator_tension_cards.json").exists()
     assert (result.run_dir / "indicator_tension_cards.md").exists()
+    assert (result.run_dir / "market_pricing_watch.json").exists()
+    assert (result.run_dir / "market_pricing_watch.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
     assert (result.run_dir / "m2_handoff.md").exists()
@@ -124,6 +135,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.m2_review_packet["schema_version"] == "m2_review_packet.v1"
     assert result.analyst_leads["schema_version"] == "analyst_leads.v1"
     assert isinstance(result.indicator_tension_cards, list)
+    assert isinstance(result.market_pricing_watch, list)
     assert isinstance(result.cooccurrence_bundles, list)
     assert result.run_trace["schema_version"] == "run_trace.v1"
     assert result.run_trace["mode"] == "daily"
@@ -136,12 +148,17 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
         == result.acceptance_report["status"]
     )
     assert "build_analyst_leads" in trace_events
+    assert "build_market_pricing_watch" in trace_events
     assert "build_cooccurrence_bundles" in trace_events
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
     assert result.run_manifest["artifact_schemas"]["run_trace.json"] == "run_trace.v1"
     assert (
         result.run_manifest["artifact_schemas"]["indicator_tension_cards.json"]
         == "indicator_tension_cards.v1"
+    )
+    assert (
+        result.run_manifest["artifact_schemas"]["market_pricing_watch.json"]
+        == "market_pricing_watch.v1"
     )
     assert (
         result.run_manifest["artifact_schemas"]["cooccurrence_bundles.json"]
@@ -154,6 +171,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.run_manifest["capabilities"]["legislative_m2_ranking"] is True
     assert result.run_manifest["capabilities"]["m2_review_packet"] is True
     assert result.run_manifest["capabilities"]["indicator_tension_cards"] is True
+    assert result.run_manifest["capabilities"]["market_pricing_watch"] is True
     assert result.run_manifest["capabilities"]["cooccurrence_bundles"] is True
     assert result.run_manifest["capabilities"]["analyst_leads"] is True
     manifest_artifacts = {
@@ -163,6 +181,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert manifest_artifacts["run_trace.json"] is True
     assert manifest_artifacts["indicator_tension_cards.json"] is True
     assert manifest_artifacts["indicator_tension_cards.md"] is True
+    assert manifest_artifacts["market_pricing_watch.json"] is True
+    assert manifest_artifacts["market_pricing_watch.md"] is True
     assert manifest_artifacts["cooccurrence_bundles.json"] is True
     assert manifest_artifacts["cooccurrence_bundles.md"] is True
     assert manifest_artifacts["analyst_leads.json"] is True
@@ -247,6 +267,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert result.source_health[0].rankable_count == 1
     assert (result.run_dir / "indicator_tension_cards.json").exists()
     assert (result.run_dir / "indicator_tension_cards.md").exists()
+    assert (result.run_dir / "market_pricing_watch.json").exists()
+    assert (result.run_dir / "market_pricing_watch.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()

@@ -159,6 +159,28 @@ class IndicatorObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class MarketPricingObservation:
+    market_id: str
+    name: str
+    category: str
+    symbol: str
+    instrument_type: str
+    status: str
+    source_name: str
+    source_url: str
+    fetched_at: str
+    observed_date: str = ""
+    latest_close: float | None = None
+    currency: str = ""
+    headline: str = ""
+    values: dict[str, Any] = field(default_factory=dict)
+    freshness_status: str = "unknown"
+    caveats: list[str] = field(default_factory=list)
+    next_step: str = ""
+    schema_version: str = "market_pricing_watch.v1"
+
+
+@dataclass(frozen=True, slots=True)
 class RunSummary:
     run_date: str
     started_at: str

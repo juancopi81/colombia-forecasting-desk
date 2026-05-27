@@ -5,7 +5,7 @@ from colombia_forecasting_desk.cooccurrence_bundles import (
     build_cooccurrence_bundles,
     render_cooccurrence_bundles,
 )
-from colombia_forecasting_desk.models import IndicatorObservation
+from colombia_forecasting_desk.models import IndicatorObservation, MarketPricingObservation
 
 
 def _indicator(indicator_id: str, headline: str) -> IndicatorObservation:
@@ -41,6 +41,27 @@ def _card(card_id: str, family: str, title: str) -> dict:
         "caveats": [],
         "source_refs": [],
     }
+
+
+def _market(market_id: str, status: str = "observed") -> MarketPricingObservation:
+    return MarketPricingObservation(
+        market_id=market_id,
+        name=market_id.replace("_", " ").title(),
+        category="test",
+        symbol=market_id.upper(),
+        instrument_type="test",
+        status=status,
+        source_name="Market Source",
+        source_url=f"https://example.com/{market_id}",
+        fetched_at="2026-05-26T23:59:00Z",
+        observed_date="2026-05-26",
+        latest_close=10.0,
+        currency="USD",
+        headline=f"{market_id} latest daily close was 10.0.",
+        freshness_status="current" if status == "observed" else status,
+        caveats=[],
+        next_step="Review only.",
+    )
 
 
 def test_builds_fiscal_sovereign_bundle_from_tensions_and_pgn_review_item() -> None:
@@ -158,3 +179,32 @@ def test_attach_cooccurrence_bundles_updates_m2_packet_contract() -> None:
         "cooccurrence_bundles.json"
     )
     assert "not thesis labels" in packet["policy"]["cooccurrence_bundle_policy"]
+
+
+def test_market_pricing_bundle_uses_observed_market_rows_only() -> None:
+    bundles = build_cooccurrence_bundles(
+        [],
+        [],
+        {"review_items": []},
+        [
+            _market("brent_spot_fred"),
+            _market("ec_adr_nasdaq"),
+            _market("cib_adr_nasdaq", status="failed"),
+        ],
+    )
+
+    market = next(
+        bundle for bundle in bundles if bundle["bundle_id"] == "colombia_market_pricing"
+    )
+
+    assert market["disposition"] == "review_context_only"
+    assert any(item["kind"] == "market_pricing" for item in market["inputs"])
+    assert any(
+        item["input_id"] == "brent_spot_fred"
+        for item in market["inputs"]
+    )
+    assert all(
+        item["input_id"] != "cib_adr_nasdaq"
+        for item in market["inputs"]
+    )
+    assert "brent_spot_fred" in market["review_context"]["market_ids"]

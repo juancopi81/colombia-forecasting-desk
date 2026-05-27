@@ -3,10 +3,11 @@
 You are running M2 question selection for Colombia Forecasting Desk.
 
 Input may include `m2_handoff.md`, `m2_review_packet.md`,
-`cooccurrence_bundles.md`, `indicator_tension_cards.md`, and
-`analyst_leads.md`. Use only the provided evidence unless you explicitly label
-a gap as missing evidence. Do not browse, estimate probabilities, draft posts,
-or give investment, trading, betting, or execution advice.
+`market_pricing_watch.md`, `cooccurrence_bundles.md`,
+`indicator_tension_cards.md`, and `analyst_leads.md`. Use only the provided
+evidence unless you explicitly label a gap as missing evidence. Do not browse,
+estimate probabilities, draft posts, or give investment, trading, betting, or
+execution advice.
 
 ## Goal
 
@@ -44,6 +45,12 @@ notice related ingredients, but they are not thesis labels, hard filters,
 forecast questions, or probability inputs. Always inspect cross-bundle links,
 alternative explanations, and important unbundled items before deciding what to
 select.
+
+Treat Market Pricing Watch as experimental context only. ADR, ETF, and Brent
+rows can help you ask whether market pricing aligns with official evidence,
+contradicts it, or is unrelated, but they are not advice, conclusions, ranking
+signals, or probability inputs. Endpoint failures and stale closes are
+source-health caveats, not evidence that nothing moved.
 
 Examples: "Will this project/land/company become a zona franca?", "Will
 construction or material costs increase again?", "Two official or credible

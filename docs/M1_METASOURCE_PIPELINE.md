@@ -78,6 +78,8 @@ runs/YYYY-MM-DD/clusters.json
 runs/YYYY-MM-DD/indicator_watch.json
 runs/YYYY-MM-DD/indicator_tension_cards.json
 runs/YYYY-MM-DD/indicator_tension_cards.md
+runs/YYYY-MM-DD/market_pricing_watch.json
+runs/YYYY-MM-DD/market_pricing_watch.md
 runs/YYYY-MM-DD/cooccurrence_bundles.json
 runs/YYYY-MM-DD/cooccurrence_bundles.md
 runs/YYYY-MM-DD/analyst_leads.json
@@ -694,6 +696,29 @@ explainable, or worth turning into M3 research.
 
 ## Co-Occurrence Bundles
 
+## Market Pricing Watch
+
+Each daily run also writes:
+
+```text
+runs/YYYY-MM-DD/market_pricing_watch.json
+runs/YYYY-MM-DD/market_pricing_watch.md
+```
+
+This artifact is an experimental fail-closed market-pricing watch for M2. The
+first instruments are Brent spot from FRED/EIA, Ecopetrol ADR (`EC`), Grupo
+Cibest ADR (`CIB`), and Global X MSCI Colombia ETF (`COLO`). The ADR/ETF rows
+come from public no-key market endpoints, so failures, stale closes, and
+fallback-source use are surfaced in the artifact instead of being hidden.
+
+The watch is review context only. It is not investment advice, a forecast
+question, a ranking signal, or a probability input. Bundles may include observed
+market rows, but M2 must still ask whether market movement is aligned with
+official Colombia evidence, contradicted by it, or simply broad external-market
+noise.
+
+## Co-Occurrence Bundles
+
 Each run also writes:
 
 ```text
@@ -704,8 +729,9 @@ runs/YYYY-MM-DD/cooccurrence_bundles.md
 These bundles are neutral context packaging for M2. They collect related
 ingredients that co-occurred in the run, such as fiscal/TES funding pressure,
 monetary/credit transmission, construction/housing costs, and
-energy/tariff/subsidy context. They do not assert a thesis, make a causal claim,
-create a forecast question, or set a probability.
+energy/tariff/subsidy context. Observed `market_pricing_watch` rows can also
+feed a Colombia market-pricing bundle. Bundles do not assert a thesis, make a
+causal claim, create a forecast question, or set a probability.
 
 The first bundle families are intentionally broad:
 
@@ -717,6 +743,8 @@ The first bundle families are intentionally broad:
   housing finance, and related public-works or housing signals.
 - `energy_tariff_subsidy`: XM energy-system data plus tariff, GLP, fuel,
   subsidy, inflation, or fiscal context.
+- `colombia_market_pricing`: Brent spot, EC/CIB ADRs, COLO ETF, and related
+  official energy, credit, or fiscal context when observed rows are available.
 
 Every bundle includes guardrails telling the agent to inspect cross-bundle links
 and unbundled M2 items before deciding what matters. The point is to reduce
@@ -753,15 +781,16 @@ packet is deliberately balanced: legislative records are capped, Indicator Watch
 seeds get reserved space, event leads remain visible, a few cross-impact
 hypotheses can be added when existing metadata suggests that a legal decision
 and an indicator should be reviewed together, Indicator Tension Cards are
-embedded when official-data thresholds trigger, and Co-Occurrence Bundles
+embedded when official-data thresholds trigger, experimental Market Pricing
+Watch rows are surfaced with source-health caveats, and Co-Occurrence Bundles
 package related ingredients without choosing a thesis.
 
 Cross-impact items, Indicator Tension Cards, and Co-Occurrence Bundles are
 advisory only. They are not causal evidence, do not set a probability, and
 should be used only to decide whether an LLM or human reviewer should drill
 back into `indicator_watch.json`, `indicator_tension_cards.json`,
-`cooccurrence_bundles.json`, `m1_candidates.json`, `legislative_reconciler.json`,
-`raw_items.json`, or `cleaned_items.json`.
+`market_pricing_watch.json`, `cooccurrence_bundles.json`, `m1_candidates.json`,
+`legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 
 ## Source Health
 

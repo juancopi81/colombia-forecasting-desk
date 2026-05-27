@@ -213,6 +213,13 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         f"- Heuristic challenge items: {summary.get('heuristic_challenge_count', 0)}",
         f"- Source caveats: {summary.get('source_caveat_count', 0)}",
         f"- Indicator tension cards: {summary.get('indicator_tension_card_count', 0)}",
+        (
+            "- Market pricing rows: "
+            f"{summary.get('market_pricing_observation_count', 0)} "
+            f"(observed={summary.get('market_pricing_observed_count', 0)}, "
+            f"stale={summary.get('market_pricing_stale_count', 0)}, "
+            f"failed={summary.get('market_pricing_failed_count', 0)})"
+        ),
         f"- Co-occurrence bundles: {summary.get('cooccurrence_bundle_count', 0)}",
         "",
     ]
@@ -247,6 +254,22 @@ def render_m2_review_packet(packet: dict[str, Any]) -> str:
         lines.append("")
         for index, card in enumerate(tension_cards[:5], 1):
             lines.extend(_render_tension_card(index, card))
+
+    market_pricing_watch = [
+        item
+        for item in packet.get("market_pricing_watch") or []
+        if isinstance(item, dict)
+    ]
+    if market_pricing_watch:
+        lines.extend(["## Market Pricing Watch", ""])
+        lines.append(
+            "Experimental ADR, ETF, and Brent/oil context for review; these "
+            "rows are not advice, conclusions, ranking signals, or probability "
+            "inputs."
+        )
+        lines.append("")
+        for index, observation in enumerate(market_pricing_watch[:5], 1):
+            lines.extend(_render_market_pricing_observation(index, observation))
 
     cooccurrence_bundles = [
         bundle
@@ -940,6 +963,40 @@ def _render_tension_card(index: int, card: dict[str, Any]) -> list[str]:
         lines.append("Suggested questions:")
         lines.extend(f"- {question}" for question in questions)
         lines.append("")
+    return lines
+
+
+def _render_market_pricing_observation(
+    index: int,
+    observation: dict[str, Any],
+) -> list[str]:
+    lines = [
+        (
+            f"### Market {index}: "
+            f"{observation.get('name') or observation.get('market_id', '')}"
+        ),
+        "",
+        f"- Market id: `{observation.get('market_id', '')}`",
+        f"- Symbol: `{observation.get('symbol', '')}`",
+        (
+            f"- Status: `{observation.get('status', '')}` / "
+            f"`{observation.get('freshness_status', '')}`"
+        ),
+        f"- Observed date: {observation.get('observed_date') or 'n/a'}",
+        (
+            f"- Latest close: {observation.get('latest_close')} "
+            f"{observation.get('currency', '')}"
+        ),
+        f"- Source: {observation.get('source_name', '')}",
+        f"- Headline: {observation.get('headline', '')}",
+    ]
+    caveats = [str(caveat) for caveat in observation.get("caveats") or []]
+    if caveats:
+        lines.append(f"- Caveats: {'; '.join(caveats)}")
+    next_step = str(observation.get("next_step") or "")
+    if next_step:
+        lines.append(f"- Next check: {next_step}")
+    lines.append("")
     return lines
 
 

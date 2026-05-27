@@ -23,6 +23,7 @@ def build_run_manifest(
     m2_ranked_questions: dict[str, Any],
     m2_review_packet: dict[str, Any],
     indicator_tension_cards: list[dict[str, Any]] | None = None,
+    market_pricing_watch: list[Any] | None = None,
     cooccurrence_bundles: list[dict[str, Any]] | None = None,
     analyst_leads: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -50,6 +51,7 @@ def build_run_manifest(
             ),
             "m2_review_items": len(m2_review_packet.get("review_items") or []),
             "indicator_tension_cards": len(indicator_tension_cards or []),
+            "market_pricing_observations": len(market_pricing_watch or []),
             "cooccurrence_bundles": len(cooccurrence_bundles or []),
             "analyst_leads": len(analyst_leads.get("leads") or []),
         },
@@ -62,6 +64,7 @@ def build_run_manifest(
             "heuristic_audit": bool(m2_ranked_questions.get("heuristic_audit")),
             "m2_review_packet": True,
             "indicator_tension_cards": True,
+            "market_pricing_watch": True,
             "cooccurrence_bundles": True,
             "analyst_leads": True,
         },
@@ -80,6 +83,9 @@ def build_run_manifest(
             ),
             "indicator_tension_cards.json": _schema_from_cards(
                 indicator_tension_cards or []
+            ),
+            "market_pricing_watch.json": _schema_from_market_pricing(
+                market_pricing_watch or []
             ),
             "cooccurrence_bundles.json": _schema_from_bundles(
                 cooccurrence_bundles or []
@@ -142,6 +148,16 @@ def _schema_from_cards(cards: list[dict[str, Any]]) -> str:
     return "indicator_tension_cards.v1"
 
 
+def _schema_from_market_pricing(records: list[Any]) -> str:
+    for record in records:
+        if isinstance(record, dict) and record.get("schema_version"):
+            return str(record["schema_version"])
+        schema_version = getattr(record, "schema_version", None)
+        if schema_version:
+            return str(schema_version)
+    return "market_pricing_watch.v1"
+
+
 def _schema_from_bundles(bundles: list[dict[str, Any]]) -> str:
     for bundle in bundles:
         if isinstance(bundle, dict) and bundle.get("schema_version"):
@@ -157,6 +173,8 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "indicator_watch.json",
         "indicator_tension_cards.json",
         "indicator_tension_cards.md",
+        "market_pricing_watch.json",
+        "market_pricing_watch.md",
         "cooccurrence_bundles.json",
         "cooccurrence_bundles.md",
         "source_failures.json",

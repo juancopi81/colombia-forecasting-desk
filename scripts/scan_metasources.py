@@ -149,6 +149,13 @@ def main() -> int:
         f"  indicators={len(result.indicator_watch)} "
         f"observed={len(observed_indicators)}"
     )
+    observed_markets = [
+        item for item in result.market_pricing_watch if item.status == "observed"
+    ]
+    print(
+        f"  market_pricing={len(result.market_pricing_watch)} "
+        f"observed={len(observed_markets)}"
+    )
     print(
         f"  candidates={len(result.m1_candidates.get('candidates', []))} "
         f"acceptance={result.acceptance_report.get('status', 'unknown')} "

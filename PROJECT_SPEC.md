@@ -163,6 +163,8 @@ colombia-forecasting-desk/
       indicator_watch.json
       indicator_tension_cards.json
       indicator_tension_cards.md
+      market_pricing_watch.json
+      market_pricing_watch.md
       cooccurrence_bundles.json
       cooccurrence_bundles.md
       legislative_reconciler.json
@@ -391,8 +393,11 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       them as conclusions or probability inputs.
 - [x] Generate `cooccurrence_bundles.json` / `.md` for neutral M2 context
       packaging across fiscal/funding, monetary/credit, construction/housing,
-      and energy/tariff/subsidy ingredients without treating bundles as thesis
-      labels or hard filters.
+      energy/tariff/subsidy, and market-pricing ingredients without treating
+      bundles as thesis labels or hard filters.
+- [x] Generate experimental `market_pricing_watch.json` / `.md` for fail-closed
+      EC, CIB, COLO, and Brent spot context without treating market prices as
+      advice, conclusions, ranking signals, or probability inputs.
 - [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
       separating M3-ready forecast-question candidates from source-backed
       analyst insights and underqualified investigation leads.

@@ -5,11 +5,11 @@ import re
 from typing import Any, Iterable
 
 from .cleaner import normalize_whitespace
-from .models import IndicatorObservation
+from .models import IndicatorObservation, MarketPricingObservation
 from .tagger import fold_accents
 
 SCHEMA_VERSION = "cooccurrence_bundles.v1"
-MAX_BUNDLES = 4
+MAX_BUNDLES = 5
 MAX_INPUTS_PER_BUNDLE = 8
 MAX_REVIEW_ITEM_INPUTS = 3
 MIN_INPUTS_PER_BUNDLE = 2
@@ -145,6 +145,40 @@ BUNDLE_DEFINITIONS: tuple[dict[str, Any], ...] = (
             "Is there an official tariff, subsidy, regulation, or legislative date that could resolve the question?",
         ],
     },
+    {
+        "bundle_id": "colombia_market_pricing",
+        "title": "Colombia market pricing bundle",
+        "description": (
+            "ADR, Colombia ETF, and Brent/oil pricing inputs co-occurred and "
+            "may deserve joint review against official Colombia evidence."
+        ),
+        "tension_card_ids": set(),
+        "indicator_ids": {"oil_gas_production", "energy_system"},
+        "market_ids": {
+            "brent_spot_fred",
+            "ec_adr_nasdaq",
+            "cib_adr_nasdaq",
+            "colo_etf_nasdaq",
+        },
+        "review_terms": {
+            "adr",
+            "brent",
+            "bancolombia",
+            "cib",
+            "cibest",
+            "colcap",
+            "colo",
+            "ecopetrol",
+            "petroleo",
+            "petróleo",
+            "acciones",
+            "mercado",
+        },
+        "review_questions": [
+            "Are market moves aligned with official fiscal, energy, credit, or election signals, or are they broad external-market moves?",
+            "What official Colombia evidence would falsify a market-pricing thesis?",
+        ],
+    },
 )
 
 
@@ -152,6 +186,7 @@ def build_cooccurrence_bundles(
     indicator_watch: list[IndicatorObservation],
     indicator_tension_cards: list[dict[str, Any]],
     m2_review_packet: dict[str, Any],
+    market_pricing_watch: list[MarketPricingObservation] | None = None,
     *,
     max_bundles: int = MAX_BUNDLES,
 ) -> list[dict[str, Any]]:
@@ -166,6 +201,11 @@ def build_cooccurrence_bundles(
         for card in indicator_tension_cards
         if isinstance(card, dict)
     }
+    market_by_id = {
+        item.market_id: item
+        for item in market_pricing_watch or []
+        if item.status == "observed"
+    }
     review_items = [
         item
         for item in m2_review_packet.get("review_items") or []
@@ -178,6 +218,7 @@ def build_cooccurrence_bundles(
             definition,
             indicators_by_id,
             cards_by_id,
+            market_by_id,
             review_items,
         )
         if bundle is None:
@@ -245,11 +286,13 @@ def _bundle_from_definition(
     definition: dict[str, Any],
     indicators_by_id: dict[str, IndicatorObservation],
     cards_by_id: dict[str, dict[str, Any]],
+    market_by_id: dict[str, MarketPricingObservation],
     review_items: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     inputs: list[dict[str, Any]] = []
     card_ids = set(definition.get("tension_card_ids") or set())
     indicator_ids = set(definition.get("indicator_ids") or set())
+    market_ids = set(definition.get("market_ids") or set())
     review_terms = set(definition.get("review_terms") or set())
 
     for card_id in sorted(card_ids):
@@ -261,6 +304,11 @@ def _bundle_from_definition(
         indicator = indicators_by_id.get(indicator_id)
         if indicator:
             inputs.append(_input_from_indicator(indicator))
+
+    for market_id in sorted(market_ids):
+        market_observation = market_by_id.get(market_id)
+        if market_observation:
+            inputs.append(_input_from_market_observation(market_observation))
 
     matched_review_items = [
         item for item in review_items if _review_item_matches(item, review_terms)
@@ -301,6 +349,11 @@ def _bundle_from_definition(
             "indicator_ids": [
                 item["input_id"] for item in inputs if item["kind"] == "indicator"
             ],
+            "market_ids": [
+                item["input_id"]
+                for item in inputs
+                if item["kind"] == "market_pricing"
+            ],
             "review_item_ids": [
                 item["input_id"] for item in inputs if item["kind"] == "review_item"
             ],
@@ -340,6 +393,26 @@ def _input_from_indicator(indicator: IndicatorObservation) -> dict[str, Any]:
                 "artifact": "indicator_watch.json",
                 "key": "indicator_id",
                 "value": indicator.indicator_id,
+            }
+        ],
+    }
+
+
+def _input_from_market_observation(
+    observation: MarketPricingObservation,
+) -> dict[str, Any]:
+    return {
+        "kind": "market_pricing",
+        "input_id": observation.market_id,
+        "title": observation.name,
+        "summary": normalize_whitespace(observation.headline),
+        "source": observation.source_name,
+        "url": observation.source_url,
+        "artifact_refs": [
+            {
+                "artifact": "market_pricing_watch.json",
+                "key": "market_id",
+                "value": observation.market_id,
             }
         ],
     }

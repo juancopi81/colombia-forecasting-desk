@@ -36,10 +36,16 @@ from .legislative_reconciler import build_legislative_reconciliations
 from .m2_review_packet import build_m2_review_packet, render_m2_review_packet
 from .m2_ranker import build_legislative_m2_ranking
 from .manifest import build_run_manifest
+from .market_pricing import (
+    attach_market_pricing_watch,
+    fetch_market_pricing_observations,
+    render_market_pricing_watch,
+)
 from .models import (
     CleanedItem,
     Cluster,
     IndicatorObservation,
+    MarketPricingObservation,
     Metasource,
     RawItem,
     RunSummary,
@@ -74,6 +80,7 @@ class PipelineResult:
     source_health: list[SourceHealth]
     indicator_watch: list[IndicatorObservation]
     indicator_tension_cards: list[dict]
+    market_pricing_watch: list[MarketPricingObservation]
     cooccurrence_bundles: list[dict]
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
@@ -403,6 +410,14 @@ def run_single_source(
     with trace.span("build_indicator_tension_cards") as span:
         indicator_tension_cards = build_indicator_tension_cards(indicator_watch)
         span.set_counts(cards=len(indicator_tension_cards))
+    with trace.span("build_market_pricing_watch") as span:
+        market_pricing_watch: list[MarketPricingObservation] = []
+        span.set_counts(
+            observations=0,
+            observed=0,
+            failed=0,
+            stale=0,
+        )
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -449,6 +464,10 @@ def run_single_source(
             indicator_tension_cards,
             generated_at=finished_at,
         )
+        m2_review_packet = attach_market_pricing_watch(
+            m2_review_packet,
+            market_pricing_watch,
+        )
         span.set_counts(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
@@ -458,6 +477,7 @@ def run_single_source(
             indicator_watch,
             indicator_tension_cards,
             m2_review_packet,
+            market_pricing_watch,
         )
         m2_review_packet = attach_cooccurrence_bundles(
             m2_review_packet,
@@ -525,6 +545,17 @@ def run_single_source(
             ),
             encoding="utf-8",
         )
+        _write_json(
+            run_dir / "market_pricing_watch.json",
+            [asdict(item) for item in market_pricing_watch],
+        )
+        (run_dir / "market_pricing_watch.md").write_text(
+            render_market_pricing_watch(
+                market_pricing_watch,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "cooccurrence_bundles.json", cooccurrence_bundles)
         (run_dir / "cooccurrence_bundles.md").write_text(
             render_cooccurrence_bundles(
@@ -552,7 +583,7 @@ def run_single_source(
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=19)
+        span.set_counts(artifacts_written=21)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -566,6 +597,7 @@ def run_single_source(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
         analyst_leads=analyst_leads,
     )
@@ -581,6 +613,7 @@ def run_single_source(
         source_health=source_health,
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
+        market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
@@ -682,6 +715,14 @@ def run(
     with trace.span("build_indicator_tension_cards") as span:
         indicator_tension_cards = build_indicator_tension_cards(indicator_watch)
         span.set_counts(cards=len(indicator_tension_cards))
+    with trace.span("build_market_pricing_watch") as span:
+        market_pricing_watch = fetch_market_pricing_observations(now=current)
+        span.set_counts(
+            observations=len(market_pricing_watch),
+            observed=sum(1 for item in market_pricing_watch if item.status == "observed"),
+            failed=sum(1 for item in market_pricing_watch if item.status == "failed"),
+            stale=sum(1 for item in market_pricing_watch if item.status == "stale"),
+        )
 
     finished_at = _now_iso()
     summary = RunSummary(
@@ -727,6 +768,10 @@ def run(
             indicator_tension_cards,
             generated_at=finished_at,
         )
+        m2_review_packet = attach_market_pricing_watch(
+            m2_review_packet,
+            market_pricing_watch,
+        )
         span.set_counts(
             ranked_questions=len(m2_ranked_questions.get("ranked_questions") or []),
             review_items=len(m2_review_packet.get("review_items") or []),
@@ -736,6 +781,7 @@ def run(
             indicator_watch,
             indicator_tension_cards,
             m2_review_packet,
+            market_pricing_watch,
         )
         m2_review_packet = attach_cooccurrence_bundles(
             m2_review_packet,
@@ -803,6 +849,17 @@ def run(
             ),
             encoding="utf-8",
         )
+        _write_json(
+            run_dir / "market_pricing_watch.json",
+            [asdict(item) for item in market_pricing_watch],
+        )
+        (run_dir / "market_pricing_watch.md").write_text(
+            render_market_pricing_watch(
+                market_pricing_watch,
+                run_date=run_date,
+            ),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "cooccurrence_bundles.json", cooccurrence_bundles)
         (run_dir / "cooccurrence_bundles.md").write_text(
             render_cooccurrence_bundles(
@@ -859,7 +916,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=21)
+        span.set_counts(artifacts_written=23)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -873,6 +930,7 @@ def run(
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
+        market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
         analyst_leads=analyst_leads,
     )
@@ -888,6 +946,7 @@ def run(
         source_health=source_health,
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
+        market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,

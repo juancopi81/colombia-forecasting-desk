@@ -7,9 +7,11 @@ from colombia_forecasting_desk.m2_review_packet import (
     build_m2_review_packet,
     render_m2_review_packet,
 )
+from colombia_forecasting_desk.market_pricing import attach_market_pricing_watch
 from colombia_forecasting_desk.models import (
     CleanedItem,
     IndicatorObservation,
+    MarketPricingObservation,
     RawItem,
     RunSummary,
     SourceHealth,
@@ -149,6 +151,27 @@ def _indicator_observation(
         why_it_matters="Activity acceleration can shift fiscal and rates context.",
         correlations=["activity + tax collection can reveal fiscal pressure"],
         next_step="Check next release.",
+    )
+
+
+def _market_observation() -> MarketPricingObservation:
+    return MarketPricingObservation(
+        market_id="ec_adr_nasdaq",
+        name="Ecopetrol ADR",
+        category="colombia_adr",
+        symbol="EC",
+        instrument_type="adr",
+        status="observed",
+        source_name="Nasdaq public historical endpoint",
+        source_url="https://example.com/ec",
+        fetched_at="2026-05-18T12:00:00Z",
+        observed_date="2026-05-18",
+        latest_close=14.86,
+        currency="USD",
+        headline="Ecopetrol ADR latest daily close was 14.86 USD.",
+        freshness_status="current",
+        caveats=["Review context only."],
+        next_step="Compare with official Colombia evidence.",
     )
 
 
@@ -311,6 +334,24 @@ def test_m2_review_packet_surfaces_cooccurrence_bundles() -> None:
     assert "## Co-Occurrence Bundles" in rendered
     assert "Fiscal / sovereign funding bundle" in rendered
     assert "not conclusions, thesis labels" in rendered
+
+
+def test_m2_review_packet_surfaces_market_pricing_watch() -> None:
+    packet = attach_market_pricing_watch(
+        {
+            "summary": {"review_item_count": 0},
+            "inputs": {},
+            "review_items": [],
+        },
+        [_market_observation()],
+    )
+
+    rendered = render_m2_review_packet(packet)
+
+    assert packet["summary"]["market_pricing_observed_count"] == 1
+    assert "## Market Pricing Watch" in rendered
+    assert "Ecopetrol ADR" in rendered
+    assert "not advice, conclusions" in rendered
 
 
 def test_m2_review_packet_reserves_space_for_indicator_seeds() -> None:
