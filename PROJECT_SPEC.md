@@ -182,6 +182,7 @@ colombia-forecasting-desk/
       run_summary.json
       run_trace.json
       run_manifest.json
+      review.html
       candidate_questions.md
       evidence_packs/
       forecast_drafts/
@@ -427,6 +428,10 @@ one clean bill-status record before M2 ranks them.
       structured M1 records.
 - [x] Generate an analyst-leads review surface that keeps non-forecast insights
       visible without adding them to the forecast log.
+- [x] Render a deterministic HTML review surface (daily `review.html` plus a
+      recent-runs `review_index.html`) so monitor/no-post days stay legible
+      without an LLM editing HTML. See
+      [Review Surface](docs/REVIEW_SURFACE.md).
 - [ ] Generate final candidate questions.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.

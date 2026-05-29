@@ -34,6 +34,24 @@ probability or draft-post work:
 uv run python scripts/validate_m3_case_file.py runs/YYYY-MM-DD/evidence_packs/<slug>.md
 ```
 
+For a quick human read of what happened — especially on monitor/no-post days —
+render the deterministic HTML review surface from the artifacts a run already
+produced:
+
+```bash
+uv run python scripts/render_review.py                 # latest run + recent-runs index
+uv run python scripts/render_review.py --date 2026-05-29
+uv run python scripts/render_review.py --window 21     # index over the last 21 runs
+uv run python scripts/render_review.py --daily-only    # or --index-only
+```
+
+This writes `runs/YYYY-MM-DD/review.html` (the daily TLDR) and
+`runs/review_index.html` (recent-runs trends). It is a pure renderer: no LLM, no
+network, no new dependency, and byte-stable for a given set of artifacts. Open
+either file directly in a browser. See
+[`docs/REVIEW_SURFACE.md`](docs/REVIEW_SURFACE.md) for what each section means
+and the guardrails it preserves.
+
 The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 
 - `raw_items.json` — every item fetched from each enabled metasource
@@ -57,6 +75,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `run_summary.json` — counts and timestamps for the run
 - `run_trace.json` — diagnostic stage/source trace with durations, counts, metadata, and caught errors for debugging and AI-agent handoffs
 - `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
+- `review.html` — deterministic daily review surface rendered by `scripts/render_review.py` (gitignored; regenerate any time). A recent-runs `runs/review_index.html` is rendered alongside it.
 
 For legislative sources, `legislative_reconciler.json` is the broad case-file
 artifact, while `m2_ranked_questions.json` is only an advisory triage layer.
