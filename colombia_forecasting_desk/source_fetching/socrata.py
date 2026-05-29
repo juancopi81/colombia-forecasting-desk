@@ -135,7 +135,7 @@ def _socrata_row_to_item(
     socrata_fields = {
         field: value
         for field in adapter.extra_fields
-        if (value := row.get(field)) not in (None, "")
+        if (value := _socrata_field_value(row.get(field))) not in (None, "")
     }
     if socrata_fields:
         metadata["socrata_fields"] = socrata_fields
@@ -153,6 +153,14 @@ def _socrata_row_to_item(
         raw_text=raw_text,
         metadata=metadata,
     )
+
+
+def _socrata_field_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        url = value.get("url")
+        if isinstance(url, str) and url.strip():
+            return normalize_whitespace(url)
+    return value
 
 
 def _socrata_params(

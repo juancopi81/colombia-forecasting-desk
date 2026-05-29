@@ -127,7 +127,7 @@ def _procurement_records(
             fields.get("conteo_de_respuestas_a_ofertas"),
             fields.get("respuestas_al_procedimiento"),
         )
-        url = _first_text(fields.get("urlproceso")) or item.url
+        url = _url_text(fields.get("urlproceso")) or item.url
         if not entity and not supplier:
             continue
         records.append(
@@ -379,6 +379,15 @@ def _first_text(*values: Any) -> str:
         text = normalize_whitespace(str(value))
         if text:
             return text
+    return ""
+
+
+def _url_text(value: Any) -> str:
+    if isinstance(value, dict):
+        value = value.get("url")
+    text = _first_text(value)
+    if text.startswith(("http://", "https://")):
+        return text
     return ""
 
 

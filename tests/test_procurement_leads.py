@@ -79,6 +79,45 @@ def test_procurement_leads_surface_repeated_supplier_entity_pair(
     assert lead["source_refs"]["source_urls"][0].startswith("https://community.secop.gov.co")
 
 
+def test_procurement_leads_normalize_legacy_url_object(
+    make_raw,
+    make_cleaned,
+) -> None:
+    raw = [
+        _secop_raw(
+            make_raw,
+            "c1",
+            {
+                "proveedor_adjudicado": "Constructora Demo SAS",
+                "urlproceso": {
+                    "url": "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=1"
+                },
+            },
+        ),
+        _secop_raw(
+            make_raw,
+            "c2",
+            {
+                "proveedor_adjudicado": "Constructora Demo SAS",
+                "urlproceso": {
+                    "url": "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=2"
+                },
+            },
+        ),
+    ]
+    cleaned = [_secop_cleaned(make_cleaned, "c1"), _secop_cleaned(make_cleaned, "c2")]
+
+    leads = build_procurement_concentration_leads(raw, cleaned)
+
+    assert len(leads) == 1
+    urls = leads[0]["source_refs"]["source_urls"]
+    assert urls == [
+        "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=1",
+        "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=2",
+    ]
+    assert all(evidence["url"].startswith("https://") for evidence in leads[0]["evidence"])
+
+
 def test_procurement_leads_surface_direct_contracting_concentration(
     make_raw,
     make_cleaned,

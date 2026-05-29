@@ -77,6 +77,33 @@ def test_socrata_row_to_item_synthesizes_url_and_title(sample_source) -> None:
     }
 
 
+def test_socrata_row_to_item_normalizes_url_objects(sample_source) -> None:
+    source = replace(
+        sample_source,
+        id="secop_ii_procesos",
+        type="dataset",
+        url="https://www.datos.gov.co/resource/p6dx-8zbt.json",
+        trust_role="civic_signal",
+    )
+    adapter = SOCRATA_ADAPTERS["secop_ii_procesos"]
+    row = {
+        "fecha_de_publicacion_del": "2026-04-25T00:00:00.000",
+        "nombre_del_procedimiento": "ADQUISICIÓN DE EQUIPOS DE COMPUTO",
+        "id_del_proceso": "CO1.REQ.10337260",
+        "entidad": "MUNICIPIO DE SUCRE",
+        "urlproceso": {
+            "url": "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.NTC.10337260"
+        },
+    }
+    item = _socrata_row_to_item(row, source, "2026-04-30T12:00:00Z", adapter)
+
+    assert item is not None
+    assert item.metadata["socrata_fields"]["urlproceso"] == (
+        "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index"
+        "?noticeUID=CO1.NTC.10337260"
+    )
+
+
 def test_socrata_row_to_item_skips_rows_missing_required_fields(sample_source) -> None:
     source = replace(
         sample_source,
