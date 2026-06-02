@@ -58,6 +58,22 @@ or reinterpret them. In particular:
   [`Final Output Contract`](FINAL_OUTPUT_CONTRACT.md) lanes.
 - The recorded human decision (if any) is read from `human_decisions.md` for
   display only; the page's primary status is always the artifact-derived one.
+- Source reliability buckets affect display and recent-run aggregation only.
+  They do **not** change M1/M2/M3 logic, forecast promotion, or acceptance
+  criteria.
+
+## Source reliability buckets
+
+Source caveats are not shown as equally important. The renderer assigns each
+visibility gap to one deterministic bucket:
+
+| Bucket | Meaning |
+| --- | --- |
+| `high_impact_failures` | Real failed/degraded priority sources that reduce decision confidence, including Registraduría, Gacetas/Congreso, Senado/Cámara registry-style sources, DIAN, DANE, MinHacienda, BanRep, CNE, and Diario Oficial. |
+| `decision_relevant_parser_gaps` | Document-link or link-only parser gaps for high-impact sources, or for sources cited by today's analyst leads or M2 review queue. Example: `minhacienda_proyectos_decreto` with document links but no parsed content. |
+| `indicator_coverage_gaps` | Indicator-specific failed, stale, or unparsed coverage, such as a labor-market current-result parse failure. |
+| `execution_environment_failures` | DNS, sandbox, host-allowlist, or network-wide failure waves discovered from source-health messages plus acceptance/source-failure context. Treat these as rerun triggers before interpreting source health. |
+| `background_parser_debt` | Lower-priority `needs_parser`, `no_raw`, `no_rankable`, or link-only debt that should remain visible but visually de-emphasized. |
 
 ## Daily view (`review.html`)
 
@@ -69,7 +85,7 @@ or reinterpret them. In particular:
 | Top analyst insights | `analyst_leads.json` (`analyst_insight`) | Source-backed findings; not forecasts. |
 | Top investigation leads | `analyst_leads.json` (`investigation_lead`) | Underqualified leads needing more research. |
 | Monitor queue (derived) | `analyst_leads.json`, `m2_ranked_questions.json` (`review_queue`) | "What to sample next", not a promotion. |
-| Source-health caveats | `source_health.json`, `acceptance_report.json` | Only genuine visibility gaps: fetch failures, `needs_parser` sources, and document-links-without-parsed-content. A working source with parsed content but no rankable candidate is healthy and is **not** flagged. |
+| Source-health caveats | `source_health.json`, `acceptance_report.json` | Only genuine visibility gaps: fetch failures, `needs_parser` sources, and document-links-without-parsed-content. Caveats are grouped by the reliability buckets above. A working source with parsed content but no rankable candidate is healthy and is **not** flagged. |
 | Indicator tension cards | `indicator_tension_cards.json` | Advisory screens only. |
 | Market-pricing context | `market_pricing_watch.json` | Experimental, fail-closed context only. |
 | Co-occurrence bundles | `cooccurrence_bundles.json` | Neutral routing aids; not a thesis. |
@@ -83,7 +99,7 @@ or reinterpret them. In particular:
 | Counts over time | per-run summary rows, newest first | FQ column of zeros = the drought, visualized. |
 | Recurring analyst insights | `analyst_leads.json` insight titles across the window | Frequency `days/total`. |
 | Repeated tension cards | `indicator_tension_cards.json` titles across the window | Persistent ≠ resolvable. |
-| Source reliability issues | `source_health.json` caveats across the window | Sources whose silence is repeatedly unreliable. |
+| Source reliability issues | `source_health.json` caveats across the window | Sources whose silence is repeatedly unreliable, aggregated with the same reliability bucket labels used in the daily view. |
 | Active monitor queue | latest run's investigation leads + M2 review queue | Derived. |
 | Per-run reviews | one link per run | Jump to each daily `review.html`. |
 

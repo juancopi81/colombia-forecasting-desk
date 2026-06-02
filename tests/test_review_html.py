@@ -347,12 +347,19 @@ def test_load_run_artifacts_is_tolerant_and_extracts_human_decision(tmp_path: Pa
     run_dir = tmp_path / "2026-05-29"
     run_dir.mkdir()
     (run_dir / "run_summary.json").write_text('{"raw_items": 5}', encoding="utf-8")
+    (run_dir / "indicator_watch.json").write_text(
+        '[{"indicator_id": "labor_market", "status": "failed"}]',
+        encoding="utf-8",
+    )
     (run_dir / "human_decisions.md").write_text(
         "# Human Decisions\n\nDecision: `monitor_no_new_m3`.\n\nPost today: no.\n",
         encoding="utf-8",
     )
     art = rh.load_run_artifacts(run_dir)
     assert art["run_summary.json"] == {"raw_items": 5}
+    assert art["indicator_watch.json"] == [
+        {"indicator_id": "labor_market", "status": "failed"}
+    ]
     assert art["analyst_leads.json"] is None  # missing file -> None, no crash
     assert art["_human_decision"] == {"decision": "monitor_no_new_m3", "post_today": "no"}
     assert "human_decisions.md" in art["_present"]
@@ -388,6 +395,246 @@ def test_render_daily_returns_complete_deterministic_document() -> None:
     assert "never probability inputs" in html_out
     # deterministic: identical input renders identical output
     assert html_out == rh.render_daily_review_html(art)
+
+
+def test_render_daily_groups_source_reliability_by_impact_bucket() -> None:
+    art = _art(
+        **{
+            "source_health.json": [
+                {
+                    "source_id": "registraduria_noticias",
+                    "source_name": "Registraduría Noticias",
+                    "status": "failed",
+                    "onboarding_status": "working",
+                    "failure_count": 1,
+                    "failures": ["HTTPStatusError: 403"],
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+                {
+                    "source_id": "moe_observatorio",
+                    "source_name": "MOE Observatorio",
+                    "status": "no_raw",
+                    "onboarding_status": "needs_parser",
+                    "failure_count": 0,
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ]
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "High-impact source failures" in html_out
+    assert "high_impact_failures" in html_out
+    assert "Background parser debt" in html_out
+    assert "background_parser_debt" in html_out
+    assert html_out.index("High-impact source failures") < html_out.index(
+        "Background parser debt"
+    )
+    assert "Registraduría Noticias" in html_out
+    assert "MOE Observatorio" in html_out
+
+
+def test_render_daily_marks_priority_document_gaps_as_decision_relevant() -> None:
+    art = _art(
+        **{
+            "source_health.json": [
+                {
+                    "source_id": "minhacienda_proyectos_decreto",
+                    "source_name": "MinHacienda proyectos de decreto",
+                    "status": "no_rankable",
+                    "onboarding_status": "working",
+                    "failure_count": 0,
+                    "document_link_count": 17,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ]
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Decision-relevant parser gaps" in html_out
+    assert "decision_relevant_parser_gaps" in html_out
+    assert "MinHacienda proyectos de decreto" in html_out
+    assert "Background parser debt" not in html_out
+
+
+def test_render_daily_marks_lead_referenced_document_gaps_as_decision_relevant() -> None:
+    art = _art(
+        **{
+            "analyst_leads.json": {
+                "summary": {
+                    "forecast_question_count": 0,
+                    "analyst_insight_count": 1,
+                    "investigation_lead_count": 0,
+                    "indicator_tension_card_count": 0,
+                    "review_item_count": 0,
+                    "lead_count": 1,
+                },
+                "leads": [
+                    _insight(
+                        "Municipal procurement decree watch",
+                        evidence=[
+                            {
+                                "label": "decree index",
+                                "value": "3 linked documents",
+                                "source": "Municipal source",
+                                "source_id": "municipal_decree_index",
+                            }
+                        ],
+                    )
+                ],
+            },
+            "source_health.json": [
+                {
+                    "source_id": "municipal_decree_index",
+                    "source_name": "Municipal decree index",
+                    "status": "no_rankable",
+                    "onboarding_status": "working",
+                    "failure_count": 0,
+                    "document_link_count": 3,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ],
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Decision-relevant parser gaps" in html_out
+    assert "decision_relevant_parser_gaps" in html_out
+    assert "Municipal decree index" in html_out
+    assert "Background parser debt" not in html_out
+
+
+def test_render_daily_marks_indicator_parse_failures_as_coverage_gaps() -> None:
+    art = _art(
+        **{
+            "source_health.json": [
+                {
+                    "source_id": "dane_geih_labor_market",
+                    "source_name": "DANE labor-market current result",
+                    "status": "failed",
+                    "onboarding_status": "working",
+                    "failure_count": 1,
+                    "failures": ["ValueError: current result parse failed"],
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ]
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Indicator coverage gaps" in html_out
+    assert "indicator_coverage_gaps" in html_out
+    assert "DANE labor-market current result" in html_out
+    assert "High-impact source failures" not in html_out
+
+
+def test_render_daily_includes_indicator_watch_failures_as_coverage_gaps() -> None:
+    art = _art(
+        **{
+            "indicator_watch.json": [
+                {
+                    "indicator_id": "labor_market",
+                    "name": "Labor market",
+                    "status": "failed",
+                    "freshness_status": "failed",
+                    "headline": "DANE headline fetch returned no parseable current-result text.",
+                    "next_step": "Add GEIH annex details when needed.",
+                }
+            ],
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Indicator coverage gaps" in html_out
+    assert "indicator_coverage_gaps" in html_out
+    assert "Labor market" in html_out
+    assert "DANE headline fetch returned no parseable current-result text." in html_out
+
+
+def test_render_daily_marks_stale_indicator_sources_as_coverage_gaps() -> None:
+    art = _art(
+        **{
+            "source_health.json": [
+                {
+                    "source_id": "labor_market_current_result",
+                    "source_name": "Labor-market current result",
+                    "status": "stale",
+                    "onboarding_status": "working",
+                    "failure_count": 0,
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ]
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Indicator coverage gaps" in html_out
+    assert "indicator_coverage_gaps" in html_out
+    assert "stale" in html_out
+
+
+def test_render_daily_labels_mass_dns_failures_as_execution_environment() -> None:
+    art = _art(
+        **{
+            "acceptance_report.json": {
+                "status": "fail",
+                "warning_count": 0,
+                "error_count": 1,
+                "issues": [
+                    {
+                        "code": "operational_source_failure_share_too_high",
+                        "severity": "error",
+                        "message": "Too many sources failed for a full M1 run to be operational.",
+                    }
+                ],
+            },
+            "source_health.json": [
+                {
+                    "source_id": "registraduria_noticias",
+                    "source_name": "Registraduría Noticias",
+                    "status": "failed",
+                    "onboarding_status": "working",
+                    "failure_count": 1,
+                    "failures": ["ConnectError: DNS failed in sandbox"],
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+                {
+                    "source_id": "gacetas_congreso",
+                    "source_name": "Gacetas del Congreso",
+                    "status": "failed",
+                    "onboarding_status": "working",
+                    "failure_count": 1,
+                    "failures": ["ConnectError: DNS failed in sandbox"],
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+                {
+                    "source_id": "minhacienda_noticias",
+                    "source_name": "MinHacienda noticias",
+                    "status": "failed",
+                    "onboarding_status": "working",
+                    "failure_count": 1,
+                    "failures": ["ConnectError: DNS failed in sandbox"],
+                    "document_link_count": 0,
+                    "parsed_content_count": 0,
+                    "rankable_count": 0,
+                },
+            ],
+        }
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Execution environment failures" in html_out
+    assert "execution_environment_failures" in html_out
+    assert "rerun before treating as source health" in html_out
+    assert "High-impact source failures" not in html_out
 
 
 def test_render_daily_escapes_html_and_never_emits_unsafe_href() -> None:
@@ -436,3 +683,40 @@ def test_render_index_shows_drought_and_per_run_links(tmp_path: Path) -> None:
     assert "2 consecutive monitoring run(s)" in html_out
     assert 'href="2026-05-29/review.html"' in html_out
     assert html_out == rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+
+
+def test_render_index_aggregates_source_reliability_bucket_labels(tmp_path: Path) -> None:
+    source_health = """
+[
+  {
+    "source_id": "registraduria_noticias",
+    "source_name": "Registraduría Noticias",
+    "status": "failed",
+    "onboarding_status": "working",
+    "failure_count": 1,
+    "failures": ["HTTPStatusError: 403"],
+    "document_link_count": 0,
+    "parsed_content_count": 0,
+    "rankable_count": 0
+  }
+]
+""".strip()
+    for name in ["2026-05-28", "2026-05-29"]:
+        run_dir = tmp_path / name
+        run_dir.mkdir()
+        (run_dir / "run_summary.json").write_text(
+            f'{{"run_date": "{name}", "raw_items": 10, "sources_checked": 5, "sources_failed": 1}}',
+            encoding="utf-8",
+        )
+        (run_dir / "analyst_leads.json").write_text(
+            '{"summary": {"forecast_question_count": 0, "lead_count": 0}, "leads": []}',
+            encoding="utf-8",
+        )
+        (run_dir / "m2_ranked_questions.json").write_text(
+            '{"bucket_counts": {}, "review_queue": []}', encoding="utf-8"
+        )
+        (run_dir / "source_health.json").write_text(source_health, encoding="utf-8")
+    html_out = rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+    assert "Source reliability issues" in html_out
+    assert "Registraduría Noticias" in html_out
+    assert "High-impact source failures" in html_out

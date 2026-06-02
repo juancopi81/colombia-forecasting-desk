@@ -57,6 +57,7 @@ JSON_ARTIFACTS = (
     "acceptance_report.json",
     "analyst_leads.json",
     "m2_ranked_questions.json",
+    "indicator_watch.json",
     "indicator_tension_cards.json",
     "market_pricing_watch.json",
     "cooccurrence_bundles.json",
@@ -75,6 +76,7 @@ LINK_ARTIFACTS: tuple[tuple[str, str], ...] = (
     ("candidate_questions.md", "Candidate questions"),
     ("analyst_leads.json", "Analyst leads (JSON)"),
     ("m1_candidates.json", "M1 candidates (JSON)"),
+    ("indicator_watch.json", "Indicator watch (JSON)"),
     ("source_health.json", "Source health (JSON)"),
     ("acceptance_report.json", "Acceptance report (JSON)"),
     ("run_manifest.json", "Run manifest (JSON)"),
@@ -87,6 +89,82 @@ HUMAN_NOTE_FILES: tuple[tuple[str, str], ...] = (
     ("human_decisions.md", "Human decisions"),
     ("daily_comparison.md", "Daily comparison"),
 )
+
+HIGH_IMPACT_SOURCE_TERMS = {
+    "registraduria",
+    "registraduría",
+    "cne",
+    "dian",
+    "minhacienda",
+    "banrep",
+    "dane",
+    "congreso",
+    "senado",
+    "camara",
+    "cámara",
+    "gacetas",
+    "diario_oficial",
+}
+INDICATOR_COVERAGE_TERMS = {
+    "indicator",
+    "current result",
+    "labor",
+    "mercado_laboral",
+    "geih",
+    "empleo",
+    "ipc",
+    "inflation",
+    "icoced",
+    "tax_collection",
+    "recaudo",
+}
+EXECUTION_ENVIRONMENT_FAILURE_TERMS = {
+    "connecterror",
+    "dns",
+    "host allowlist",
+    "name resolution",
+    "network is unreachable",
+    "nodename nor servname",
+    "sandbox",
+    "targetclosederror",
+    "temporary failure",
+}
+
+SOURCE_RELIABILITY_BUCKETS: tuple[dict[str, str], ...] = (
+    {
+        "id": "high_impact_failures",
+        "label": "High-impact source failures",
+        "note": "Priority sources that failed or degraded, reducing decision confidence.",
+        "variant": "alert",
+    },
+    {
+        "id": "decision_relevant_parser_gaps",
+        "label": "Decision-relevant parser gaps",
+        "note": "Link-only or document-unparsed sources that can block top-lead review.",
+        "variant": "watch",
+    },
+    {
+        "id": "indicator_coverage_gaps",
+        "label": "Indicator coverage gaps",
+        "note": "Indicator-specific failed, stale, or unparsed coverage.",
+        "variant": "watch",
+    },
+    {
+        "id": "execution_environment_failures",
+        "label": "Execution environment failures",
+        "note": "Sandbox, DNS, or network-wide failures; rerun before treating as source health.",
+        "variant": "muted",
+    },
+    {
+        "id": "background_parser_debt",
+        "label": "Background parser debt",
+        "note": "Lower-priority parser or link-only debt to keep visible but de-emphasized.",
+        "variant": "muted",
+    },
+)
+SOURCE_RELIABILITY_BUCKET_BY_ID = {
+    bucket["id"]: bucket for bucket in SOURCE_RELIABILITY_BUCKETS
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -331,8 +409,15 @@ def collect_source_caveats(art: dict[str, Any]) -> list[dict[str, Any]]:
 
     Each entry carries a short reason and any failure messages so the reader
     knows whether "no signal" means "nothing happened" or "we could not see".
+    Caveats also carry a deterministic reliability bucket for daily review and
+    recent-run aggregation; the bucket changes presentation only, never M1/M2/M3
+    decisions.
     """
     health = art.get("source_health.json") or []
+    execution_environment_source_ids = _execution_environment_failure_source_ids(
+        health, art.get("acceptance_report.json") or {}
+    )
+    current_lead_source_ids = _current_lead_source_ids(art)
     caveats: list[dict[str, Any]] = []
     for record in health if isinstance(health, list) else []:
         if not isinstance(record, dict):
@@ -348,22 +433,166 @@ def collect_source_caveats(art: dict[str, Any]) -> list[dict[str, Any]]:
             reasons.append(f"{failure_count} fetch failure(s)")
         elif status == "failed":
             reasons.append("fetch failed")
+        elif status in ("stale", "unparsed"):
+            reasons.append(status.replace("_", " "))
         if onboarding == "needs_parser" and status in ("no_raw", "no_rankable"):
             reasons.append(f"no parser yet ({status})")
         if doc_links > 0 and parsed == 0 and rankable == 0:
             reasons.append(f"{doc_links} document link(s) but no parsed content")
         if not reasons:
             continue
+        bucket = _source_caveat_bucket(
+            record,
+            is_execution_environment_failure=(
+                str(record.get("source_id", "")) in execution_environment_source_ids
+            ),
+            is_current_lead_source=(
+                str(record.get("source_id", "")) in current_lead_source_ids
+            ),
+        )
         caveats.append(
             {
                 "source_id": record.get("source_id", ""),
                 "source_name": record.get("source_name", record.get("source_id", "")),
+                "bucket": bucket,
                 "reasons": reasons,
                 "messages": list(record.get("failures", []) or [])[:2],
             }
         )
+    for indicator in _indicator_coverage_caveats(art):
+        caveats.append(indicator)
     caveats.sort(key=lambda c: c["source_id"])
     return caveats
+
+
+def _indicator_coverage_caveats(art: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = art.get("indicator_watch.json") or []
+    caveats: list[dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status", ""))
+        freshness = str(row.get("freshness_status", ""))
+        if status == "observed" and freshness not in {"failed", "stale", "unparsed"}:
+            continue
+        indicator_id = str(row.get("indicator_id") or row.get("name") or "")
+        if not indicator_id:
+            continue
+        reason = f"indicator {status or freshness or 'not observed'}"
+        if freshness and freshness != status:
+            reason = f"{reason}; freshness {freshness}"
+        messages = [
+            str(value)
+            for value in [
+                row.get("headline"),
+                row.get("error_message"),
+                row.get("next_step"),
+            ]
+            if value
+        ][:2]
+        caveats.append(
+            {
+                "source_id": f"indicator:{indicator_id}",
+                "source_name": row.get("name") or row.get("source_name") or indicator_id,
+                "bucket": "indicator_coverage_gaps",
+                "reasons": [reason],
+                "messages": messages,
+            }
+        )
+    return caveats
+
+
+def _execution_environment_failure_source_ids(
+    health: Any, acceptance: dict[str, Any]
+) -> set[str]:
+    records = [r for r in health if isinstance(r, dict)] if isinstance(health, list) else []
+    failed = [
+        record
+        for record in records
+        if _as_int(record.get("failure_count")) > 0
+        or str(record.get("status", "")) == "failed"
+    ]
+    env_failed = [
+        record for record in failed if _has_execution_environment_failure_message(record)
+    ]
+    issue_codes = {
+        str(issue.get("code", ""))
+        for issue in (acceptance.get("issues", []) or [])
+        if isinstance(issue, dict)
+    }
+    mass_failure = len(env_failed) >= 3 or (
+        "operational_source_failure_share_too_high" in issue_codes
+        and len(env_failed) >= 2
+    )
+    if not mass_failure:
+        return set()
+    return {str(record.get("source_id", "")) for record in env_failed}
+
+
+def _has_execution_environment_failure_message(record: dict[str, Any]) -> bool:
+    messages = " ".join(str(message) for message in (record.get("failures", []) or []))
+    haystack = messages.lower()
+    return any(term in haystack for term in EXECUTION_ENVIRONMENT_FAILURE_TERMS)
+
+
+def _current_lead_source_ids(art: dict[str, Any]) -> set[str]:
+    source_ids: set[str] = set()
+
+    def add(value: Any) -> None:
+        if isinstance(value, str) and value.strip():
+            source_ids.add(value.strip())
+        elif isinstance(value, list):
+            for item in value:
+                add(item)
+
+    leads = (art.get("analyst_leads.json") or {}).get("leads", []) or []
+    for lead in leads if isinstance(leads, list) else []:
+        if not isinstance(lead, dict):
+            continue
+        add(lead.get("source_id"))
+        add(lead.get("source_ids"))
+        for evidence in lead.get("evidence", []) or []:
+            if not isinstance(evidence, dict):
+                continue
+            add(evidence.get("source_id"))
+            add(evidence.get("source_ids"))
+
+    ranked = art.get("m2_ranked_questions.json") or {}
+    for entry in ranked.get("review_queue", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        add(entry.get("source_id"))
+        add(entry.get("source_ids"))
+
+    return source_ids
+
+
+def _source_caveat_bucket(
+    record: dict[str, Any],
+    *,
+    is_execution_environment_failure: bool = False,
+    is_current_lead_source: bool = False,
+) -> str:
+    if is_execution_environment_failure:
+        return "execution_environment_failures"
+    source_id = str(record.get("source_id", ""))
+    source_name = str(record.get("source_name", ""))
+    haystack = f"{source_id} {source_name}".lower()
+    is_high_impact = any(term in haystack for term in HIGH_IMPACT_SOURCE_TERMS)
+    is_indicator_gap = any(term in haystack for term in INDICATOR_COVERAGE_TERMS)
+    if is_indicator_gap:
+        return "indicator_coverage_gaps"
+    if _as_int(record.get("failure_count")) > 0 or str(record.get("status", "")) == "failed":
+        if is_high_impact:
+            return "high_impact_failures"
+    if (
+        _as_int(record.get("document_link_count")) > 0
+        and _as_int(record.get("parsed_content_count")) == 0
+        and _as_int(record.get("rankable_count")) == 0
+        and (is_high_impact or is_current_lead_source)
+    ):
+        return "decision_relevant_parser_gaps"
+    return "background_parser_debt"
 
 
 def derive_monitor_queue(
@@ -479,7 +708,10 @@ def aggregate_source_issues(
     def extract(art: dict[str, Any]):
         for caveat in collect_source_caveats(art):
             label = caveat.get("source_name") or caveat.get("source_id", "")
-            yield label, "; ".join(caveat.get("reasons", []))
+            bucket = SOURCE_RELIABILITY_BUCKET_BY_ID.get(str(caveat.get("bucket", "")))
+            yield label, (bucket or {}).get("label") or "; ".join(
+                caveat.get("reasons", [])
+            )
 
     return _aggregate(per_run, extract)
 
@@ -731,21 +963,7 @@ def _render_source_caveats(art: dict[str, Any], index: int) -> str:
         body = '<p class="empty">No source-health caveats today — coverage looks clean.</p>'
         return _section("Source-health caveats", body, index=index)
 
-    rows: list[str] = []
-    for caveat in caveats:
-        reason = "; ".join(caveat["reasons"])
-        messages = "".join(
-            f'<div class="caveat__msg">{_esc(m)}</div>' for m in caveat["messages"]
-        )
-        rows.append(
-            '<li class="caveat">'
-            f'<div class="caveat__src">{_esc(caveat["source_name"])} '
-            f'<code>{_esc(caveat["source_id"])}</code></div>'
-            f'<div class="caveat__reason">{_esc(reason)}</div>'
-            f"{messages}"
-            "</li>"
-        )
-    caveat_html = f'<ul class="caveat-list">{"".join(rows)}</ul>' if rows else ""
+    caveat_html = _render_source_reliability_buckets(caveats)
 
     issue_rows: list[str] = []
     for issue in issues:
@@ -770,6 +988,38 @@ def _render_source_caveats(art: dict[str, Any], index: int) -> str:
         note="Where silence may mean 'we could not see', not 'nothing happened'.",
         index=index,
     )
+
+
+def _render_source_reliability_buckets(caveats: list[dict[str, Any]]) -> str:
+    blocks: list[str] = []
+    for bucket in SOURCE_RELIABILITY_BUCKETS:
+        bucket_id = bucket["id"]
+        bucket_caveats = [c for c in caveats if c.get("bucket") == bucket_id]
+        if not bucket_caveats:
+            continue
+        rows: list[str] = []
+        for caveat in bucket_caveats:
+            reason = "; ".join(caveat["reasons"])
+            messages = "".join(
+                f'<div class="caveat__msg">{_esc(m)}</div>'
+                for m in caveat["messages"]
+            )
+            rows.append(
+                f'<li class="caveat caveat--{_attr(bucket["variant"])}">'
+                f'<div class="caveat__src">{_esc(caveat["source_name"])} '
+                f'<code>{_esc(caveat["source_id"])}</code></div>'
+                f'<div class="caveat__reason">{_esc(reason)}</div>'
+                f"{messages}"
+                "</li>"
+            )
+        blocks.append(
+            '<div class="caveat-bucket">'
+            f'<h3 class="subhead">{_esc(bucket["label"])} <code>{_esc(bucket_id)}</code></h3>'
+            f'<p class="bucket__note">{_esc(bucket["note"])}</p>'
+            f'<ul class="caveat-list caveat-list--{_attr(bucket_id)}">{"".join(rows)}</ul>'
+            "</div>"
+        )
+    return "".join(blocks)
 
 
 def _render_banner(decision: Decision) -> str:
@@ -1288,9 +1538,17 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
 
 /* Source caveats */
 .caveat-list{margin:0; padding:0; list-style:none; display:grid; gap:10px}
+.caveat-bucket + .caveat-bucket{margin-top:18px}
+.bucket__note{font-family:var(--sans); font-size:12.5px; color:var(--ink-faint);
+  margin:-4px 0 10px}
 .caveat{background:var(--card); border:1px solid var(--rule); border-radius:4px; padding:12px 14px}
+.caveat--alert{border-left:3px solid var(--alert)}
+.caveat--watch{border-left:3px solid var(--watch)}
+.caveat--muted{background:var(--card-2); border-style:dashed}
 .caveat__src{font-family:var(--sans); font-weight:600; font-size:14px}
 .caveat__reason{font-family:var(--sans); font-size:13.5px; color:var(--alert); margin-top:3px}
+.caveat--watch .caveat__reason{color:var(--watch)}
+.caveat--muted .caveat__reason{color:var(--ink-faint)}
 .caveat__msg{font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); margin-top:5px;
   word-break:break-word}
 
