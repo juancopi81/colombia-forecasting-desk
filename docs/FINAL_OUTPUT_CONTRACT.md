@@ -93,12 +93,23 @@ The intended path is:
 m2_review_packet
   -> cooccurrence_bundles
   -> analyst_leads
-  -> candidate_questions / selected M3 Case File
+  -> candidate_questions
+  -> m2_sampling_decisions
+  -> selected M3 Case File
   -> evidence pack
   -> probability/draft
   -> human decision
   -> forecast log, only when explicitly selected
 ```
+
+`m2_sampling_decisions.json` and `.md` are deterministic post-editorial bridge
+artifacts. Run `scripts/write_m2_sampling_decisions.py --date YYYY-MM-DD` after
+`candidate_questions.md` exists. The builder records which serious candidates
+were sampled, their recorded decision, missing evidence/M3 fields, and exact
+links back to `m2_ranked_questions.json` rows when a rank ID, exact question
+seed, or explicit bill ID makes the match deterministic. If
+`candidate_questions.md` is missing, the CLI fails with a clear error instead
+of creating an empty artifact.
 
 `analyst_leads.md` should make it easy to ask:
 

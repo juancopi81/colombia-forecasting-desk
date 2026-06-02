@@ -792,6 +792,30 @@ back into `indicator_watch.json`, `indicator_tension_cards.json`,
 `market_pricing_watch.json`, `cooccurrence_bundles.json`, `m1_candidates.json`,
 `legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 
+## M2 Sampling Decisions
+
+After the manual/LLM editorial pass writes `candidate_questions.md`, run:
+
+```bash
+uv run python scripts/write_m2_sampling_decisions.py --date YYYY-MM-DD
+```
+
+This writes:
+
+```text
+runs/YYYY-MM-DD/m2_sampling_decisions.json
+runs/YYYY-MM-DD/m2_sampling_decisions.md
+```
+
+These are durable bridge artifacts from "interesting lead/review queue" to
+"case-file candidate or not." They record sampled candidates, the decision
+captured in `candidate_questions.md`, available and missing evidence, missing
+M3 fields, duplicate status when explicitly recorded, and deterministic links
+back to `m2_ranked_questions.json` rows when a rank ID, exact question seed, or
+explicit bill ID makes the match safe. Missing `candidate_questions.md` is a
+hard CLI error; the builder should not turn an absent editorial review into an
+empty decision artifact.
+
 ## Source Health
 
 Each run writes:

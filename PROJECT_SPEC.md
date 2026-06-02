@@ -173,6 +173,8 @@ colombia-forecasting-desk/
       m2_review_packet.md
       analyst_leads.json
       analyst_leads.md
+      m2_sampling_decisions.json
+      m2_sampling_decisions.md
       m1_candidates.json
       metasource_brief.md
       m2_handoff.md
@@ -432,6 +434,10 @@ one clean bill-status record before M2 ranks them.
       recent-runs `review_index.html`) so monitor/no-post days stay legible
       without an LLM editing HTML. See
       [Review Surface](docs/REVIEW_SURFACE.md).
+- [x] Generate deterministic post-editorial `m2_sampling_decisions.json` / `.md`
+      after `candidate_questions.md` so sampled candidates, M2 decisions,
+      missing M3 fields, duplicate status, and exact ranker links are durable
+      before any M3 preflight work.
 - [ ] Generate final candidate questions.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.

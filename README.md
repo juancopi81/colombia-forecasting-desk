@@ -66,6 +66,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
 - `m2_review_packet.md` — paste-ready M2 review packet that tells the reviewer to read excerpts before trusting heuristic scores or cross-impact prompts
 - `analyst_leads.json` / `.md` — final output-surface v0 that separates forecast-question candidates from analyst insights and investigation leads
+- `m2_sampling_decisions.json` / `.md` — post-editorial bridge artifacts generated after `candidate_questions.md`, recording sampled candidates, M2 decisions, missing M3 fields, duplicate status, and deterministic M2-ranker links
 - `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
 - `metasource_brief.md` — the human-readable daily brief
 - `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing

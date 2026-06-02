@@ -569,6 +569,20 @@ def test_render_daily_returns_complete_deterministic_document() -> None:
     assert html_out == rh.render_daily_review_html(art)
 
 
+def test_render_daily_links_sampling_decision_artifacts() -> None:
+    art = _art(
+        _present={
+            "candidate_questions.md",
+            "m2_sampling_decisions.md",
+            "m2_sampling_decisions.json",
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert 'href="m2_sampling_decisions.md"' in html_out
+    assert 'href="m2_sampling_decisions.json"' in html_out
+    assert "M2 sampling decisions" in html_out
+
+
 def test_render_daily_labels_human_monitor_queue() -> None:
     art = _art(
         _human_monitor_queue=[

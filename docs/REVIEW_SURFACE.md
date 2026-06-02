@@ -64,6 +64,9 @@ or reinterpret them. In particular:
   investigation leads and M2 review queue items. These queues record
   human/editorial priorities only and do not promote any lead or alter the
   artifact-derived status.
+- `m2_sampling_decisions.json` and `.md` may be present after the editorial
+  pass. They are linked as source artifacts only; they do not change the
+  artifact-derived post/monitor status.
 - Source reliability buckets affect display and recent-run aggregation only.
   They do **not** change M1/M2/M3 logic, forecast promotion, or acceptance
   criteria.
@@ -95,7 +98,7 @@ visibility gap to one deterministic bucket:
 | Indicator tension cards | `indicator_tension_cards.json` | Advisory screens only. |
 | Market-pricing context | `market_pricing_watch.json` | Experimental, fail-closed context only. Observed rows remain labeled `observed`, but the visible freshness pill is derived from `observed_date` versus the run date: same-day rows can show `current`, one-to-three-day lags show `lagged`, and older observed closes show `stale`. |
 | Co-occurrence bundles | `cooccurrence_bundles.json` | Neutral routing aids; not a thesis. |
-| Source artifacts | files present in the run folder | Links back to the JSON/Markdown, plus hand-written human notes. |
+| Source artifacts | files present in the run folder | Links back to the JSON/Markdown, including `m2_sampling_decisions.md`/`.json` when the post-editorial bridge has been written, plus hand-written human notes. |
 
 ## Recent-runs index (`review_index.html`)
 
