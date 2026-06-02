@@ -50,6 +50,7 @@ def _art(**overrides) -> dict:
         "_present": set(),
         "_human_decision": None,
         "_human_monitor_queue": [],
+        "_candidate_monitor_queue": [],
     }
     art.update(overrides)
     return art
@@ -348,6 +349,92 @@ def test_derive_monitor_queue_prefers_human_priorities() -> None:
     ]
 
 
+def test_derive_monitor_queue_uses_candidate_questions_before_derived() -> None:
+    art = _art(
+        _candidate_monitor_queue=[
+            {
+                "label": "Re-check official Registraduria/CNE result status.",
+                "kind": "candidate review",
+                "note": "Monitor Queue",
+            }
+        ],
+        **{
+            "analyst_leads.json": {
+                "summary": {},
+                "leads": [
+                    {
+                        "lead_type": "investigation_lead",
+                        "title": "Machine-derived fallback",
+                        "next_check": "Check committee agenda.",
+                    }
+                ],
+            }
+        },
+    )
+    assert rh.derive_monitor_queue(art) == [
+        {
+            "label": "Re-check official Registraduria/CNE result status.",
+            "kind": "candidate review",
+            "note": "Monitor Queue",
+        }
+    ]
+
+
+def test_derive_monitor_queue_prefers_human_over_candidate_questions() -> None:
+    art = _art(
+        _human_monitor_queue=[
+            {
+                "label": "Human queue wins.",
+                "kind": "human priority",
+                "note": "Monitor Queue",
+            }
+        ],
+        _candidate_monitor_queue=[
+            {
+                "label": "Candidate fallback.",
+                "kind": "candidate review",
+                "note": "Monitor Queue",
+            }
+        ],
+    )
+    assert [item["label"] for item in rh.derive_monitor_queue(art)] == [
+        "Human queue wins."
+    ]
+
+
+def test_derive_monitor_queue_compacts_long_legislative_titles() -> None:
+    art = _art(
+        **{
+            "m2_ranked_questions.json": {
+                "bucket_counts": {},
+                "review_queue": [
+                    {
+                        "bucket": "watchlist",
+                        "canonical_bill_id": "bill:2026:camara:556",
+                        "question_seed": (
+                            "Could Proyecto de Ley 556 de 2026 Cámara - Por medio de "
+                            "la cual se establece el régimen jurídico del boxeo "
+                            "profesional en Colombia, se crea la Dirección Nacional "
+                            "de Boxeo Profesional como autoridad especializada y "
+                            "organismo rector del boxeo profesional, se garantiza la "
+                            "separación estructural, funcional, competencial e "
+                            "institucional entre el deporte amateur y el deporte "
+                            "profesional, se adoptan medidas de integridad, "
+                            "transparencia, control y protección de los boxeadores y "
+                            "boxeadoras profesionales y campeones del país, y se "
+                            "dictan otras disposiciones. become a forecastable "
+                            "unresolved legislative decision?"
+                        ),
+                    }
+                ],
+            }
+        }
+    )
+    queue = rh.derive_monitor_queue(art)
+    assert queue[0]["label"] == "PL 556/2026 Cámara"
+    assert "régimen jurídico del boxeo profesional" in queue[0]["detail"]
+
+
 # --------------------------------------------------------------------------- #
 # url safety + loader
 # --------------------------------------------------------------------------- #
@@ -417,6 +504,39 @@ def test_load_run_artifacts_is_tolerant_and_extracts_human_decision(tmp_path: Pa
     assert "human_decisions.md" in art["_present"]
 
 
+def test_load_run_artifacts_extracts_candidate_questions_monitor_queue(tmp_path: Path) -> None:
+    run_dir = tmp_path / "2026-06-02"
+    run_dir.mkdir()
+    (run_dir / "candidate_questions.md").write_text(
+        (
+            "# Candidate Questions\n\n"
+            "## Candidates Reviewed\n\n"
+            "1. This numbered list is not a queue.\n\n"
+            "## Monitor Queue\n\n"
+            "1. Re-check official Registraduria/CNE result and scrutiny status with an access\n"
+            "   path that is not blocked by Cloudflare.\n"
+            "2. Collect local TES and official TRM context.\n"
+        ),
+        encoding="utf-8",
+    )
+    art = rh.load_run_artifacts(run_dir)
+    assert art["_candidate_monitor_queue"] == [
+        {
+            "label": (
+                "Re-check official Registraduria/CNE result and scrutiny status "
+                "with an access path that is not blocked by Cloudflare."
+            ),
+            "kind": "candidate review",
+            "note": "Monitor Queue",
+        },
+        {
+            "label": "Collect local TES and official TRM context.",
+            "kind": "candidate review",
+            "note": "Monitor Queue",
+        },
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # rendering: structure, safety, determinism
 # --------------------------------------------------------------------------- #
@@ -464,6 +584,120 @@ def test_render_daily_labels_human_monitor_queue() -> None:
     assert "Parsed from human_decisions.md" in html_out
     assert "Confirm official scrutiny status." in html_out
     assert "Machine-derived fallback" not in html_out
+
+
+def test_render_daily_labels_candidate_questions_monitor_queue() -> None:
+    art = _art(
+        _candidate_monitor_queue=[
+            {
+                "label": "Collect local TES and official TRM context.",
+                "kind": "candidate review",
+                "note": "Monitor Queue",
+            }
+        ],
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Monitor queue (candidate_questions)" in html_out
+    assert "Parsed from candidate_questions.md" in html_out
+    assert "Collect local TES and official TRM context." in html_out
+    assert "candidate review" in html_out
+
+
+def test_render_daily_marks_observed_market_rows_lagged_or_stale() -> None:
+    art = _art(
+        _run_date="2026-06-02",
+        **{
+            "market_pricing_watch.json": [
+                {
+                    "status": "observed",
+                    "freshness_status": "current",
+                    "observed_date": "2026-06-01",
+                    "latest_close": 41.74,
+                    "currency": "USD",
+                    "name": "Global X MSCI Colombia ETF",
+                    "headline": "COLO latest daily close was 41.74 USD on 2026-06-01.",
+                    "source_name": "Nasdaq public historical endpoint",
+                    "caveats": ["Advisory context only."],
+                },
+                {
+                    "status": "observed",
+                    "freshness_status": "current",
+                    "observed_date": "2026-05-26",
+                    "latest_close": 102.75,
+                    "currency": "USD/barrel",
+                    "name": "Brent crude spot price",
+                    "headline": "Brent spot latest daily close was 102.75 USD/barrel on 2026-05-26.",
+                    "source_name": "FRED / EIA",
+                    "caveats": ["Publication lags can occur."],
+                },
+            ],
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert ">observed<" in html_out
+    assert ">lagged<" in html_out
+    assert ">stale<" in html_out
+    assert "observed 2026-06-01" in html_out
+    assert "observed 2026-05-26" in html_out
+    assert ">current<" not in html_out
+
+
+def test_render_daily_keeps_full_long_legislative_title_in_details() -> None:
+    long_title = (
+        "Proyecto de Ley 564 de 2026 Cámara - Por medio de la cual se crea el "
+        "Sistema Único de Trazabilidad, Validación y No Duplicidad de Subsidios "
+        "Estatales, se fortalece la interoperabilidad de la oferta social del "
+        "Estado y se dictan otras disposiciones."
+    )
+    art = _art(
+        **{
+            "analyst_leads.json": {
+                "summary": {
+                    "forecast_question_count": 0,
+                    "analyst_insight_count": 0,
+                    "investigation_lead_count": 1,
+                    "indicator_tension_card_count": 0,
+                    "review_item_count": 0,
+                    "lead_count": 1,
+                },
+                "leads": [
+                    {
+                        "lead_type": "investigation_lead",
+                        "title": long_title,
+                        "claim_or_question": (
+                            f"Should {long_title} be reviewed alongside Fiscal / "
+                            "tax pulse because subsidy legislation can interact "
+                            "with fiscal cost?"
+                        ),
+                        "evidence": [
+                            {
+                                "label": (
+                                    "Cámara registry — Proyecto de Ley 564 de "
+                                    "2026 Cámara — SUBSIDIOS TRANSPARENTES"
+                                ),
+                                "value": "Full registry value.",
+                                "source": "Cámara",
+                            }
+                        ],
+                        "source_refs": {
+                            "artifact_refs": [
+                                {
+                                    "artifact": "legislative_reconciler.json",
+                                    "key": "canonical_bill_id",
+                                    "value": "bill:2026:camara:564",
+                                }
+                            ]
+                        },
+                    }
+                ],
+            }
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "PL 564/2026 Cámara - SUBSIDIOS TRANSPARENTES" in html_out
+    assert "Should PL 564/2026 Cámara - SUBSIDIOS TRANSPARENTES be reviewed" in html_out
+    assert "<summary>Full title</summary>" in html_out
+    assert "Sistema Único de Trazabilidad" in html_out
 
 
 def test_render_daily_groups_source_reliability_by_impact_bucket() -> None:
@@ -781,6 +1015,35 @@ def test_render_index_uses_latest_human_monitor_queue(tmp_path: Path) -> None:
     assert "Parsed from the latest run&#x27;s human_decisions.md." in html_out
     assert "Check the official committee agenda." in html_out
     assert "human priority" in html_out
+
+
+def test_render_index_uses_latest_candidate_questions_monitor_queue(tmp_path: Path) -> None:
+    for name in ["2026-05-28", "2026-05-29"]:
+        run_dir = tmp_path / name
+        run_dir.mkdir()
+        (run_dir / "run_summary.json").write_text(
+            f'{{"run_date": "{name}", "raw_items": 10}}',
+            encoding="utf-8",
+        )
+        (run_dir / "analyst_leads.json").write_text(
+            '{"summary": {"forecast_question_count": 0, "lead_count": 0}, "leads": []}',
+            encoding="utf-8",
+        )
+        (run_dir / "m2_ranked_questions.json").write_text(
+            '{"bucket_counts": {}, "review_queue": []}', encoding="utf-8"
+        )
+    (tmp_path / "2026-05-29" / "candidate_questions.md").write_text(
+        (
+            "# Candidate Questions\n\n"
+            "## Monitor Queue\n\n"
+            "1. Re-check official Registraduria/CNE result status.\n"
+        ),
+        encoding="utf-8",
+    )
+    html_out = rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+    assert "Parsed from the latest run&#x27;s candidate_questions.md." in html_out
+    assert "Re-check official Registraduria/CNE result status." in html_out
+    assert "candidate review" in html_out
 
 
 def test_render_index_aggregates_source_reliability_bucket_labels(tmp_path: Path) -> None:

@@ -32,6 +32,7 @@ import html
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +49,7 @@ CAVEAT_LIMIT = 3
 BUNDLE_LIMIT = 6
 MONITOR_QUEUE_LIMIT = 8
 RECURRING_LIMIT = 12
+MARKET_STALE_AFTER_DAYS = 3
 
 # JSON artifacts the renderer reads. Missing files load as ``None`` so old runs
 # (which may lack newer artifacts) render without crashing.
@@ -209,10 +211,43 @@ def _extract_human_monitor_queue(run_dir: Path, present: set[str]) -> list[dict[
     sections and ignores all other prose, so drift elsewhere in the file cannot
     affect the generated review surface.
     """
-    if "human_decisions.md" not in present:
+    return _extract_numbered_monitor_queue(
+        run_dir,
+        present,
+        filename="human_decisions.md",
+        kind="human priority",
+    )
+
+
+def _extract_candidate_monitor_queue(
+    run_dir: Path, present: set[str]
+) -> list[dict[str, str]]:
+    """Parse reviewed monitor queue items from ``candidate_questions.md``.
+
+    ``candidate_questions.md`` often records the final reviewed queue under
+    ``## Monitor Queue`` even when ``human_decisions.md`` only records the post
+    decision. This source is still editorial context only; it does not affect
+    M3 readiness.
+    """
+    return _extract_numbered_monitor_queue(
+        run_dir,
+        present,
+        filename="candidate_questions.md",
+        kind="candidate review",
+    )
+
+
+def _extract_numbered_monitor_queue(
+    run_dir: Path,
+    present: set[str],
+    *,
+    filename: str,
+    kind: str,
+) -> list[dict[str, str]]:
+    if filename not in present:
         return []
     try:
-        lines = (run_dir / "human_decisions.md").read_text(encoding="utf-8").splitlines()
+        lines = (run_dir / filename).read_text(encoding="utf-8").splitlines()
     except OSError:
         return []
 
@@ -227,7 +262,7 @@ def _extract_human_monitor_queue(run_dir: Path, present: set[str]) -> list[dict[
             items.append(
                 {
                     "label": normalize_markdown_text(current),
-                    "kind": "human priority",
+                    "kind": kind,
                     "note": normalize_markdown_text(active_heading),
                 }
             )
@@ -279,6 +314,7 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     art["_present"] = present
     art["_human_decision"] = _extract_recorded_decision(run_dir, present)
     art["_human_monitor_queue"] = _extract_human_monitor_queue(run_dir, present)
+    art["_candidate_monitor_queue"] = _extract_candidate_monitor_queue(run_dir, present)
     return art
 
 
@@ -660,53 +696,213 @@ def _source_caveat_bucket(
     return "background_parser_debt"
 
 
+def _canonical_bill_display(value: Any) -> str:
+    match = re.match(r"^bill:(\d{4}):(camara|senado):(\d+)$", str(value or "").lower())
+    if not match:
+        return ""
+    year, chamber, number = match.groups()
+    chamber_label = "Cámara" if chamber == "camara" else "Senado"
+    return f"PL {number}/{year} {chamber_label}"
+
+
+def _bill_display_from_text(text: str) -> str:
+    match = re.search(
+        r"\bProyecto de Ley\s+(\d+)\s+de\s+(\d{4})\s+(C[aá]mara|Senado)\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    number, year, chamber = match.groups()
+    chamber_label = "Cámara" if chamber.lower().startswith(("cá", "ca")) else "Senado"
+    return f"PL {number}/{year} {chamber_label}"
+
+
+def _record_bill_display(record: dict[str, Any] | None) -> str:
+    if not isinstance(record, dict):
+        return ""
+    for key in ("canonical_bill_id", "bill_id"):
+        label = _canonical_bill_display(record.get(key))
+        if label:
+            return label
+
+    refs = record.get("source_refs") or {}
+    for artifact_ref in refs.get("artifact_refs", []) or []:
+        if not isinstance(artifact_ref, dict):
+            continue
+        if artifact_ref.get("key") == "canonical_bill_id":
+            label = _canonical_bill_display(artifact_ref.get("value"))
+            if label:
+                return label
+
+    ctx = record.get("review_context") or {}
+    origin = str(ctx.get("origin_id", ""))
+    match = re.search(r"bill:(\d{4}):(camara|senado):(\d+)", origin)
+    if match:
+        year, chamber, number = match.groups()
+        return _canonical_bill_display(f"bill:{year}:{chamber}:{number}")
+    return ""
+
+
+def _evidence_short_title(record: dict[str, Any] | None, bill_label: str) -> str:
+    if not isinstance(record, dict):
+        return ""
+    for evidence in record.get("evidence", []) or []:
+        if not isinstance(evidence, dict):
+            continue
+        label = normalize_markdown_text(str(evidence.get("label", "")))
+        if bill_label.replace("PL ", "Proyecto de Ley ").split("/")[0] not in label:
+            continue
+        for sep in (" — ", " - "):
+            if sep not in label:
+                continue
+            short = label.rsplit(sep, 1)[-1].strip()
+            if short and len(short) <= 80 and not short.lower().startswith("proyecto"):
+                return f"{bill_label} - {short}"
+    return ""
+
+
+def _compact_display_text(
+    text: Any,
+    record: dict[str, Any] | None = None,
+    *,
+    limit: int = 110,
+) -> tuple[str, str]:
+    """Return ``(display_text, full_text)`` for noisy legislative labels.
+
+    ``full_text`` is non-empty only when the visible text was compacted; callers
+    can render it in a details block while keeping the card/queue scannable.
+    """
+    full = normalize_markdown_text(str(text or ""))
+    if len(full) <= limit:
+        return full, ""
+    bill_label = _record_bill_display(record) or _bill_display_from_text(full)
+    if not bill_label:
+        return full, ""
+    return _evidence_short_title(record, bill_label) or bill_label, full
+
+
+def _compact_claim_text(
+    text: Any,
+    record: dict[str, Any] | None,
+    display_title: str,
+    full_title: str,
+    *,
+    limit: int = 130,
+) -> tuple[str, str]:
+    full = normalize_markdown_text(str(text or ""))
+    if len(full) <= limit:
+        return full, ""
+    if full_title and display_title and full_title in full:
+        return full.replace(full_title, display_title, 1), full
+    bill_label = _record_bill_display(record) or _bill_display_from_text(full)
+    if not bill_label:
+        return full, ""
+    for prefix, marker in (
+        ("Should ", " be reviewed alongside "),
+        ("Could ", " become a forecastable "),
+    ):
+        if full.startswith(prefix) and marker in full:
+            rest = full.split(marker, 1)[1]
+            return f"{prefix}{bill_label}{marker}{rest}", full
+    return bill_label, full
+
+
+def _monitor_queue_source(art: dict[str, Any]) -> dict[str, str]:
+    if art.get("_human_monitor_queue"):
+        return {
+            "label": "human",
+            "file": "human_decisions.md",
+            "daily_note": (
+                "Parsed from human_decisions.md — recorded editorial priorities, "
+                "not a promotion."
+            ),
+            "index_note": "Parsed from the latest run's human_decisions.md.",
+        }
+    if art.get("_candidate_monitor_queue"):
+        return {
+            "label": "candidate_questions",
+            "file": "candidate_questions.md",
+            "daily_note": (
+                "Parsed from candidate_questions.md — reviewed monitor queue, "
+                "not a promotion."
+            ),
+            "index_note": "Parsed from the latest run's candidate_questions.md.",
+        }
+    return {
+        "label": "derived",
+        "file": "",
+        "daily_note": (
+            "Derived from today's investigation leads and M2 review queue — what "
+            "to sample next, not a promotion."
+        ),
+        "index_note": "Derived from the latest run's investigation leads and M2 review queue.",
+    }
+
+
 def derive_monitor_queue(
     art: dict[str, Any], limit: int = MONITOR_QUEUE_LIMIT
 ) -> list[dict[str, str]]:
     """Build a deterministic "what to sample next" queue from artifacts.
 
-    Prefer the explicit numbered queue from ``human_decisions.md`` when present.
-    Otherwise fall back to a proxy that combines today's investigation leads
-    with the top of the M2 review queue. It does not promote anything; it just
-    collects what the artifacts already flagged for follow-up.
+    Prefer explicit numbered queues from ``human_decisions.md``, then
+    ``candidate_questions.md``. Otherwise fall back to a proxy that combines
+    today's investigation leads with the top of the M2 review queue. It does not
+    promote anything; it just collects what the artifacts already flagged for
+    follow-up.
     """
     human_queue = [
         item for item in art.get("_human_monitor_queue") or [] if isinstance(item, dict)
     ]
     if human_queue:
         return human_queue[:limit]
+    candidate_queue = [
+        item
+        for item in art.get("_candidate_monitor_queue") or []
+        if isinstance(item, dict)
+    ]
+    if candidate_queue:
+        return candidate_queue[:limit]
 
     items: list[dict[str, str]] = []
     seen: set[str] = set()
 
     for lead in _leads_of_type(art, "investigation_lead"):
-        label = (lead.get("title") or lead.get("claim_or_question") or "").strip()
-        if not label or label in seen:
+        raw_label = (lead.get("title") or lead.get("claim_or_question") or "").strip()
+        label, detail = _compact_display_text(raw_label, lead)
+        seen_key = normalize_markdown_text(raw_label).lower()
+        if not label or seen_key in seen:
             continue
-        seen.add(label)
-        items.append(
-            {
-                "label": label,
-                "kind": "investigation lead",
-                "note": (lead.get("next_check") or "").strip(),
-            }
-        )
+        seen.add(seen_key)
+        item = {
+            "label": label,
+            "kind": "investigation lead",
+            "note": (lead.get("next_check") or "").strip(),
+        }
+        if detail:
+            item["detail"] = detail
+        items.append(item)
 
     ranked = art.get("m2_ranked_questions.json") or {}
     for entry in ranked.get("review_queue", []) or []:
         if not isinstance(entry, dict):
             continue
-        label = (entry.get("question_seed") or entry.get("canonical_bill_id") or "").strip()
-        if not label or label in seen:
+        raw_label = (
+            entry.get("question_seed") or entry.get("canonical_bill_id") or ""
+        ).strip()
+        label, detail = _compact_display_text(raw_label, entry)
+        seen_key = normalize_markdown_text(raw_label).lower()
+        if not label or seen_key in seen:
             continue
-        seen.add(label)
-        items.append(
-            {
-                "label": label,
-                "kind": f"M2 {entry.get('bucket', 'review')}",
-                "note": str(entry.get("canonical_bill_id") or ""),
-            }
-        )
+        seen.add(seen_key)
+        item = {
+            "label": label,
+            "kind": f"M2 {entry.get('bucket', 'review')}",
+            "note": str(entry.get("canonical_bill_id") or ""),
+        }
+        if detail:
+            item["detail"] = detail
+        items.append(item)
 
     return items[:limit]
 
@@ -811,6 +1007,39 @@ def _safe_url(url: Any) -> str:
     return ""
 
 
+def _parse_date(value: Any) -> date | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+
+def _market_freshness_label(row: dict[str, Any], run_date: Any) -> str:
+    freshness = str(row.get("freshness_status", ""))
+    status = str(row.get("status", ""))
+    observed = _parse_date(row.get("observed_date"))
+    run = _parse_date(run_date)
+    if status == "observed" and observed and run and observed < run:
+        lag_days = (run - observed).days
+        return "stale" if lag_days > MARKET_STALE_AFTER_DAYS else "lagged"
+    return freshness
+
+
+def _freshness_variant(freshness: str) -> str:
+    return {
+        "current": "ok",
+        "lagged": "watch",
+        "stale": "alert",
+        "failed": "alert",
+        "unparsed": "alert",
+    }.get(freshness, "watch")
+
+
 def _truncate(items: list[Any], limit: int) -> tuple[list[Any], int]:
     if len(items) <= limit:
         return items, 0
@@ -883,8 +1112,10 @@ def _caveats_list(caveats: list[Any]) -> str:
 # Daily view
 # --------------------------------------------------------------------------- #
 def _render_lead_card(lead: dict[str, Any], lead_type_variant: str) -> str:
-    title = lead.get("title") or lead.get("claim_or_question") or "(untitled lead)"
-    claim = lead.get("claim_or_question") or ""
+    raw_title = lead.get("title") or lead.get("claim_or_question") or "(untitled lead)"
+    title, full_title = _compact_display_text(raw_title, lead)
+    raw_claim = lead.get("claim_or_question") or ""
+    claim, full_claim = _compact_claim_text(raw_claim, lead, title, full_title)
     disposition = lead.get("disposition") or ""
     next_check = lead.get("next_check") or ""
     ctx = lead.get("review_context") or {}
@@ -901,6 +1132,16 @@ def _render_lead_card(lead: dict[str, Any], lead_type_variant: str) -> str:
         if claim and claim != title
         else ""
     )
+    detail_rows = []
+    if full_title:
+        detail_rows.append(
+            f'<details class="detail"><summary>Full title</summary><p>{_esc(full_title)}</p></details>'
+        )
+    if full_claim and full_claim != full_title:
+        detail_rows.append(
+            f'<details class="detail"><summary>Full claim</summary><p>{_esc(full_claim)}</p></details>'
+        )
+    detail_html = "".join(detail_rows)
     evidence_html = _evidence_dl(lead.get("evidence", []) or [])
     caveats_html = _caveats_list(lead.get("caveats", []) or [])
     next_html = (
@@ -913,6 +1154,7 @@ def _render_lead_card(lead: dict[str, Any], lead_type_variant: str) -> str:
         f'<div class="tags">{"".join(tags)}</div>'
         f'<h3 class="card__title">{_esc(title)}</h3>'
         f"{claim_html}"
+        f"{detail_html}"
         f"{evidence_html}"
         f"{caveats_html}"
         f"{next_html}"
@@ -962,19 +1204,27 @@ def _render_market_pricing(art: dict[str, Any], index: int) -> str:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        freshness = str(row.get("freshness_status", ""))
-        fresh_variant = "ok" if freshness == "current" else "watch"
+        freshness = _market_freshness_label(row, art.get("_run_date"))
         status = str(row.get("status", ""))
         tags = []
         if status:
             tags.append(_pill(status, "ok" if status == "observed" else "alert"))
         if freshness:
-            tags.append(_pill(freshness, fresh_variant))
+            tags.append(_pill(freshness, _freshness_variant(freshness)))
         value = row.get("latest_close")
         unit = (row.get("values", {}) or {}).get("unit") or row.get("currency") or ""
         value_html = (
             f'<div class="market__value">{_esc(value)} <span class="market__unit">{_esc(unit)}</span></div>'
             if value is not None
+            else ""
+        )
+        meta_parts = [
+            f"observed {row.get('observed_date')}" if row.get("observed_date") else "",
+            str(row.get("source_name") or ""),
+        ]
+        meta_html = (
+            f'<p class="market__meta">{_esc(" · ".join(p for p in meta_parts if p))}</p>'
+            if any(meta_parts)
             else ""
         )
         caveats_html = _caveats_list(row.get("caveats", []) or [])
@@ -983,6 +1233,7 @@ def _render_market_pricing(art: dict[str, Any], index: int) -> str:
             f'<div class="tags">{"".join(tags)}</div>'
             f'<h3 class="card__title">{_esc(row.get("name", row.get("market_id", "")))}</h3>'
             f"{value_html}"
+            f"{meta_html}"
             f'<p class="card__claim">{_esc(row.get("headline", ""))}</p>'
             f"{caveats_html}"
             "</article>"
@@ -1143,6 +1394,27 @@ def _render_links(art: dict[str, Any], index: int) -> str:
     return _section("Source artifacts", blocks, index=index)
 
 
+def _render_queue_items(queue: list[dict[str, str]]) -> str:
+    rows: list[str] = []
+    for item in queue:
+        detail = item.get("detail", "")
+        detail_html = (
+            '<details class="detail detail--queue">'
+            f'<summary>Full item</summary><p>{_esc(detail)}</p></details>'
+            if detail
+            else ""
+        )
+        rows.append(
+            '<li class="queue__item">'
+            f'<div class="queue__label">{_esc(item["label"])}</div>'
+            f'<div class="queue__meta">{_pill(item["kind"])}'
+            f'<span class="queue__note">{_esc(item["note"])}</span></div>'
+            f"{detail_html}"
+            "</li>"
+        )
+    return "".join(rows)
+
+
 def render_daily_review_html(art: dict[str, Any]) -> str:
     """Render the per-run daily review HTML from a loaded artifact dict."""
     run_date = art.get("_run_date", "")
@@ -1229,23 +1501,12 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
 
     queue = derive_monitor_queue(art)
     if queue:
-        is_human_queue = bool(art.get("_human_monitor_queue"))
-        queue_items = "".join(
-            '<li class="queue__item">'
-            f'<div class="queue__label">{_esc(item["label"])}</div>'
-            f'<div class="queue__meta">{_pill(item["kind"])}'
-            f'<span class="queue__note">{_esc(item["note"])}</span></div>'
-            "</li>"
-            for item in queue
-        )
+        queue_source = _monitor_queue_source(art)
+        queue_items = _render_queue_items(queue)
         queue_section = _section(
-            "Monitor queue (human)" if is_human_queue else "Monitor queue (derived)",
+            f'Monitor queue ({queue_source["label"]})',
             f'<ol class="queue">{queue_items}</ol>',
-            note=(
-                "Parsed from human_decisions.md — recorded editorial priorities, not a promotion."
-                if is_human_queue
-                else "Derived from today's investigation leads and M2 review queue — what to sample next, not a promotion."
-            ),
+            note=queue_source["daily_note"],
             index=5,
         )
     else:
@@ -1413,23 +1674,12 @@ def render_runs_index_html(run_dirs: list[Path]) -> str:
 
     queue = derive_monitor_queue(per_run[-1][1])
     if queue:
-        is_human_queue = bool(per_run[-1][1].get("_human_monitor_queue"))
-        queue_items = "".join(
-            '<li class="queue__item">'
-            f'<div class="queue__label">{_esc(item["label"])}</div>'
-            f'<div class="queue__meta">{_pill(item["kind"])}'
-            f'<span class="queue__note">{_esc(item["note"])}</span></div>'
-            "</li>"
-            for item in queue
-        )
+        queue_source = _monitor_queue_source(per_run[-1][1])
+        queue_items = _render_queue_items(queue)
         queue_section = _section(
             "Active monitor queue (latest run)",
             f'<ol class="queue">{queue_items}</ol>',
-            note=(
-                "Parsed from the latest run's human_decisions.md."
-                if is_human_queue
-                else "Derived from the latest run's investigation leads and M2 review queue."
-            ),
+            note=queue_source["index_note"],
             index=5,
         )
     else:
@@ -1582,6 +1832,13 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
   font-size:10px; color:var(--accent); display:block; margin-bottom:3px}
 .market__value{font-family:var(--mono); font-size:24px; font-weight:600; margin:4px 0 8px}
 .market__unit{font-size:13px; color:var(--ink-faint); font-weight:400}
+.market__meta{font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); margin:-2px 0 8px}
+.detail{font-family:var(--sans); font-size:12.5px; color:var(--ink-soft);
+  margin:8px 0 0; padding-top:8px; border-top:1px dotted var(--rule)}
+.detail summary{font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;
+  font-size:10px; color:var(--accent); cursor:pointer}
+.detail p{margin:5px 0 0}
+.detail--queue{border-top:0; padding-top:0; margin-top:2px}
 
 /* Definition list (evidence) */
 .dl{margin:10px 0 0; display:grid; gap:6px}
