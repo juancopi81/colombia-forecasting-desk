@@ -49,6 +49,7 @@ def _art(**overrides) -> dict:
         "_run_date": "2026-05-29",
         "_present": set(),
         "_human_decision": None,
+        "_human_monitor_queue": [],
     }
     art.update(overrides)
     return art
@@ -316,6 +317,37 @@ def test_derive_monitor_queue_combines_leads_and_review_queue_and_dedups() -> No
     assert queue[0]["kind"] == "investigation lead"
 
 
+def test_derive_monitor_queue_prefers_human_priorities() -> None:
+    art = _art(
+        _human_monitor_queue=[
+            {
+                "label": "Confirm official scrutiny status.",
+                "kind": "human priority",
+                "note": "Election Follow-Up Queue",
+            }
+        ],
+        **{
+            "analyst_leads.json": {
+                "summary": {},
+                "leads": [
+                    {
+                        "lead_type": "investigation_lead",
+                        "title": "Machine-derived fallback",
+                        "next_check": "Check committee agenda.",
+                    }
+                ],
+            }
+        },
+    )
+    assert rh.derive_monitor_queue(art) == [
+        {
+            "label": "Confirm official scrutiny status.",
+            "kind": "human priority",
+            "note": "Election Follow-Up Queue",
+        }
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # url safety + loader
 # --------------------------------------------------------------------------- #
@@ -352,7 +384,15 @@ def test_load_run_artifacts_is_tolerant_and_extracts_human_decision(tmp_path: Pa
         encoding="utf-8",
     )
     (run_dir / "human_decisions.md").write_text(
-        "# Human Decisions\n\nDecision: `monitor_no_new_m3`.\n\nPost today: no.\n",
+        (
+            "# Human Decisions\n\n"
+            "Decision: `monitor_no_new_m3`.\n\n"
+            "## Election And Market Follow-Up Queue\n\n"
+            "1. Confirm official first-round result status and scrutiny timeline.\n"
+            "2. Capture Monday closing USD/COP and TES curve/yields.\n\n"
+            "## Post Decision\n\n"
+            "Post today: no.\n"
+        ),
         encoding="utf-8",
     )
     art = rh.load_run_artifacts(run_dir)
@@ -362,6 +402,18 @@ def test_load_run_artifacts_is_tolerant_and_extracts_human_decision(tmp_path: Pa
     ]
     assert art["analyst_leads.json"] is None  # missing file -> None, no crash
     assert art["_human_decision"] == {"decision": "monitor_no_new_m3", "post_today": "no"}
+    assert art["_human_monitor_queue"] == [
+        {
+            "label": "Confirm official first-round result status and scrutiny timeline.",
+            "kind": "human priority",
+            "note": "Election And Market Follow-Up Queue",
+        },
+        {
+            "label": "Capture Monday closing USD/COP and TES curve/yields.",
+            "kind": "human priority",
+            "note": "Election And Market Follow-Up Queue",
+        },
+    ]
     assert "human_decisions.md" in art["_present"]
 
 
@@ -395,6 +447,23 @@ def test_render_daily_returns_complete_deterministic_document() -> None:
     assert "never probability inputs" in html_out
     # deterministic: identical input renders identical output
     assert html_out == rh.render_daily_review_html(art)
+
+
+def test_render_daily_labels_human_monitor_queue() -> None:
+    art = _art(
+        _human_monitor_queue=[
+            {
+                "label": "Confirm official scrutiny status.",
+                "kind": "human priority",
+                "note": "Election And Market Follow-Up Queue",
+            }
+        ],
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Monitor queue (human)" in html_out
+    assert "Parsed from human_decisions.md" in html_out
+    assert "Confirm official scrutiny status." in html_out
+    assert "Machine-derived fallback" not in html_out
 
 
 def test_render_daily_groups_source_reliability_by_impact_bucket() -> None:
@@ -683,6 +752,35 @@ def test_render_index_shows_drought_and_per_run_links(tmp_path: Path) -> None:
     assert "2 consecutive monitoring run(s)" in html_out
     assert 'href="2026-05-29/review.html"' in html_out
     assert html_out == rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+
+
+def test_render_index_uses_latest_human_monitor_queue(tmp_path: Path) -> None:
+    for name in ["2026-05-28", "2026-05-29"]:
+        run_dir = tmp_path / name
+        run_dir.mkdir()
+        (run_dir / "run_summary.json").write_text(
+            f'{{"run_date": "{name}", "raw_items": 10}}',
+            encoding="utf-8",
+        )
+        (run_dir / "analyst_leads.json").write_text(
+            '{"summary": {"forecast_question_count": 0, "lead_count": 0}, "leads": []}',
+            encoding="utf-8",
+        )
+        (run_dir / "m2_ranked_questions.json").write_text(
+            '{"bucket_counts": {}, "review_queue": []}', encoding="utf-8"
+        )
+    (tmp_path / "2026-05-29" / "human_decisions.md").write_text(
+        (
+            "# Human Decisions\n\n"
+            "## Monitor Queue\n\n"
+            "1. Check the official committee agenda.\n"
+        ),
+        encoding="utf-8",
+    )
+    html_out = rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+    assert "Parsed from the latest run&#x27;s human_decisions.md." in html_out
+    assert "Check the official committee agenda." in html_out
+    assert "human priority" in html_out
 
 
 def test_render_index_aggregates_source_reliability_bucket_labels(tmp_path: Path) -> None:

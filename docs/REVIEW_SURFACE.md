@@ -58,6 +58,9 @@ or reinterpret them. In particular:
   [`Final Output Contract`](FINAL_OUTPUT_CONTRACT.md) lanes.
 - The recorded human decision (if any) is read from `human_decisions.md` for
   display only; the page's primary status is always the artifact-derived one.
+- A numbered queue in `human_decisions.md` is parsed for display as the monitor
+  queue. It records human/editorial priorities only and does not promote any
+  lead or alter the artifact-derived status.
 - Source reliability buckets affect display and recent-run aggregation only.
   They do **not** change M1/M2/M3 logic, forecast promotion, or acceptance
   criteria.
@@ -84,7 +87,7 @@ visibility gap to one deterministic bucket:
 | At a glance | `run_summary.json`, `run_manifest.json`, `analyst_leads.json` | Counts grid. |
 | Top analyst insights | `analyst_leads.json` (`analyst_insight`) | Source-backed findings; not forecasts. |
 | Top investigation leads | `analyst_leads.json` (`investigation_lead`) | Underqualified leads needing more research. |
-| Monitor queue (derived) | `analyst_leads.json`, `m2_ranked_questions.json` (`review_queue`) | "What to sample next", not a promotion. |
+| Monitor queue | `human_decisions.md` numbered queue, falling back to `analyst_leads.json` + `m2_ranked_questions.json` | Human/editorial priority queue when recorded; otherwise "what to sample next" from artifacts. Not a promotion. |
 | Source-health caveats | `source_health.json`, `acceptance_report.json` | Only genuine visibility gaps: fetch failures, `needs_parser` sources, and document-links-without-parsed-content. Caveats are grouped by the reliability buckets above. A working source with parsed content but no rankable candidate is healthy and is **not** flagged. |
 | Indicator tension cards | `indicator_tension_cards.json` | Advisory screens only. |
 | Market-pricing context | `market_pricing_watch.json` | Experimental, fail-closed context only. |
@@ -100,7 +103,7 @@ visibility gap to one deterministic bucket:
 | Recurring analyst insights | `analyst_leads.json` insight titles across the window | Frequency `days/total`. |
 | Repeated tension cards | `indicator_tension_cards.json` titles across the window | Persistent ≠ resolvable. |
 | Source reliability issues | `source_health.json` caveats across the window | Sources whose silence is repeatedly unreliable, aggregated with the same reliability bucket labels used in the daily view. |
-| Active monitor queue | latest run's investigation leads + M2 review queue | Derived. |
+| Active monitor queue | latest run's `human_decisions.md` queue, falling back to investigation leads + M2 review queue | Human queue when recorded, otherwise derived. |
 | Per-run reviews | one link per run | Jump to each daily `review.html`. |
 
 Older runs may lack newer artifacts (e.g. `cooccurrence_bundles.json` or

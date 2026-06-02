@@ -200,6 +200,70 @@ def _extract_recorded_decision(run_dir: Path, present: set[str]) -> dict[str, st
     return out or None
 
 
+def _extract_human_monitor_queue(run_dir: Path, present: set[str]) -> list[dict[str, str]]:
+    """Parse a numbered human follow-up queue from ``human_decisions.md``.
+
+    The daily workflow often records a short editorial queue under headings like
+    ``## Monitor Queue`` or ``## Election And Market Follow-Up Queue``. This
+    parser intentionally reads only numbered Markdown list items from queue-ish
+    sections and ignores all other prose, so drift elsewhere in the file cannot
+    affect the generated review surface.
+    """
+    if "human_decisions.md" not in present:
+        return []
+    try:
+        lines = (run_dir / "human_decisions.md").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+
+    items: list[dict[str, str]] = []
+    active_heading = ""
+    current: str | None = None
+    item_re = re.compile(r"^\s*\d+[.)]\s+(.+?)\s*$")
+
+    def flush() -> None:
+        nonlocal current
+        if current:
+            items.append(
+                {
+                    "label": normalize_markdown_text(current),
+                    "kind": "human priority",
+                    "note": normalize_markdown_text(active_heading),
+                }
+            )
+        current = None
+
+    for line in lines:
+        heading = re.match(r"^#{2,6}\s+(.+?)\s*$", line)
+        if heading:
+            flush()
+            label = heading.group(1)
+            active_heading = label if _is_queue_heading(label) else ""
+            continue
+        if not active_heading:
+            continue
+        match = item_re.match(line)
+        if match:
+            flush()
+            current = match.group(1)
+            continue
+        if current and line.startswith((" ", "\t")) and line.strip():
+            current = f"{current} {line.strip()}"
+    flush()
+    return items[:MONITOR_QUEUE_LIMIT]
+
+
+def _is_queue_heading(text: str) -> bool:
+    folded = text.lower()
+    return "queue" in folded or "follow-up" in folded or "follow up" in folded
+
+
+def normalize_markdown_text(text: str) -> str:
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    return " ".join(text.split())
+
+
 def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     """Load a run directory's artifacts into a plain dict for pure rendering.
 
@@ -214,6 +278,7 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     art["_run_date"] = run_dir.name
     art["_present"] = present
     art["_human_decision"] = _extract_recorded_decision(run_dir, present)
+    art["_human_monitor_queue"] = _extract_human_monitor_queue(run_dir, present)
     return art
 
 
@@ -600,10 +665,17 @@ def derive_monitor_queue(
 ) -> list[dict[str, str]]:
     """Build a deterministic "what to sample next" queue from artifacts.
 
-    This is a proxy for the hand-written monitor queue: it combines today's
-    investigation leads with the top of the M2 review queue. It does not promote
-    anything; it just collects what the artifacts already flagged for follow-up.
+    Prefer the explicit numbered queue from ``human_decisions.md`` when present.
+    Otherwise fall back to a proxy that combines today's investigation leads
+    with the top of the M2 review queue. It does not promote anything; it just
+    collects what the artifacts already flagged for follow-up.
     """
+    human_queue = [
+        item for item in art.get("_human_monitor_queue") or [] if isinstance(item, dict)
+    ]
+    if human_queue:
+        return human_queue[:limit]
+
     items: list[dict[str, str]] = []
     seen: set[str] = set()
 
@@ -1157,6 +1229,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
 
     queue = derive_monitor_queue(art)
     if queue:
+        is_human_queue = bool(art.get("_human_monitor_queue"))
         queue_items = "".join(
             '<li class="queue__item">'
             f'<div class="queue__label">{_esc(item["label"])}</div>'
@@ -1166,9 +1239,13 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
             for item in queue
         )
         queue_section = _section(
-            "Monitor queue (derived)",
+            "Monitor queue (human)" if is_human_queue else "Monitor queue (derived)",
             f'<ol class="queue">{queue_items}</ol>',
-            note="Derived from today's investigation leads and M2 review queue — what to sample next, not a promotion.",
+            note=(
+                "Parsed from human_decisions.md — recorded editorial priorities, not a promotion."
+                if is_human_queue
+                else "Derived from today's investigation leads and M2 review queue — what to sample next, not a promotion."
+            ),
             index=5,
         )
     else:
@@ -1336,6 +1413,7 @@ def render_runs_index_html(run_dirs: list[Path]) -> str:
 
     queue = derive_monitor_queue(per_run[-1][1])
     if queue:
+        is_human_queue = bool(per_run[-1][1].get("_human_monitor_queue"))
         queue_items = "".join(
             '<li class="queue__item">'
             f'<div class="queue__label">{_esc(item["label"])}</div>'
@@ -1347,7 +1425,11 @@ def render_runs_index_html(run_dirs: list[Path]) -> str:
         queue_section = _section(
             "Active monitor queue (latest run)",
             f'<ol class="queue">{queue_items}</ol>',
-            note="Derived from the latest run's investigation leads and M2 review queue.",
+            note=(
+                "Parsed from the latest run's human_decisions.md."
+                if is_human_queue
+                else "Derived from the latest run's investigation leads and M2 review queue."
+            ),
             index=5,
         )
     else:
