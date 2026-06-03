@@ -345,12 +345,44 @@ def _as_int(value: Any, default: int = 0) -> int:
 
 @dataclass
 class Decision:
-    status: str  # "monitor_no_post" | "review_for_post"
+    # "monitor_no_post" | "review_for_post" | "blocked_network_not_decision_grade"
+    status: str
     label: str
     headline: str
     facts: list[str]
     m3_ready: bool
     recorded_human_decision: dict[str, str] | None = None
+
+
+def _is_blocked_network_run(art: dict[str, Any]) -> bool:
+    summary = art.get("run_summary.json") or {}
+    manifest = art.get("run_manifest.json") or {}
+    manifest_counts = manifest.get("counts", {}) or {}
+    acceptance = art.get("acceptance_report.json") or {}
+
+    raw = _as_int(summary.get("raw_items", manifest_counts.get("raw_items")))
+    cleaned = _as_int(
+        summary.get("cleaned_items", manifest_counts.get("cleaned_items"))
+    )
+    clusters = _as_int(summary.get("clusters", manifest_counts.get("clusters")))
+    checked = _as_int(
+        summary.get("sources_checked", manifest_counts.get("sources_checked"))
+    )
+    failed = _as_int(
+        summary.get("sources_failed", manifest_counts.get("sources_failed"))
+    )
+    acceptance_status = str(
+        acceptance.get("status") or manifest.get("acceptance_status") or ""
+    )
+
+    return (
+        checked > 0
+        and failed >= checked
+        and raw == 0
+        and cleaned == 0
+        and clusters == 0
+        and acceptance_status == "fail"
+    )
 
 
 def derive_decision(art: dict[str, Any]) -> Decision:
@@ -362,6 +394,31 @@ def derive_decision(art: dict[str, Any]) -> Decision:
     surfaced calmly, not as an error. This mirrors the M3 gate; it never loosens
     it.
     """
+    if _is_blocked_network_run(art):
+        summary = art.get("run_summary.json") or {}
+        checked = _as_int(summary.get("sources_checked"))
+        failed = _as_int(summary.get("sources_failed"))
+        return Decision(
+            status="blocked_network_not_decision_grade",
+            label="Blocked - not decision-grade",
+            headline=(
+                "All enabled sources failed and the run produced no raw or cleaned "
+                "items. Rerun with live network access before making a post or "
+                "monitor decision."
+            ),
+            facts=[
+                f"{failed}/{checked} enabled sources failed during the strict scan.",
+                "0 raw items, 0 cleaned items, and 0 clusters were produced.",
+                (
+                    "Source silence is unreliable until the same command succeeds "
+                    "with live network access."
+                ),
+                "No M3 evidence pack should be selected from this run.",
+            ],
+            m3_ready=False,
+            recorded_human_decision=art.get("_human_decision"),
+        )
+
     leads = art.get("analyst_leads.json") or {}
     summary = leads.get("summary", {}) or {}
     fq = _as_int(summary.get("forecast_question_count"))
@@ -1211,7 +1268,7 @@ def _render_market_pricing(art: dict[str, Any], index: int) -> str:
         tags = []
         if status:
             tags.append(_pill(status, "ok" if status == "observed" else "alert"))
-        if freshness:
+        if freshness and freshness != status:
             tags.append(_pill(freshness, _freshness_variant(freshness)))
         value = row.get("latest_close")
         unit = (row.get("values", {}) or {}).get("unit") or row.get("currency") or ""
@@ -1348,7 +1405,13 @@ def _render_source_reliability_buckets(caveats: list[dict[str, Any]]) -> str:
 
 
 def _render_banner(decision: Decision) -> str:
-    variant = "post" if decision.m3_ready else "monitor"
+    variant = (
+        "blocked"
+        if decision.status == "blocked_network_not_decision_grade"
+        else "post"
+        if decision.m3_ready
+        else "monitor"
+    )
     facts = "".join(f"<li>{_esc(f)}</li>" for f in decision.facts)
     recorded = decision.recorded_human_decision
     recorded_html = ""
@@ -1785,10 +1848,12 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
   border-radius:4px; padding:22px 26px; margin-bottom:34px; box-shadow:0 1px 0 rgba(33,30,24,.04)}
 .banner--monitor{border-left-color:var(--watch); background:linear-gradient(180deg,var(--watch-soft),var(--card) 70%)}
 .banner--post{border-left-color:var(--ok); background:linear-gradient(180deg,var(--ok-soft),var(--card) 70%)}
+.banner--blocked{border-left-color:var(--alert); background:linear-gradient(180deg,var(--alert-soft),var(--card) 70%)}
 .banner__status{font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em;
   font-size:12px; font-weight:600; color:var(--ink)}
 .banner--monitor .banner__status{color:var(--accent)}
 .banner--post .banner__status{color:var(--ok)}
+.banner--blocked .banner__status{color:var(--alert)}
 .banner__headline{font-size:21px; line-height:1.4; margin:8px 0 14px; max-width:60ch}
 .banner__facts{margin:0; padding:0; list-style:none; display:grid; gap:6px}
 .banner__facts li{font-family:var(--sans); font-size:14px; color:var(--ink-soft);

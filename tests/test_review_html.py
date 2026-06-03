@@ -131,6 +131,43 @@ def test_derive_decision_surfaces_recorded_human_decision() -> None:
     }
 
 
+def test_derive_decision_blocks_all_zero_source_failure_run() -> None:
+    art = _art(
+        **{
+            "run_summary.json": {
+                "run_date": "2026-06-03",
+                "raw_items": 0,
+                "cleaned_items": 0,
+                "clusters": 0,
+                "sources_checked": 30,
+                "sources_failed": 30,
+                "finished_at": "2026-06-03T15:33:13Z",
+            },
+            "run_manifest.json": {"counts": {"m1_candidates": 0}},
+            "acceptance_report.json": {
+                "status": "fail",
+                "warning_count": 12,
+                "error_count": 6,
+                "issues": [],
+            },
+            "_human_decision": {
+                "decision": "blocked_network_not_decision_grade",
+                "post_today": "no",
+            },
+        }
+    )
+
+    decision = rh.derive_decision(art)
+    assert decision.status == "blocked_network_not_decision_grade"
+    assert decision.m3_ready is False
+    assert "Rerun with live network access" in decision.headline
+
+    html_out = rh.render_daily_review_html(art)
+    assert "Blocked - not decision-grade" in html_out
+    assert "Monitoring — no new forecast" not in html_out
+    assert "recorded decision <code>blocked_network_not_decision_grade</code>" in html_out
+
+
 # --------------------------------------------------------------------------- #
 # summarize_run / drought
 # --------------------------------------------------------------------------- #
@@ -654,6 +691,29 @@ def test_render_daily_marks_observed_market_rows_lagged_or_stale() -> None:
     assert "observed 2026-06-01" in html_out
     assert "observed 2026-05-26" in html_out
     assert ">current<" not in html_out
+
+
+def test_render_daily_dedupes_stale_market_status_and_freshness_pills() -> None:
+    art = _art(
+        **{
+            "market_pricing_watch.json": [
+                {
+                    "status": "stale",
+                    "freshness_status": "stale",
+                    "observed_date": "2026-05-26",
+                    "latest_close": 3920.25,
+                    "currency": "COP/USD",
+                    "name": "USD/COP spot",
+                    "headline": "USD/COP latest available close is stale.",
+                    "source_name": "Market data snapshot",
+                    "caveats": ["Advisory context only."],
+                },
+            ],
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert html_out.count(">stale<") == 1
+    assert "USD/COP spot" in html_out
 
 
 def test_render_daily_keeps_full_long_legislative_title_in_details() -> None:
