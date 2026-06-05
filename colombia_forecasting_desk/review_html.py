@@ -36,6 +36,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from .brief import _indicator_alerts
+from .models import IndicatorComponent, IndicatorObservation
+
 SCHEMA_VERSION = "review_html.v1"
 DEFAULT_WINDOW = 14
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -50,6 +53,7 @@ BUNDLE_LIMIT = 6
 MONITOR_QUEUE_LIMIT = 8
 RECURRING_LIMIT = 12
 MARKET_STALE_AFTER_DAYS = 3
+INDICATOR_COVERAGE_ALERT_CODES = {"observation_lag", "stale_observation"}
 
 # JSON artifacts the renderer reads. Missing files load as ``None`` so old runs
 # (which may lack newer artifacts) render without crashing.
@@ -1255,6 +1259,190 @@ def _render_tension_cards(art: dict[str, Any], index: int) -> str:
     )
 
 
+def _indicator_observation_from_row(row: dict[str, Any]) -> IndicatorObservation:
+    components = [
+        IndicatorComponent(
+            component_id=str(component.get("component_id") or ""),
+            name=str(component.get("name") or ""),
+            status=str(component.get("status") or ""),
+            source_name=str(component.get("source_name") or ""),
+            source_url=str(component.get("source_url") or ""),
+            period=str(component.get("period") or ""),
+            release_date=component.get("release_date"),
+            headline=str(component.get("headline") or ""),
+            values=component.get("values") or {},
+            freshness_status=str(component.get("freshness_status") or "unknown"),
+            next_step=str(component.get("next_step") or ""),
+        )
+        for component in (row.get("components") or [])
+        if isinstance(component, dict)
+    ]
+    return IndicatorObservation(
+        indicator_id=str(row.get("indicator_id") or ""),
+        name=str(row.get("name") or ""),
+        category=str(row.get("category") or ""),
+        status=str(row.get("status") or ""),
+        frequency=str(row.get("frequency") or ""),
+        source_name=str(row.get("source_name") or ""),
+        source_url=str(row.get("source_url") or ""),
+        period=str(row.get("period") or ""),
+        release_date=row.get("release_date"),
+        headline=str(row.get("headline") or ""),
+        values=row.get("values") or {},
+        freshness_status=str(row.get("freshness_status") or "unknown"),
+        components=components,
+        why_it_matters=str(row.get("why_it_matters") or ""),
+        correlations=[str(item) for item in row.get("correlations") or []],
+        next_step=str(row.get("next_step") or ""),
+    )
+
+
+def _indicator_alert_code(alert: str) -> str:
+    match = re.match(r"`([^`]+)`", alert)
+    return match.group(1).replace("_", " ") if match else alert.split(":", 1)[0]
+
+
+def _indicator_alert_code_raw(alert: str) -> str:
+    match = re.match(r"`([^`]+)`", alert)
+    return match.group(1) if match else alert.split(":", 1)[0]
+
+
+def _indicator_display_values(row: dict[str, Any]) -> list[tuple[str, Any]]:
+    values = row.get("values") or {}
+    if not isinstance(values, dict):
+        return []
+    priority = {
+        "trm_usd_cop": [
+            "trm_cop_per_usd",
+            "seven_day_change_pct",
+            "seven_day_change_cop",
+            "daily_change_pct",
+        ],
+        "policy_rate_ibr": [
+            "policy_rate_pct",
+            "ibr_overnight_nominal_pct",
+            "ibr_policy_spread_pp",
+            "ibr_date",
+        ],
+        "ise_activity": ["ise_index", "annual_growth_pct"],
+        "external_trade": ["observed_components", "total_components"],
+    }.get(str(row.get("indicator_id") or ""), [])
+    keys = [key for key in priority if key in values] + [
+        key for key in sorted(values) if key not in set(priority)
+    ]
+    display: list[tuple[str, Any]] = []
+    for key in keys:
+        if key in {"components", "official_documents"}:
+            continue
+        value = values[key]
+        if isinstance(value, (str, int, float)) or value is None:
+            display.append((key, value))
+        if len(display) >= 4:
+            break
+    if not display:
+        observed = values.get("observed_components")
+        total = values.get("total_components")
+        if observed is not None and total is not None:
+            display.append(("observed_components", f"{observed}/{total}"))
+    return display
+
+
+def _render_official_indicator_moves(art: dict[str, Any], index: int) -> str:
+    rows = art.get("indicator_watch.json") or []
+    if not isinstance(rows, list) or not rows:
+        return ""
+
+    observations_by_id: dict[str, IndicatorObservation] = {}
+    original_rows: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        observation = _indicator_observation_from_row(row)
+        if observation.indicator_id:
+            observations_by_id[observation.indicator_id] = observation
+            original_rows[observation.indicator_id] = row
+    observations = list(observations_by_id.values())
+
+    blocks: list[str] = []
+    for observation in observations:
+        row = original_rows[observation.indicator_id]
+        alerts = [
+            alert
+            for alert in _indicator_alerts(
+                observation, observations, str(art.get("_run_date") or "")
+            )
+            if _indicator_alert_code_raw(alert) not in INDICATOR_COVERAGE_ALERT_CODES
+        ]
+        if (
+            observation.status != "observed"
+            or observation.freshness_status not in {"current", "unknown"}
+            or not alerts
+        ):
+            continue
+        status = observation.status
+        freshness = observation.freshness_status
+        tags = [_pill(status, "ok")]
+        if freshness and freshness != status:
+            tags.append(_pill(freshness, _freshness_variant(freshness)))
+        tags.extend(_pill(_indicator_alert_code(alert), "watch") for alert in alerts)
+
+        period_parts = [
+            f"period {observation.period}" if observation.period else "",
+            f"released {observation.release_date[:10]}" if observation.release_date else "",
+        ]
+        period_html = (
+            f'<p class="indicator__meta">{_esc(" · ".join(p for p in period_parts if p))}</p>'
+            if any(period_parts)
+            else ""
+        )
+        value_rows = _indicator_display_values(row)
+        values_html = (
+            '<dl class="indicator__values">'
+            + "".join(
+                f"<div><dt>{_esc(key.replace('_', ' '))}</dt><dd>{_esc(value)}</dd></div>"
+                for key, value in value_rows
+            )
+            + "</dl>"
+            if value_rows
+            else ""
+        )
+        source_url = _safe_url(observation.source_url)
+        source_label = observation.source_name or "source"
+        source_html = (
+            f'<p class="indicator__source">Source: <a href="{_attr(source_url)}">{_esc(source_label)}</a></p>'
+            if source_url
+            else f'<p class="indicator__source">Source: {_esc(source_label)}</p>'
+            if source_label
+            else ""
+        )
+        next_html = (
+            f'<p class="card__next"><span class="card__next-label">Next step</span>{_esc(observation.next_step)}</p>'
+            if observation.next_step
+            else ""
+        )
+        blocks.append(
+            '<article class="card card--indicator">'
+            f'<div class="tags">{"".join(tags)}</div>'
+            f'<h3 class="card__title">{_esc(observation.name or observation.indicator_id)}</h3>'
+            f"{period_html}"
+            f'<p class="card__claim">{_esc(observation.headline)}</p>'
+            f"{values_html}"
+            f"{source_html}"
+            f"{next_html}"
+            "</article>"
+        )
+
+    if not blocks:
+        return ""
+    body = f'<div class="cards cards--indicator">{"".join(blocks)}</div>'
+    return _section(
+        "Official indicator moves",
+        body,
+        note="Observed official indicator alerts from indicator_watch.json only.",
+        index=index,
+    )
+
+
 def _render_market_pricing(art: dict[str, Any], index: int) -> str:
     rows = art.get("market_pricing_watch.json") or []
     if not isinstance(rows, list) or not rows:
@@ -1543,7 +1731,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top analyst insights",
         insight_body,
         note="Source-backed findings. These are not forecasts and carry no probability.",
-        index=3,
+        index=4,
     )
 
     investigations = _leads_of_type(art, "investigation_lead")
@@ -1561,7 +1749,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top investigation leads",
         inv_body,
         note="Plausible leads that need more research before they could become insights or forecasts.",
-        index=4,
+        index=5,
     )
 
     queue = derive_monitor_queue(art)
@@ -1572,7 +1760,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
             f'Monitor queue ({queue_source["label"]})',
             f'<ol class="queue">{queue_items}</ol>',
             note=queue_source["daily_note"],
-            index=5,
+            index=6,
         )
     else:
         queue_section = ""
@@ -1582,14 +1770,15 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + _render_banner(decision)
         + stats
         + why_section
+        + _render_official_indicator_moves(art, index=3)
         + insight_section
         + inv_section
         + queue_section
-        + _render_source_caveats(art, index=6)
-        + _render_tension_cards(art, index=7)
-        + _render_market_pricing(art, index=8)
-        + _render_bundles(art, index=9)
-        + _render_links(art, index=10)
+        + _render_source_caveats(art, index=7)
+        + _render_tension_cards(art, index=8)
+        + _render_market_pricing(art, index=9)
+        + _render_bundles(art, index=10)
+        + _render_links(art, index=11)
         + _footer()
     )
     return _page(f"Daily Review — {run_date}", body)
@@ -1886,9 +2075,11 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
 /* Cards */
 .cards{display:grid; gap:14px}
 .cards--market{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.cards--indicator{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .card{background:var(--card); border:1px solid var(--rule); border-left:3px solid var(--rule-strong);
   border-radius:4px; padding:16px 18px}
 .card--market{border-left-color:var(--link)}
+.card--indicator{border-left-color:var(--accent)}
 .card__title{font-family:var(--serif); font-weight:600; font-size:18px; line-height:1.3;
   margin:8px 0 6px; letter-spacing:-.01em}
 .card__claim{font-size:15px; color:var(--ink-soft); margin:0 0 10px}
@@ -1900,6 +2091,14 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
 .market__value{font-family:var(--mono); font-size:24px; font-weight:600; margin:4px 0 8px}
 .market__unit{font-size:13px; color:var(--ink-faint); font-weight:400}
 .market__meta{font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); margin:-2px 0 8px}
+.indicator__meta,.indicator__source{font-family:var(--mono); font-size:11.5px;
+  color:var(--ink-faint); margin:-2px 0 8px}
+.indicator__values{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:8px; margin:10px 0; font-family:var(--sans)}
+.indicator__values div{border-top:1px dotted var(--rule); padding-top:7px}
+.indicator__values dt{font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;
+  font-size:9.5px; color:var(--ink-faint); margin-bottom:2px}
+.indicator__values dd{margin:0; color:var(--ink); font-size:13.5px}
 .detail{font-family:var(--sans); font-size:12.5px; color:var(--ink-soft);
   margin:8px 0 0; padding-top:8px; border-top:1px dotted var(--rule)}
 .detail summary{font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;

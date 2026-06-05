@@ -716,6 +716,112 @@ def test_render_daily_dedupes_stale_market_status_and_freshness_pills() -> None:
     assert "USD/COP spot" in html_out
 
 
+def test_render_daily_includes_official_indicator_moves_before_insights() -> None:
+    art = _art(
+        _run_date="2026-06-05",
+        **{
+            "indicator_watch.json": [
+                {
+                    "indicator_id": "trm_usd_cop",
+                    "name": "TRM / USD-COP",
+                    "category": "markets",
+                    "status": "observed",
+                    "frequency": "daily",
+                    "freshness_status": "current",
+                    "period": "2026-06-05",
+                    "release_date": "2026-06-05T00:00:00Z",
+                    "headline": (
+                        "TRM vigente desde 2026-06-05: 3565.32 COP/USD. "
+                        "Seven-day move: -81.26 COP (-2.23%), peso appreciation."
+                    ),
+                    "values": {
+                        "trm_cop_per_usd": 3565.32,
+                        "seven_day_change_pct": -2.23,
+                    },
+                    "source_name": "Superintendencia Financiera de Colombia",
+                    "source_url": "https://www.datos.gov.co/trm",
+                    "next_step": "Observed from datos.gov.co TRM dataset.",
+                }
+            ],
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Official indicator moves" in html_out
+    assert "TRM / USD-COP" in html_out
+    assert "material move" in html_out
+    assert "3565.32" in html_out
+    assert "Source: <a href=\"https://www.datos.gov.co/trm\"" in html_out
+    assert html_out.index("Why no M3 today") < html_out.index("Official indicator moves")
+    assert html_out.index("Official indicator moves") < html_out.index(
+        "Top analyst insights"
+    )
+
+
+def test_render_daily_keeps_indicator_moves_separate_from_market_pricing() -> None:
+    art = _art(
+        _run_date="2026-06-05",
+        **{
+            "indicator_watch.json": [
+                {
+                    "indicator_id": "trm_usd_cop",
+                    "name": "TRM / USD-COP",
+                    "category": "markets",
+                    "status": "observed",
+                    "frequency": "daily",
+                    "freshness_status": "current",
+                    "period": "2026-06-05",
+                    "headline": "TRM seven-day move was -2.23%.",
+                    "values": {"seven_day_change_pct": -2.23},
+                    "source_name": "Superfinanciera",
+                    "source_url": "https://www.datos.gov.co/trm",
+                }
+            ],
+            "market_pricing_watch.json": [
+                {
+                    "status": "observed",
+                    "freshness_status": "current",
+                    "observed_date": "2026-06-05",
+                    "latest_close": 41.74,
+                    "currency": "USD",
+                    "name": "Global X MSCI Colombia ETF",
+                    "headline": "COLO latest daily close was 41.74 USD.",
+                    "source_name": "Nasdaq public historical endpoint",
+                    "caveats": ["Advisory context only."],
+                }
+            ],
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    market_section = html_out[html_out.index("Market-pricing context") :]
+    assert "Global X MSCI Colombia ETF" in market_section
+    assert "TRM / USD-COP" not in market_section
+    assert "Experimental, fail-closed context only" in market_section
+
+
+def test_render_daily_omits_stale_indicator_moves_from_official_moves() -> None:
+    art = _art(
+        _run_date="2026-06-05",
+        **{
+            "indicator_watch.json": [
+                {
+                    "indicator_id": "oil_gas_production",
+                    "name": "Oil and gas production",
+                    "status": "observed",
+                    "frequency": "monthly",
+                    "freshness_status": "stale",
+                    "period": "2025-01",
+                    "headline": "Older oil and gas production period.",
+                    "values": {},
+                }
+            ],
+        },
+    )
+    html_out = rh.render_daily_review_html(art)
+    assert "Official indicator moves" not in html_out
+    assert "Indicator coverage gaps" in html_out
+    assert "Oil and gas production" in html_out
+
+
 def test_render_daily_keeps_full_long_legislative_title_in_details() -> None:
     long_title = (
         "Proyecto de Ley 564 de 2026 Cámara - Por medio de la cual se crea el "
