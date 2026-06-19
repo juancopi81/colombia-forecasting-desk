@@ -844,11 +844,12 @@ sources whose useful data lives inside PDFs or spreadsheets.
 For document-intelligence sources, `parsed` should be backed by an emitted
 `RawItem.metadata.content_extraction` value and tests that demonstrate both the
 positive and guarded cases. For example, Senado agenda entries use
-`senado_agenda_pdf`, but only entries with clean project identity metadata should
-promote to M2 candidates. Gacetas rows use `gaceta_pdf_text` after a successful
-official PDF download and project/title extraction; project rows use `#project`
-URL fragments, title-only rows use `#title` fragments and remain parsed research
-leads, while rows without a usable title remain document-link coverage debt.
+`senado_agenda_pdf`, and Cámara agenda entries use `camara_agenda_pdf`, but only
+entries with clean project identity metadata should promote to M2 candidates.
+Gacetas rows use `gaceta_pdf_text` after a successful official PDF download and
+project/title extraction; project rows use `#project` URL fragments, title-only
+rows use `#title` fragments and remain parsed research leads, while rows without
+a usable title remain document-link coverage debt.
 The dedupe layer preserves these semantic document fragments for Imprenta row
 types so multiple acts or bill items from the same PDF edition do not collapse
 back into one edition-level row.

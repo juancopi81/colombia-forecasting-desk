@@ -11,7 +11,11 @@ logger = logging.getLogger(__name__)
 _TRACKING_PREFIXES = ("utm_",)
 _TRACKING_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src"}
 _PRIMARY_TRUST_ROLES = {"official_signal", "resolution_source"}
-_SEMANTIC_FRAGMENT_ROW_TYPES = {"diario_legal_act", "gaceta_bill_item"}
+_SEMANTIC_FRAGMENT_ROW_TYPES = {
+    "camara_agenda_item",
+    "diario_legal_act",
+    "gaceta_bill_item",
+}
 
 
 def canonicalize_url(url: str) -> str:

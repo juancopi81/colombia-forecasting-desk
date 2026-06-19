@@ -140,9 +140,9 @@ Ready to flip `enabled: true` (and remove or keep `onboarding_status`) when:
 - The source-health row shows `status: ok`.
 - `notes` describes any quirks worth knowing for the next contributor.
 
-For sources that connect but never produce rankable content (Cámara agenda
-hub, Corte Constitucional SPA, Registraduría Cloudflare gate when a fresh
-browser session is still challenged), keep
+For sources that connect but never produce rankable content (Corte
+Constitucional SPA, Registraduría Cloudflare gate when a fresh browser session
+is still challenged), keep
 `onboarding_status: needs_parser` and document the underlying issue in
 `notes`. The brief's source-health table will surface them every run, so
 the gap stays visible without crashing the pipeline.
@@ -164,6 +164,11 @@ Current examples are split by family under
   bill-level, dated agenda entries with parsed-content metadata. Senado entries
   are M2-ready only when they have a clean project number and bill title; loose
   title-only extracts should remain research leads.
+- `_extract_camara_agenda_pdf_links` / `_enrich_camara_agenda_pdfs` — discovers
+  Cámara's EmbedPress agenda PDF link, downloads the official PDF, and emits
+  bill-level agenda entries with `content_extraction: camara_agenda_pdf` when a
+  project number is recoverable. PDFs without usable project entries stay
+  link-level with `content_extraction_error`.
 - `_enrich_gaceta_pdfs` — posts the official Imprenta/Gacetas JSF download
   button, extracts PDF text, and emits bill-item rows with `#project` / `#title`
   URL fragments plus parsed Gaceta project/title metadata. If the PDF exposes a

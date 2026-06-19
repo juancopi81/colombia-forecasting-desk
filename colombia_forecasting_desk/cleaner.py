@@ -66,6 +66,10 @@ def _is_opaque_imprenta_index(raw: RawItem) -> bool:
     )
 
 
+def _is_unparsed_pdf_link(raw: RawItem) -> bool:
+    return raw.metadata.get("pdf_parse_status") == "not_parsed"
+
+
 def clean(raw: RawItem, source: Metasource) -> CleanedItem:
     title = normalize_whitespace(raw.title or "")
     clean_text = strip_ui_artifacts(strip_html(raw.raw_text or ""))
@@ -81,6 +85,8 @@ def clean(raw: RawItem, source: Metasource) -> CleanedItem:
         notes.append("low_quality:short_text")
     if _is_opaque_imprenta_index(raw):
         notes.append("low_quality:missing_document_title")
+    if _is_unparsed_pdf_link(raw):
+        notes.append("low_quality:unparsed_pdf_link")
     if (
         raw.source_id == "gacetas_congreso"
         and raw.metadata.get("content_extraction") == "gaceta_pdf_text"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..observability import RunTrace
 from .common import *
+from .camara import *
 from .dane import *
 from .html import *
 from .imprenta import *
@@ -79,6 +80,16 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             response.text,
             fetched_at,
         )
+    if source.id == "camara_agenda_consolidada":
+        items = _extract_camara_agenda_pdf_links(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+        )
+        if items:
+            return _enrich_camara_agenda_pdfs(items, client)
+        return items
     if source.id == "dane_comunicados_prensa":
         items = _extract_dane_comunicados(
             response.text, str(response.url), source, fetched_at

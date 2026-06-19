@@ -5,9 +5,9 @@ through the existing fetcher extractors. Tests pin current behaviour so future
 parser changes either stay equivalent or update the assertions deliberately.
 
 Several priority sources currently extract nothing useful from their landing
-URL (BanRep landing pages, Cámara agenda hub, Corte search form, Registraduría
-behind Cloudflare). The tests document those known-unrankable cases so they
-surface in CI and in the source-health table.
+URL through generic anchor parsing (BanRep landing pages, Corte search form,
+Registraduría behind Cloudflare). The tests document those known-unrankable
+cases so they surface in CI and in the source-health table.
 """
 from __future__ import annotations
 
@@ -101,10 +101,12 @@ def test_corte_comunicados_fragment_is_search_only(sample_source) -> None:
     assert items == []
 
 
-def test_camara_agenda_landing_is_navigation_only(sample_source) -> None:
-    """`/agenda-consolidada/` is a navigation hub linking to Excel/PDF agendas
-    on sub-pages, not an inline agenda. The generic anchor extractor pulls nav
-    items; the dated-anchor extractor finds no dates.
+def test_camara_agenda_generic_anchor_fallback_ignores_embedpress_pdf(
+    sample_source,
+) -> None:
+    """`/agenda-consolidada/` exposes its agenda PDF through an EmbedPress
+    iframe, not a normal anchor. Generic anchor parsing still pulls nav items;
+    the dated-anchor extractor still finds no dated agenda links.
     """
     source = replace(sample_source, id="camara_agenda_consolidada", type="calendar")
     html = _load("camara_agenda_consolidada")

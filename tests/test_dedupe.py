@@ -75,3 +75,24 @@ def test_dedupe_preserves_semantic_document_fragments(make_cleaned) -> None:
     out = dedupe([first, second])
 
     assert [item.id for item in out] == ["decreto-500", "decreto-502"]
+
+
+def test_dedupe_preserves_camara_agenda_project_fragments(make_cleaned) -> None:
+    first = make_cleaned(
+        id="camara-project-1",
+        source_id="camara_agenda_consolidada",
+        url="https://example.com/agenda.pdf#project-1",
+        title="Cámara agenda — Proyecto de Ley 429 de 2025 Cámara",
+        metadata={"document_row_type": "camara_agenda_item"},
+    )
+    second = make_cleaned(
+        id="camara-project-2",
+        source_id="camara_agenda_consolidada",
+        url="https://example.com/agenda.pdf#project-2",
+        title="Cámara agenda — Proyecto de Ley 430 de 2025 Cámara",
+        metadata={"document_row_type": "camara_agenda_item"},
+    )
+
+    out = dedupe([first, second])
+
+    assert [item.id for item in out] == ["camara-project-1", "camara-project-2"]
