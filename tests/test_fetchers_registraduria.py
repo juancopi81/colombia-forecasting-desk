@@ -138,3 +138,74 @@ def test_fetch_registraduria_noticias_uses_browser_on_403(
 
     assert items == [browser_item]
     assert calls == [("registraduria_noticias", 6)]
+
+
+def test_fetch_registraduria_noticias_uses_browser_on_404(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="registraduria_noticias",
+        name="Registraduría — Noticias",
+        type="official_updates",
+        url="https://www.registraduria.gov.co/-2026-.html",
+        fetch_method="html",
+        max_items=4,
+    )
+    browser_item = RawItem(
+        id="registraduria-browser-item",
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url="https://www.registraduria.gov.co/news.html",
+        title="Registraduría news",
+        fetched_at="2026-06-22T00:00:00Z",
+        published_at="2026-06-22T00:00:00Z",
+        raw_text="Official Registraduria news card.",
+        metadata={"content_extraction": "registraduria_news_card"},
+    )
+    calls: list[tuple[str, int]] = []
+
+    def fake_browser_fetch(source_arg, fetched_at, *, max_items):
+        calls.append((source_arg.id, max_items))
+        return [browser_item]
+
+    monkeypatch.setattr(
+        registraduria_fetchers,
+        "_fetch_registraduria_noticias_with_browser",
+        fake_browser_fetch,
+    )
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(404, text="<title>Not found</title>")
+    )
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert items == [browser_item]
+    assert calls == [("registraduria_noticias", 4)]
+
+
+def test_registraduria_news_diagnoses_election_microsite() -> None:
+    html = """
+    <html>
+      <head>
+        <title>
+          Elección de presidente y vicepresidente de la República 2026 - Colombia
+        </title>
+      </head>
+      <body>
+        <h1>Elección de presidente y vicepresidente de la República 2026</h1>
+      </body>
+    </html>
+    """
+
+    reason = registraduria_fetchers._registraduria_news_unexpected_page_reason(
+        html,
+        "https://www.registraduria.gov.co/-2026-.html",
+    )
+
+    assert reason is not None
+    assert "election microsite" in reason
+    assert "news archive" in reason

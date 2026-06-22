@@ -94,6 +94,29 @@ def _extract_registraduria_news_cards(
     return items
 
 
+def _registraduria_news_unexpected_page_reason(
+    html_text: str,
+    rendered_url: str,
+) -> str | None:
+    soup = BeautifulSoup(html_text, "html.parser")
+    title_text = normalize_whitespace(
+        " ".join(
+            node.get_text(" ", strip=True)
+            for node in soup.find_all(["title", "h1"], limit=3)
+        )
+    )
+    folded_title = fold_accents(title_text.lower())
+    if (
+        "eleccion de presidente y vicepresidente" in folded_title
+        and "2026" in folded_title
+    ):
+        return (
+            "browser rendered Registraduria 2026 election microsite instead "
+            f"of news archive: {rendered_url}"
+        )
+    return None
+
+
 def _extract_registraduria_news_article_detail(
     html_text: str,
 ) -> dict[str, Any] | None:
@@ -289,6 +312,12 @@ def _fetch_registraduria_noticias_with_browser(
                 max_items=max_items,
             )
             if not items:
+                reason = _registraduria_news_unexpected_page_reason(
+                    html_text,
+                    page.url,
+                )
+                if reason:
+                    raise DynamicShellError(reason)
                 raise DynamicShellError("browser rendered no Registraduria news cards")
             return _enrich_registraduria_news_details_with_browser(items, page)
         finally:
@@ -306,7 +335,7 @@ def _fetch_registraduria_noticias(
     try:
         response = _http_get(client, archive_url)
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 403:
+        if exc.response.status_code in {403, 404}:
             return _fetch_registraduria_noticias_with_browser(
                 source,
                 fetched_at,
