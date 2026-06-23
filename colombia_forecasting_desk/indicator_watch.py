@@ -782,26 +782,63 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
     text = _folded_text_from_html(html)
     match = re.search(
         rf"para\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+la tasa de "
-        rf"desocupacion del total nacional fue\s+{_PERCENT}.*?"
-        rf"(disminucion|aumento) de\s+([\d,.]+)\s+puntos porcentuales.*?"
-        rf"mismo mes de\s+20\d{{2}}\s+\({_PERCENT}\).*?"
-        rf"tasa global de participacion se ubico en\s+{_PERCENT}\s+y la "
-        rf"tasa de ocupacion en\s+{_PERCENT}.*?"
-        rf"estas tasas fueron\s+{_PERCENT}\s+y\s+{_PERCENT}",
+        rf"desocupacion del total nacional fue\s+{_PERCENT}",
         text,
     )
     if not match:
         return None
     month_name, year = match.group(1), match.group(2)
     unemployment = _to_float(match.group(3))
-    change = _to_float(match.group(5))
-    if change is not None and match.group(4) == "disminucion":
-        change = -change
-    previous_unemployment = _to_float(match.group(6))
-    participation = _to_float(match.group(7))
-    occupation = _to_float(match.group(8))
-    previous_participation = _to_float(match.group(9))
-    previous_occupation = _to_float(match.group(10))
+    national_context = text[match.end() : match.end() + 900]
+    change_match = re.search(
+        rf"(disminucion|aumento) de\s+([\d,.]+)\s+puntos porcentuales.*?"
+        rf"mismo mes de\s+20\d{{2}}\s+\({_PERCENT}\)",
+        national_context,
+    )
+    if change_match:
+        change = _to_float(change_match.group(2))
+        if change is not None and change_match.group(1) == "disminucion":
+            change = -change
+        previous_unemployment = _to_float(change_match.group(3))
+    elif re.search(
+        r"similar a la (?:registrada|observada).*?mismo mes de\s+20\d{2}",
+        national_context,
+    ):
+        change = 0.0
+        previous_unemployment = unemployment
+    else:
+        change = None
+        previous_unemployment = None
+
+    participation_match = re.search(
+        rf"tasa global de participacion se ubico en\s+{_PERCENT}.*?"
+        rf"(?:frente a|en)\s+(?:{_MONTH_NAMES})\s+de\s+20\d{{2}}\s+\({_PERCENT}\)",
+        national_context,
+    )
+    occupation_match = re.search(
+        rf"tasa de ocupacion (?:fue|en)\s+{_PERCENT}.*?"
+        rf"(?:mismo mes del ano anterior|(?:{_MONTH_NAMES})\s+de\s+20\d{{2}})"
+        rf"\s+\({_PERCENT}\)",
+        national_context,
+    )
+    if participation_match and occupation_match:
+        participation = _to_float(participation_match.group(1))
+        previous_participation = _to_float(participation_match.group(2))
+        occupation = _to_float(occupation_match.group(1))
+        previous_occupation = _to_float(occupation_match.group(2))
+    else:
+        combined_rates_match = re.search(
+            rf"tasa global de participacion se ubico en\s+{_PERCENT}\s+y la "
+            rf"tasa de ocupacion en\s+{_PERCENT}.*?"
+            rf"estas tasas fueron\s+{_PERCENT}\s+y\s+{_PERCENT}",
+            national_context,
+        )
+        if not combined_rates_match:
+            return None
+        participation = _to_float(combined_rates_match.group(1))
+        occupation = _to_float(combined_rates_match.group(2))
+        previous_participation = _to_float(combined_rates_match.group(3))
+        previous_occupation = _to_float(combined_rates_match.group(4))
     cities_match = re.search(
         rf"(?:para|en)\s+({_MONTH_NAMES})\s+de\s+20\d{{2}},\s+la tasa de "
         rf"desocupacion en el total de las 13 ciudades.*?fue\s+{_PERCENT},"
@@ -854,11 +891,19 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
         f"DANE GEIH {period}: national unemployment {unemployment:.2f}%, "
         f"participation {participation:.2f}%, occupation {occupation:.2f}%."
     )
+    release_date = _release_date_from_text(national_context) or _latest_release_date(
+        html
+    )
+    values["official_documents"] = _current_document_links_from_html(
+        html,
+        source_url=definition.source_url,
+        release_date=release_date,
+    )
     return _headline_definition(
         definition,
         status="observed",
         period=period,
-        release_date=_latest_release_date(html),
+        release_date=release_date,
         headline=headline,
         values=values,
     )

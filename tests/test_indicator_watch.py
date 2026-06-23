@@ -424,6 +424,55 @@ def test_labor_market_observation_from_html_extracts_dane_headline() -> None:
     assert observation.values["thirteen_cities_unemployment_rate_pct"] == 9.4
 
 
+def test_labor_market_observation_from_html_handles_similar_unemployment() -> None:
+    observation = labor_market_observation_from_html(
+        """
+        <main>
+          <p>Información abril de 2026</p>
+          <p>Para abril de 2026, la tasa de desocupación del total nacional fue
+          8,8%, siendo similar a la registrada en el mismo mes de 2025. La tasa
+          global de participación se ubicó en 64,7%, lo que significó un aumento
+          de 1,0 puntos porcentuales frente a abril de 2025 (63,7%). Finalmente,
+          la tasa de ocupación fue 59,1%, lo que representó un aumento de 0,9
+          puntos porcentuales respecto al mismo mes del año anterior (58,1%).</p>
+          <p>En abril de 2026, la tasa de desocupación en el total de las 13
+          ciudades y áreas metropolitanas fue 8,8%, mientras que en el mismo mes
+          de 2025 fue 8,7%. La tasa global de participación se ubicó en 66,6% y
+          la tasa de ocupación en 60,7%, en abril de 2025 estas tasas fueron
+          65,9% y 60,1%, respectivamente.</p>
+          <table>
+            <tr>
+              <td>Boletín técnico</td><td>29/05/2026</td><td>PDF</td><td>358 KB</td>
+              <td><a href="/files/operaciones/GEIH/bol-GEIH-abr2026.pdf">Descargar</a></td>
+            </tr>
+            <tr>
+              <td>Comunicado de prensa</td><td>29/05/2026</td><td>PDF</td><td>211 KB</td>
+              <td><a href="/files/operaciones/GEIH/cp-GEIH-abr2026.pdf">Descargar</a></td>
+            </tr>
+          </table>
+        </main>
+        """
+    )
+
+    assert observation is not None
+    assert observation.status == "observed"
+    assert observation.period == "2026-04"
+    assert observation.release_date == "2026-05-29T00:00:00Z"
+    assert observation.values["national_unemployment_rate_pct"] == 8.8
+    assert observation.values["national_unemployment_annual_change_pp"] == 0.0
+    assert observation.values["national_unemployment_previous_year_pct"] == 8.8
+    assert observation.values["national_participation_rate_pct"] == 64.7
+    assert observation.values["national_participation_previous_year_pct"] == 63.7
+    assert observation.values["national_occupation_rate_pct"] == 59.1
+    assert observation.values["national_occupation_previous_year_pct"] == 58.1
+    assert observation.values["thirteen_cities_unemployment_rate_pct"] == 8.8
+    assert observation.values["thirteen_cities_unemployment_previous_year_pct"] == 8.7
+    assert [doc["title"] for doc in observation.values["official_documents"]] == [
+        "Boletín técnico",
+        "Comunicado de prensa",
+    ]
+
+
 def test_gdp_observation_from_html_extracts_dane_headline() -> None:
     observation = gdp_observation_from_html(
         """
