@@ -276,11 +276,18 @@ def _extract_camara_legislature_id(html_text: str, label: str) -> str:
     select = soup.find("select", id="legislaturaField")
     if select is None:
         return "All"
+    fallback = ""
+    normalized_label = normalize_whitespace(label).lower()
     for option in select.find_all("option"):
         text = normalize_whitespace(option.get_text(" ", strip=True))
-        if text == label:
-            return option.get("value") or "All"
-    return "All"
+        value = str(option.get("value") or "").strip()
+        if not value or value.lower() == "all":
+            continue
+        if text.lower() == normalized_label:
+            return value
+        if not fallback and re.search(r"\d{4}\s*-\s*\d{4}", text):
+            fallback = value
+    return fallback or "All"
 
 
 def _camara_pack_names(pack: str | None) -> str:
