@@ -61,6 +61,7 @@ The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
 - `indicator_tension_cards.json` / `.md` — advisory cross-indicator screens that flag official-data tensions for M2 review without making conclusions
 - `market_pricing_watch.json` / `.md` — experimental fail-closed ADR, ETF, and Brent/oil pricing context for M2 review
 - `cooccurrence_bundles.json` / `.md` — neutral M2 context bundles that package related ingredients that co-occurred today without choosing a thesis
+- `m3_preflight_opportunities.json` / `.md` — advisory scheduled-event prompts that flag near-term clean M3 opportunities without creating forecasts, probabilities, or evidence packs
 - `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
 - `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
 - `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
@@ -99,6 +100,11 @@ fiscal/TES pressure, monetary/credit transmission, construction/housing costs,
 energy/tariff/subsidy context, and Colombia market-pricing context. They are
 neutral routing aids for M2: the agent must review cross-bundle links and
 unbundled items instead of treating the bundles as the only possible stories.
+`m3_preflight_opportunities.json` / `.md` flags near-term scheduled official
+events with clean resolution sources, such as a BanRep board decision named in
+official minutes. It asks whether to scaffold M3; it does not create a
+forecast, assign probability, update `forecast_log.jsonl`, or mark a lead
+`ready_for_m3`.
 `analyst_leads.json` / `.md` apply the
 [`Final Output Contract`](docs/FINAL_OUTPUT_CONTRACT.md): `forecast_question`
 for evidenced M3-ready questions, `analyst_insight` for source-backed findings

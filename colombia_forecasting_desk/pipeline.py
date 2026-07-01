@@ -35,6 +35,10 @@ from .indicator_tension_cards import (
 from .legislative_reconciler import build_legislative_reconciliations
 from .m2_review_packet import build_m2_review_packet, render_m2_review_packet
 from .m2_ranker import build_legislative_m2_ranking
+from .m3_preflight_opportunities import (
+    build_m3_preflight_opportunities,
+    render_m3_preflight_opportunities,
+)
 from .manifest import build_run_manifest
 from .market_pricing import (
     attach_market_pricing_watch,
@@ -82,6 +86,7 @@ class PipelineResult:
     indicator_tension_cards: list[dict]
     market_pricing_watch: list[MarketPricingObservation]
     cooccurrence_bundles: list[dict]
+    m3_preflight_opportunities: dict
     legislative_reconciliations: list[dict]
     m2_ranked_questions: dict
     m2_review_packet: dict
@@ -484,6 +489,21 @@ def run_single_source(
             cooccurrence_bundles,
         )
         span.set_counts(bundles=len(cooccurrence_bundles))
+    with trace.span("build_m3_preflight_opportunities") as span:
+        m3_preflight_opportunities = build_m3_preflight_opportunities(
+            raw_items,
+            indicator_watch,
+            indicator_tension_cards,
+            run_date=run_date,
+            sources=[source],
+            source_health=source_health,
+            generated_at=finished_at,
+        )
+        span.set_counts(
+            opportunities=len(
+                m3_preflight_opportunities.get("opportunities") or []
+            )
+        )
     with trace.span("build_analyst_leads") as span:
         procurement_concentration_leads = build_procurement_concentration_leads(
             raw_items,
@@ -564,6 +584,14 @@ def run_single_source(
             ),
             encoding="utf-8",
         )
+        _write_json(
+            run_dir / "m3_preflight_opportunities.json",
+            m3_preflight_opportunities,
+        )
+        (run_dir / "m3_preflight_opportunities.md").write_text(
+            render_m3_preflight_opportunities(m3_preflight_opportunities),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "source_failures.json", [asdict(f) for f in failures])
         _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
         _write_json(
@@ -583,7 +611,7 @@ def run_single_source(
         _write_json(run_dir / "m1_candidates.json", m1_candidates)
         _write_json(run_dir / "acceptance_report.json", acceptance_report)
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=21)
+        span.set_counts(artifacts_written=23)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -599,6 +627,7 @@ def run_single_source(
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
+        m3_preflight_opportunities=m3_preflight_opportunities,
         analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
@@ -615,6 +644,7 @@ def run_single_source(
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
+        m3_preflight_opportunities=m3_preflight_opportunities,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,
@@ -788,6 +818,21 @@ def run(
             cooccurrence_bundles,
         )
         span.set_counts(bundles=len(cooccurrence_bundles))
+    with trace.span("build_m3_preflight_opportunities") as span:
+        m3_preflight_opportunities = build_m3_preflight_opportunities(
+            raw_items,
+            indicator_watch,
+            indicator_tension_cards,
+            run_date=run_date,
+            sources=sources,
+            source_health=source_health,
+            generated_at=finished_at,
+        )
+        span.set_counts(
+            opportunities=len(
+                m3_preflight_opportunities.get("opportunities") or []
+            )
+        )
     with trace.span("build_analyst_leads") as span:
         procurement_concentration_leads = build_procurement_concentration_leads(
             raw_items,
@@ -869,6 +914,14 @@ def run(
             encoding="utf-8",
         )
         _write_json(
+            run_dir / "m3_preflight_opportunities.json",
+            m3_preflight_opportunities,
+        )
+        (run_dir / "m3_preflight_opportunities.md").write_text(
+            render_m3_preflight_opportunities(m3_preflight_opportunities),
+            encoding="utf-8",
+        )
+        _write_json(
             run_dir / "source_failures.json", [asdict(f) for f in failures]
         )
         _write_json(run_dir / "source_health.json", [asdict(h) for h in source_health])
@@ -916,7 +969,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=23)
+        span.set_counts(artifacts_written=25)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -932,6 +985,7 @@ def run(
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
+        m3_preflight_opportunities=m3_preflight_opportunities,
         analyst_leads=analyst_leads,
     )
     _write_json(run_dir / "run_manifest.json", run_manifest)
@@ -948,6 +1002,7 @@ def run(
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
         cooccurrence_bundles=cooccurrence_bundles,
+        m3_preflight_opportunities=m3_preflight_opportunities,
         legislative_reconciliations=legislative_reconciliations,
         m2_ranked_questions=m2_ranked_questions,
         m2_review_packet=m2_review_packet,

@@ -157,6 +157,10 @@ def main() -> int:
         f"observed={len(observed_markets)}"
     )
     print(
+        "  m3_preflight_opportunities="
+        f"{len(result.m3_preflight_opportunities.get('opportunities', []))}"
+    )
+    print(
         f"  candidates={len(result.m1_candidates.get('candidates', []))} "
         f"acceptance={result.acceptance_report.get('status', 'unknown')} "
         f"errors={result.acceptance_report.get('error_count', 'n/a')} "

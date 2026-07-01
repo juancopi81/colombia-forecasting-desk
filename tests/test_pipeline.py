@@ -121,6 +121,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "market_pricing_watch.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
+    assert (result.run_dir / "m3_preflight_opportunities.json").exists()
+    assert (result.run_dir / "m3_preflight_opportunities.md").exists()
     assert (result.run_dir / "m2_handoff.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()
     assert (result.run_dir / "m2_review_packet.json").exists()
@@ -137,6 +139,9 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert isinstance(result.indicator_tension_cards, list)
     assert isinstance(result.market_pricing_watch, list)
     assert isinstance(result.cooccurrence_bundles, list)
+    assert result.m3_preflight_opportunities["schema_version"] == (
+        "m3_preflight_opportunities.v1"
+    )
     assert result.run_trace["schema_version"] == "run_trace.v1"
     assert result.run_trace["mode"] == "daily"
     assert result.run_trace["metadata"]["strict_requested"] is False
@@ -150,6 +155,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert "build_analyst_leads" in trace_events
     assert "build_market_pricing_watch" in trace_events
     assert "build_cooccurrence_bundles" in trace_events
+    assert "build_m3_preflight_opportunities" in trace_events
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
     assert result.run_manifest["artifact_schemas"]["run_trace.json"] == "run_trace.v1"
     assert (
@@ -165,6 +171,10 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
         == "cooccurrence_bundles.v1"
     )
     assert (
+        result.run_manifest["artifact_schemas"]["m3_preflight_opportunities.json"]
+        == "m3_preflight_opportunities.v1"
+    )
+    assert (
         result.run_manifest["artifact_schemas"]["analyst_leads.json"]
         == "analyst_leads.v1"
     )
@@ -173,6 +183,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.run_manifest["capabilities"]["indicator_tension_cards"] is True
     assert result.run_manifest["capabilities"]["market_pricing_watch"] is True
     assert result.run_manifest["capabilities"]["cooccurrence_bundles"] is True
+    assert result.run_manifest["capabilities"]["m3_preflight_opportunities"] is True
     assert result.run_manifest["capabilities"]["analyst_leads"] is True
     manifest_artifacts = {
         artifact["path"]: artifact["exists"]
@@ -185,6 +196,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert manifest_artifacts["market_pricing_watch.md"] is True
     assert manifest_artifacts["cooccurrence_bundles.json"] is True
     assert manifest_artifacts["cooccurrence_bundles.md"] is True
+    assert manifest_artifacts["m3_preflight_opportunities.json"] is True
+    assert manifest_artifacts["m3_preflight_opportunities.md"] is True
     assert manifest_artifacts["analyst_leads.json"] is True
     assert manifest_artifacts["analyst_leads.md"] is True
 
@@ -271,6 +284,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert (result.run_dir / "market_pricing_watch.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
+    assert (result.run_dir / "m3_preflight_opportunities.json").exists()
+    assert (result.run_dir / "m3_preflight_opportunities.md").exists()
     assert (result.run_dir / "m2_ranked_questions.json").exists()
     assert (result.run_dir / "m2_review_packet.json").exists()
     assert (result.run_dir / "m2_review_packet.md").exists()

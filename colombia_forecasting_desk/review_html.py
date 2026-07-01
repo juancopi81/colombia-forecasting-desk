@@ -67,6 +67,7 @@ JSON_ARTIFACTS = (
     "indicator_tension_cards.json",
     "market_pricing_watch.json",
     "cooccurrence_bundles.json",
+    "m3_preflight_opportunities.json",
     "source_health.json",
 )
 
@@ -79,11 +80,13 @@ LINK_ARTIFACTS: tuple[tuple[str, str], ...] = (
     ("indicator_tension_cards.md", "Indicator tension cards"),
     ("market_pricing_watch.md", "Market-pricing watch"),
     ("cooccurrence_bundles.md", "Co-occurrence bundles"),
+    ("m3_preflight_opportunities.md", "M3 preflight opportunities"),
     ("candidate_questions.md", "Candidate questions"),
     ("m2_sampling_decisions.md", "M2 sampling decisions"),
     ("analyst_leads.json", "Analyst leads (JSON)"),
     ("m1_candidates.json", "M1 candidates (JSON)"),
     ("m2_sampling_decisions.json", "M2 sampling decisions (JSON)"),
+    ("m3_preflight_opportunities.json", "M3 preflight opportunities (JSON)"),
     ("indicator_watch.json", "Indicator watch (JSON)"),
     ("source_health.json", "Source health (JSON)"),
     ("acceptance_report.json", "Acceptance report (JSON)"),
@@ -429,6 +432,9 @@ def derive_decision(art: dict[str, Any]) -> Decision:
     insights = _as_int(summary.get("analyst_insight_count"))
     investigations = _as_int(summary.get("investigation_lead_count"))
     review_items = _as_int(summary.get("review_item_count"))
+    preflight = len(
+        (art.get("m3_preflight_opportunities.json") or {}).get("opportunities") or []
+    )
 
     ranked = art.get("m2_ranked_questions.json") or {}
     buckets = ranked.get("bucket_counts", {}) or {}
@@ -451,6 +457,11 @@ def derive_decision(art: dict[str, Any]) -> Decision:
         f"{insights} analyst insight(s) and {investigations} investigation lead(s) recorded.",
         f"{review_items} item(s) waiting in the M2 review queue for sampling.",
     ]
+    if preflight:
+        facts.append(
+            f"{preflight} M3 preflight opportunity(s) surfaced for human review; "
+            "these are not ready_for_m3 promotions."
+        )
 
     if m3_ready:
         return Decision(
@@ -492,6 +503,7 @@ class RunRow:
     tension_cards: int
     bundles: int
     market_observed: int
+    m3_preflight_opportunities: int
     sources_checked: int
     sources_failed: int
     acceptance_status: str
@@ -515,6 +527,7 @@ def summarize_run(art: dict[str, Any]) -> RunRow:
     acceptance = art.get("acceptance_report.json") or {}
     markets = art.get("market_pricing_watch.json") or []
     bundles = art.get("cooccurrence_bundles.json") or []
+    preflight = art.get("m3_preflight_opportunities.json") or {}
 
     decision = derive_decision(art)
 
@@ -537,6 +550,7 @@ def summarize_run(art: dict[str, Any]) -> RunRow:
             for row in (markets if isinstance(markets, list) else [])
             if (row or {}).get("status") == "observed"
         ),
+        m3_preflight_opportunities=len(preflight.get("opportunities") or []),
         sources_checked=_as_int(summary.get("sources_checked")),
         sources_failed=_as_int(summary.get("sources_failed")),
         acceptance_status=str(acceptance.get("status", "unknown")),
@@ -1259,6 +1273,73 @@ def _render_tension_cards(art: dict[str, Any], index: int) -> str:
     )
 
 
+def _render_m3_preflight_opportunities(art: dict[str, Any], index: int) -> str:
+    payload = art.get("m3_preflight_opportunities.json") or {}
+    opportunities = [
+        item
+        for item in payload.get("opportunities") or []
+        if isinstance(item, dict)
+    ]
+    if not opportunities:
+        return ""
+
+    blocks: list[str] = []
+    for item in opportunities:
+        tags = [_pill("preflight", "watch")]
+        if item.get("urgency"):
+            tags.append(
+                _pill(
+                    str(item["urgency"]),
+                    "alert" if item["urgency"] == "imminent" else "watch",
+                )
+            )
+        if item.get("disposition"):
+            tags.append(_pill(str(item["disposition"]).replace("_", " ")))
+        active_ids = [
+            str(value)
+            for value in item.get("active_forecast_ids") or []
+            if value
+        ]
+        active_html = (
+            "<p class=\"card__next\"><span class=\"card__next-label\">Already tracked</span>"
+            f"{_esc(', '.join(active_ids))}</p>"
+            if active_ids
+            else ""
+        )
+        evidence_html = _evidence_dl(item.get("evidence", []) or [])
+        resolver_html = _evidence_dl(item.get("resolution_sources", []) or [])
+        linked_html = _evidence_dl(item.get("linked_tension_cards", []) or [])
+        caveats = list(item.get("missing_evidence") or []) + list(
+            item.get("guardrails") or []
+        )
+        caveats_html = _caveats_list(caveats)
+        blocks.append(
+            '<article class="card">'
+            f'<div class="tags">{"".join(tags)}</div>'
+            f'<h3 class="card__title">{_esc(item.get("title", item.get("opportunity_id", "")))}</h3>'
+            f'<p class="indicator__meta">event date {_esc(item.get("event_date", ""))} · '
+            f'{_esc(item.get("days_until_event", ""))} day(s) away</p>'
+            f'<p class="card__claim">{_esc(item.get("question_seed", ""))}</p>'
+            f'<p class="card__why">{_esc(item.get("why_now", ""))}</p>'
+            f"{active_html}"
+            f"{resolver_html}"
+            f"{linked_html}"
+            f"{evidence_html}"
+            f"{caveats_html}"
+            "</article>"
+        )
+    body = f'<div class="cards">{"".join(blocks)}</div>'
+    return _section(
+        "Upcoming M3 preflight opportunities",
+        body,
+        note=(
+            "Scheduled-event prompts only. They ask whether to scaffold M3; "
+            "they do not count as forecast questions or ready_for_m3."
+        ),
+        index=index,
+    )
+
+
 def _indicator_observation_from_row(row: dict[str, Any]) -> IndicatorObservation:
     components = [
         IndicatorComponent(
@@ -1702,6 +1783,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + _stat(row.investigation_leads, "investigation leads")
         + _stat(row.tension_cards, "tension cards")
         + _stat(row.bundles, "bundles")
+        + _stat(row.m3_preflight_opportunities, "M3 preflight")
         + _stat(row.market_observed, "market rows")
         + "</div>"
     )
@@ -1731,7 +1813,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top analyst insights",
         insight_body,
         note="Source-backed findings. These are not forecasts and carry no probability.",
-        index=4,
+        index=5,
     )
 
     investigations = _leads_of_type(art, "investigation_lead")
@@ -1749,7 +1831,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top investigation leads",
         inv_body,
         note="Plausible leads that need more research before they could become insights or forecasts.",
-        index=5,
+        index=6,
     )
 
     queue = derive_monitor_queue(art)
@@ -1760,7 +1842,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
             f'Monitor queue ({queue_source["label"]})',
             f'<ol class="queue">{queue_items}</ol>',
             note=queue_source["daily_note"],
-            index=6,
+            index=7,
         )
     else:
         queue_section = ""
@@ -1770,15 +1852,16 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + _render_banner(decision)
         + stats
         + why_section
-        + _render_official_indicator_moves(art, index=3)
+        + _render_m3_preflight_opportunities(art, index=3)
+        + _render_official_indicator_moves(art, index=4)
         + insight_section
         + inv_section
         + queue_section
-        + _render_source_caveats(art, index=7)
-        + _render_tension_cards(art, index=8)
-        + _render_market_pricing(art, index=9)
-        + _render_bundles(art, index=10)
-        + _render_links(art, index=11)
+        + _render_source_caveats(art, index=8)
+        + _render_tension_cards(art, index=9)
+        + _render_market_pricing(art, index=10)
+        + _render_bundles(art, index=11)
+        + _render_links(art, index=12)
         + _footer()
     )
     return _page(f"Daily Review — {run_date}", body)

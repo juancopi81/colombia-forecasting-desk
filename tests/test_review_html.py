@@ -45,6 +45,11 @@ def _art(**overrides) -> dict:
         "indicator_tension_cards.json": [],
         "market_pricing_watch.json": [],
         "cooccurrence_bundles.json": [],
+        "m3_preflight_opportunities.json": {
+            "schema_version": "m3_preflight_opportunities.v1",
+            "summary": {"opportunity_count": 0},
+            "opportunities": [],
+        },
         "source_health.json": [],
         "_run_date": "2026-05-29",
         "_present": set(),
@@ -70,6 +75,7 @@ def _row(date: str, m3_ready: bool = False) -> rh.RunRow:
         tension_cards=0,
         bundles=0,
         market_observed=0,
+        m3_preflight_opportunities=0,
         sources_checked=0,
         sources_failed=0,
         acceptance_status="pass",
@@ -105,6 +111,58 @@ def test_derive_decision_is_monitor_when_no_m3_signal() -> None:
     assert decision.status == "monitor_no_post"
     assert decision.m3_ready is False
     assert "monitoring run by design" in decision.headline
+
+
+def test_preflight_opportunities_do_not_flip_m3_decision() -> None:
+    art = _art(
+        **{
+            "m3_preflight_opportunities.json": {
+                "schema_version": "m3_preflight_opportunities.v1",
+                "summary": {"opportunity_count": 1},
+                "opportunities": [
+                    {
+                        "opportunity_id": "banrep_policy_rate_decision_2026-06-30",
+                        "event_type": "scheduled_policy_decision",
+                        "title": "BanRep board policy-rate decision",
+                        "event_date": "2026-06-30",
+                        "days_until_event": 1,
+                        "urgency": "imminent",
+                        "disposition": "consider_m3_preflight",
+                        "question_seed": (
+                            "Will Banco de la Republica raise the policy rate "
+                            "above the current 11.25%?"
+                        ),
+                        "why_now": "Official resolver and near-term date.",
+                        "resolution_sources": [
+                            {
+                                "label": "BanRep communique",
+                                "url": "https://www.banrep.gov.co/es/comunicados-junta",
+                            }
+                        ],
+                        "linked_tension_cards": [
+                            {
+                                "label": "High ex-post real policy rate",
+                                "value": "Policy rate minus IPC is high.",
+                                "source": "indicator_tension_cards.json",
+                            }
+                        ],
+                        "missing_evidence": ["Pick exact threshold."],
+                        "guardrails": ["Advisory preflight only."],
+                    }
+                ],
+            }
+        }
+    )
+
+    decision = rh.derive_decision(art)
+    assert decision.status == "monitor_no_post"
+    assert decision.m3_ready is False
+    assert "M3 preflight opportunity" in " ".join(decision.facts)
+
+    html_out = rh.render_daily_review_html(art)
+    assert "Upcoming M3 preflight opportunities" in html_out
+    assert "BanRep board policy-rate decision" in html_out
+    assert "Monitoring — no new forecast" in html_out
 
 
 def test_derive_decision_is_review_when_forecast_question_present() -> None:
@@ -612,12 +670,17 @@ def test_render_daily_links_sampling_decision_artifacts() -> None:
             "candidate_questions.md",
             "m2_sampling_decisions.md",
             "m2_sampling_decisions.json",
+            "m3_preflight_opportunities.md",
+            "m3_preflight_opportunities.json",
         },
     )
     html_out = rh.render_daily_review_html(art)
     assert 'href="m2_sampling_decisions.md"' in html_out
     assert 'href="m2_sampling_decisions.json"' in html_out
+    assert 'href="m3_preflight_opportunities.md"' in html_out
+    assert 'href="m3_preflight_opportunities.json"' in html_out
     assert "M2 sampling decisions" in html_out
+    assert "M3 preflight opportunities" in html_out
 
 
 def test_render_daily_labels_human_monitor_queue() -> None:

@@ -82,6 +82,8 @@ runs/YYYY-MM-DD/market_pricing_watch.json
 runs/YYYY-MM-DD/market_pricing_watch.md
 runs/YYYY-MM-DD/cooccurrence_bundles.json
 runs/YYYY-MM-DD/cooccurrence_bundles.md
+runs/YYYY-MM-DD/m3_preflight_opportunities.json
+runs/YYYY-MM-DD/m3_preflight_opportunities.md
 runs/YYYY-MM-DD/analyst_leads.json
 runs/YYYY-MM-DD/analyst_leads.md
 runs/YYYY-MM-DD/m1_candidates.json
@@ -750,6 +752,21 @@ Every bundle includes guardrails telling the agent to inspect cross-bundle links
 and unbundled M2 items before deciding what matters. The point is to reduce
 context fragmentation, not to constrain the LLM to predefined stories.
 
+## M3 Preflight Opportunities
+
+Each run also writes:
+
+```text
+runs/YYYY-MM-DD/m3_preflight_opportunities.json
+runs/YYYY-MM-DD/m3_preflight_opportunities.md
+```
+
+These artifacts flag near-term scheduled official events with clean resolution
+sources, such as a BanRep board policy-rate decision named in official minutes.
+They are preflight prompts only: they can tell a human/LLM to consider
+scaffolding an M3 case file, but they do not create forecasts, assign
+probabilities, update `forecast_log.jsonl`, or mark anything `ready_for_m3`.
+
 ## Analyst Leads
 
 Each run also writes:
@@ -789,7 +806,8 @@ Cross-impact items, Indicator Tension Cards, and Co-Occurrence Bundles are
 advisory only. They are not causal evidence, do not set a probability, and
 should be used only to decide whether an LLM or human reviewer should drill
 back into `indicator_watch.json`, `indicator_tension_cards.json`,
-`market_pricing_watch.json`, `cooccurrence_bundles.json`, `m1_candidates.json`,
+`market_pricing_watch.json`, `cooccurrence_bundles.json`,
+`m3_preflight_opportunities.json`, `m1_candidates.json`,
 `legislative_reconciler.json`, `raw_items.json`, or `cleaned_items.json`.
 
 ## M2 Sampling Decisions
@@ -1026,6 +1044,7 @@ Links:
 - [x] Save `indicator_watch.json`.
 - [x] Save `indicator_tension_cards.json` and `.md`.
 - [x] Save `cooccurrence_bundles.json` and `.md`.
+- [x] Save `m3_preflight_opportunities.json` and `.md`.
 - [x] Save `analyst_leads.json` and `.md`.
 
 ### Step 6 — Rank clusters
@@ -1060,6 +1079,7 @@ M1 is complete when:
 - [x] `indicator_watch.json` is generated.
 - [x] `indicator_tension_cards.json` / `.md` are generated.
 - [x] `cooccurrence_bundles.json` / `.md` are generated.
+- [x] `m3_preflight_opportunities.json` / `.md` are generated.
 - [x] `analyst_leads.json` / `.md` are generated.
 - [x] `metasource_brief.md` is generated.
 - [x] `m2_handoff.md` is generated.

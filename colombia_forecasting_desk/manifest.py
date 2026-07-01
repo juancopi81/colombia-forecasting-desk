@@ -25,10 +25,12 @@ def build_run_manifest(
     indicator_tension_cards: list[dict[str, Any]] | None = None,
     market_pricing_watch: list[Any] | None = None,
     cooccurrence_bundles: list[dict[str, Any]] | None = None,
+    m3_preflight_opportunities: dict[str, Any] | None = None,
     analyst_leads: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Describe which code and artifact contracts produced a run."""
     analyst_leads = analyst_leads or {}
+    m3_preflight_opportunities = m3_preflight_opportunities or {}
     return {
         "schema_version": SCHEMA_VERSION,
         "run_date": run_summary.run_date,
@@ -53,6 +55,9 @@ def build_run_manifest(
             "indicator_tension_cards": len(indicator_tension_cards or []),
             "market_pricing_observations": len(market_pricing_watch or []),
             "cooccurrence_bundles": len(cooccurrence_bundles or []),
+            "m3_preflight_opportunities": len(
+                m3_preflight_opportunities.get("opportunities") or []
+            ),
             "analyst_leads": len(analyst_leads.get("leads") or []),
         },
         "capabilities": {
@@ -66,6 +71,7 @@ def build_run_manifest(
             "indicator_tension_cards": True,
             "market_pricing_watch": True,
             "cooccurrence_bundles": True,
+            "m3_preflight_opportunities": True,
             "analyst_leads": True,
         },
         "artifact_schemas": {
@@ -89,6 +95,9 @@ def build_run_manifest(
             ),
             "cooccurrence_bundles.json": _schema_from_bundles(
                 cooccurrence_bundles or []
+            ),
+            "m3_preflight_opportunities.json": str(
+                m3_preflight_opportunities.get("schema_version") or "unknown"
             ),
             "analyst_leads.json": str(
                 analyst_leads.get("schema_version") or "unknown"
@@ -177,6 +186,8 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "market_pricing_watch.md",
         "cooccurrence_bundles.json",
         "cooccurrence_bundles.md",
+        "m3_preflight_opportunities.json",
+        "m3_preflight_opportunities.md",
         "source_failures.json",
         "source_health.json",
         "legislative_reconciler.json",

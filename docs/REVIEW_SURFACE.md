@@ -91,6 +91,7 @@ visibility gap to one deterministic bucket:
 | Decision banner | `analyst_leads.json`, `m2_ranked_questions.json`, `human_decisions.md` | Derived post/monitor status; surfaces the recorded human decision when present. |
 | Why no M3 today | `analyst_leads.json`, `m2_ranked_questions.json` | The gating facts (forecast-question count, M2 buckets, review-queue size). |
 | At a glance | `run_summary.json`, `run_manifest.json`, `analyst_leads.json` | Counts grid. |
+| Upcoming M3 preflight opportunities | `m3_preflight_opportunities.json` | Scheduled-event prompts such as imminent official decisions with clean resolvers. These ask whether to scaffold M3; they do **not** count as forecast questions or `ready_for_m3`. |
 | Top analyst insights | `analyst_leads.json` (`analyst_insight`) | Source-backed findings; not forecasts. |
 | Top investigation leads | `analyst_leads.json` (`investigation_lead`) | Underqualified leads needing more research. |
 | Monitor queue | `human_decisions.md` numbered queue, then `candidate_questions.md` `## Monitor Queue`, then `analyst_leads.json` + `m2_ranked_questions.json` | Human/editorial priority queue when recorded; candidate-review queue when human notes omit one; otherwise "what to sample next" from artifacts. Source is labeled clearly. Not a promotion. |

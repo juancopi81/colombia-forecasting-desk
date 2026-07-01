@@ -22,6 +22,7 @@ DEFAULT_ARTIFACTS = (
     "indicator_tension_cards.json",
     "market_pricing_watch.json",
     "cooccurrence_bundles.json",
+    "m3_preflight_opportunities.json",
     "source_failures.json",
     "source_health.json",
     "legislative_reconciler.json",
@@ -39,6 +40,7 @@ DEFAULT_ARTIFACTS = (
     "indicator_tension_cards.md",
     "market_pricing_watch.md",
     "cooccurrence_bundles.md",
+    "m3_preflight_opportunities.md",
     "analyst_leads.md",
 )
 

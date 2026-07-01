@@ -167,6 +167,8 @@ colombia-forecasting-desk/
       market_pricing_watch.md
       cooccurrence_bundles.json
       cooccurrence_bundles.md
+      m3_preflight_opportunities.json
+      m3_preflight_opportunities.md
       legislative_reconciler.json
       m2_ranked_questions.json
       m2_review_packet.json
@@ -401,6 +403,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate experimental `market_pricing_watch.json` / `.md` for fail-closed
       EC, CIB, COLO, and Brent spot context without treating market prices as
       advice, conclusions, ranking signals, or probability inputs.
+- [x] Generate `m3_preflight_opportunities.json` / `.md` for advisory
+      scheduled-event prompts that can suggest M3 scaffolding without creating
+      forecasts, probabilities, or evidence packs.
 - [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
       separating M3-ready forecast-question candidates from source-backed
       analyst insights and underqualified investigation leads.
