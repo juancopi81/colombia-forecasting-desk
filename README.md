@@ -1,13 +1,39 @@
 # Colombia Forecasting Desk
 
-Experimental agent-assisted forecasting project focused on Colombian political, economic, regulatory, and institutional events. See [`PROJECT_SPEC.md`](PROJECT_SPEC.md) for the full vision and milestones.
+**An agent-assisted forecasting pipeline that reads Colombia's official sources every day — central bank, congress, statistics agency, official gazette, public procurement — and turns them into evidence-backed forecast questions a human (or LLM) can actually judge.**
 
-Current editorial bias: prefer public-interest forecast hooks over merely clean
-indicator continuation. Strong M2/M3 candidates usually involve a pending
-decision, cost/input pressure, a contradiction between credible sources, or a
-named entity with a clear institutional path, for example a zona franca
-decision, material-cost increase, regulatory proposal, bill, court decision, or
-official-data tension.
+Every morning the pipeline fetches ~30 official and public sources, cleans and
+deduplicates them, reconciles legislative bill identities, tracks economic
+indicators, flags cross-source tensions, and produces a ranked, fully traceable
+review packet. A deterministic HTML review surface (`review.html`) summarizes
+each run at a glance. Editorially, the desk prefers public-interest forecast
+hooks — a pending decision, cost/input pressure, a contradiction between
+credible sources, a named entity with a clear institutional path — over merely
+clean indicator continuation.
+
+![Daily review surface](docs/images/review_daily_header.png)
+
+*A monitoring day: when no candidate is ready, the desk records "no publishable
+forecast" explicitly instead of inventing one.*
+
+## Design principles
+
+The interesting part isn't the scraping — it's the guardrails:
+
+- **Deterministic by default.** Rendering and ranking are pure functions of the run artifacts: no LLM, no network, byte-stable outputs. Regenerated runs can be compared with an artifact parity guard.
+- **Fail-closed, never silent.** A single broken source never crashes a run; every failure is surfaced in `source_failures.json` and per-source health counts, so silence is never mistaken for "nothing happened."
+- **Advisory, not authoritative.** Heuristic scores, cross-impact hypotheses, and tension cards are labeled as review prompts — the human/LLM reviewer is explicitly told to read the underlying source excerpts before trusting them.
+- **Contracts everywhere.** Legislative records, M3 evidence packs, and final outputs each have documented contracts with validation scripts and a pytest suite behind them.
+
+![Market-pricing context cards](docs/images/review_market_pricing.png)
+
+*Advisory in practice: market context ships with observed/lagged badges and
+explicit caveats — "not a probability input", "not a contracted market-data
+API" — so the reviewer inherits the limits along with the numbers.*
+
+Built with Python 3.12 + [`uv`](https://docs.astral.sh/uv/). See
+[`PROJECT_SPEC.md`](PROJECT_SPEC.md) for the full vision and milestones, and
+[`docs/`](docs/) for the detailed contracts.
 
 ## Quickstart
 
@@ -18,109 +44,22 @@ uv sync
 uv run pytest -q
 uv run python scripts/scan_metasources.py
 uv run python scripts/scan_metasources.py --source-report
+uv run python scripts/render_review.py    # deterministic HTML daily review + recent-runs index
 ```
 
-For refactors that should preserve behavior, compare regenerated run folders
-with the stable artifact parity guard:
-
-```bash
-uv run python scripts/check_artifact_parity.py runs/YYYY-MM-DD runs/YYYY-MM-DD-candidate
-```
-
-For M3 evidence packs, validate the required `## M3 Case File` section before
-probability or draft-post work:
-
-```bash
-uv run python scripts/validate_m3_case_file.py runs/YYYY-MM-DD/evidence_packs/<slug>.md
-```
-
-For a quick human read of what happened — especially on monitor/no-post days —
-render the deterministic HTML review surface from the artifacts a run already
-produced:
-
-```bash
-uv run python scripts/render_review.py                 # latest run + recent-runs index
-uv run python scripts/render_review.py --date 2026-05-29
-uv run python scripts/render_review.py --window 21     # index over the last 21 runs
-uv run python scripts/render_review.py --daily-only    # or --index-only
-```
-
-This writes `runs/YYYY-MM-DD/review.html` (the daily TLDR) and
-`runs/review_index.html` (recent-runs trends). It is a pure renderer: no LLM, no
-network, no new dependency, and byte-stable for a given set of artifacts. Open
-either file directly in a browser. See
+`render_review.py` writes `runs/YYYY-MM-DD/review.html` (the daily TLDR) and
+`runs/review_index.html` (recent-runs trends) from artifacts a run already
+produced. It is a pure renderer: no LLM, no network, no new dependency, and
+byte-stable for a given set of artifacts. Open either file directly in a
+browser; `--date`, `--window N`, `--daily-only`, and `--index-only` control
+what gets rendered. See
 [`docs/REVIEW_SURFACE.md`](docs/REVIEW_SURFACE.md) for what each section means
 and the guardrails it preserves.
 
-The pipeline produces a dated run folder under `runs/YYYY-MM-DD/` containing:
-
-- `raw_items.json` — every item fetched from each enabled metasource
-- `cleaned_items.json` — items after HTML stripping, normalization, filtering, and dedupe
-- `clusters.json` — clusters of related items, ranked by simple heuristics
-- `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
-- `indicator_tension_cards.json` / `.md` — advisory cross-indicator screens that flag official-data tensions for M2 review without making conclusions
-- `market_pricing_watch.json` / `.md` — experimental fail-closed ADR, ETF, and Brent/oil pricing context for M2 review
-- `cooccurrence_bundles.json` / `.md` — neutral M2 context bundles that package related ingredients that co-occurred today without choosing a thesis
-- `m3_preflight_opportunities.json` / `.md` — advisory scheduled-event prompts that flag near-term clean M3 opportunities without creating forecasts, probabilities, or evidence packs
-- `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
-- `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
-- `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
-- `m2_review_packet.md` — paste-ready M2 review packet that tells the reviewer to read excerpts before trusting heuristic scores or cross-impact prompts
-- `analyst_leads.json` / `.md` — final output-surface v0 that separates forecast-question candidates from analyst insights and investigation leads
-- `m2_sampling_decisions.json` / `.md` — post-editorial bridge artifacts generated after `candidate_questions.md`, recording sampled candidates, M2 decisions, missing M3 fields, duplicate status, and deterministic M2-ranker links
-- `m1_candidates.json` — deterministic candidate/rejection/source-caveat database used as the M2 input contract
-- `metasource_brief.md` — the human-readable daily brief
-- `m2_handoff.md` — paste-ready M2 question-selection packet for manual AI testing
-- `acceptance_report.json` — hard M1 quality checks and warning-level source/candidate caveats
-- `source_failures.json` — per-source errors (run never crashes on a single source)
-- `source_health.json` — per-source raw, dated, rankable, tag, content-mode, document-link, parsed-content, and failure counts
-- `run_summary.json` — counts and timestamps for the run
-- `run_trace.json` — diagnostic stage/source trace with durations, counts, metadata, and caught errors for debugging and AI-agent handoffs
-- `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
-- `review.html` — deterministic daily review surface rendered by `scripts/render_review.py` (gitignored; regenerate any time). A recent-runs `runs/review_index.html` is rendered alongside it.
-
-For legislative sources, `legislative_reconciler.json` is the broad case-file
-artifact, while `m2_ranked_questions.json` is only an advisory triage layer.
-`m2_review_packet.json` / `.md` are the content-first M2 inputs: they package
-source excerpts and structured context so low-ranked items can still be sampled
-by a human or LLM when the evidence suggests possible heuristic blind spots.
-They reserve room for legislative records, Indicator Watch seeds, event leads,
-explicitly advisory cross-impact hypotheses, and Indicator Tension Cards so
-structured bills do not crowd out macro/fiscal/market signals.
-`indicator_tension_cards.json` / `.md` are deterministic review prompts, not
-probability inputs. They currently look for TES-policy spread pressure, high
-ex-post real policy rates, real tax-revenue squeeze, high TES auction cutoff
-rates, and construction-cost pressure versus headline IPC.
-`market_pricing_watch.json` / `.md` is experimental, fail-closed market context
-for EC, CIB, COLO, and Brent spot. It is not investment advice, a ranking
-signal, or a probability input; endpoint failures and stale closes are surfaced
-as source-health caveats so silence is not mistaken for no market movement.
-`cooccurrence_bundles.json` / `.md` group related active ingredients such as
-fiscal/TES pressure, monetary/credit transmission, construction/housing costs,
-energy/tariff/subsidy context, and Colombia market-pricing context. They are
-neutral routing aids for M2: the agent must review cross-bundle links and
-unbundled items instead of treating the bundles as the only possible stories.
-`m3_preflight_opportunities.json` / `.md` flags near-term scheduled official
-events with clean resolution sources, such as a BanRep board decision named in
-official minutes. It asks whether to scaffold M3; it does not create a
-forecast, assign probability, update `forecast_log.jsonl`, or mark a lead
-`ready_for_m3`.
-`analyst_leads.json` / `.md` apply the
-[`Final Output Contract`](docs/FINAL_OUTPUT_CONTRACT.md): `forecast_question`
-for evidenced M3-ready questions, `analyst_insight` for source-backed findings
-that do not need to become forecasts, and `investigation_lead` for plausible
-but underqualified leads. This keeps useful civic/economic insights visible
-without adding them to the forecast log or assigning probabilities too early.
-SECOP procurement concentration screens can now contribute conservative
-`analyst_insight` leads when recent official rows show repeated supplier/entity
-pairs, direct-contracting concentration, low-competition process clusters, or
-cancelled-process clusters. These are review prompts, not fraud findings.
-MinCIT zona-franca registry diffs can also contribute land-use/economic
-development insights when the approved-zones registry adds or changes a named
-zone. These are not investment recommendations; they are prompts to verify the
-resolution text and local implications.
-`run_trace.json` is diagnostic only; it helps explain how a run executed, but it
-does not feed candidate ranking, acceptance gates, or M2 question selection.
+Each run writes a dated folder under `runs/YYYY-MM-DD/` with ~25 traceable
+artifacts, from raw fetches to the final analyst leads. The full catalog — plus
+the artifact parity guard and M3 evidence-pack validation commands — is
+documented in [`docs/RUN_ARTIFACTS.md`](docs/RUN_ARTIFACTS.md).
 
 ### Optional flags
 
