@@ -732,7 +732,7 @@ def run(
         )
         span.set_counts(source_health_records=len(source_health))
     with trace.span("build_indicator_watch") as span:
-        structured_indicators = fetch_structured_indicator_observations()
+        structured_indicators = fetch_structured_indicator_observations(now=current)
         indicator_watch = build_indicator_watch(
             raw_items, cleaned, structured_indicators, now=current
         )

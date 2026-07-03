@@ -41,6 +41,7 @@ BANREP_SERIES_API_BASE = (
 )
 BANREP_POLICY_RATE_SERIES_ID = 59
 BANREP_IBR_OVERNIGHT_SERIES_ID = 241
+BANREP_POLICY_IBR_ROWS_LIMIT = 30
 BANREP_TES_CURVE_SERIES = {
     "tes_1y": {
         "series_id": 15272,
@@ -1592,24 +1593,47 @@ def _parse_dmy_date(value: Any) -> datetime | None:
         return None
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _latest_banrep_row(
+    rows: Iterable[dict[str, Any]], as_of: datetime | None
+) -> tuple[datetime, dict[str, Any]] | None:
+    as_of_utc = _as_utc(as_of)
+    dated_rows: list[tuple[datetime, dict[str, Any]]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        parsed = _parse_dmy_date(row.get("fecha"))
+        if parsed is None:
+            continue
+        if as_of_utc is not None and parsed > as_of_utc:
+            continue
+        dated_rows.append((parsed, row))
+    if not dated_rows:
+        return None
+    return max(dated_rows, key=lambda item: item[0])
+
+
 def policy_rate_ibr_observation_from_rows(
     policy_rows: Iterable[dict[str, Any]],
     ibr_rows: Iterable[dict[str, Any]],
+    as_of: datetime | None = None,
 ) -> IndicatorObservation | None:
-    policy = next(iter(policy_rows), None)
-    ibr = next(iter(ibr_rows), None)
-    if not isinstance(policy, dict) or not isinstance(ibr, dict):
+    policy_latest = _latest_banrep_row(policy_rows, as_of)
+    ibr_latest = _latest_banrep_row(ibr_rows, as_of)
+    if policy_latest is None or ibr_latest is None:
         return None
+    policy_date, policy = policy_latest
+    ibr_date, ibr = ibr_latest
     policy_rate = _to_float_unrounded(policy.get("valor"))
     ibr_rate = _to_float_unrounded(ibr.get("valor"))
-    policy_date = _parse_dmy_date(policy.get("fecha"))
-    ibr_date = _parse_dmy_date(ibr.get("fecha"))
-    if (
-        policy_rate is None
-        or ibr_rate is None
-        or policy_date is None
-        or ibr_date is None
-    ):
+    if policy_rate is None or ibr_rate is None:
         return None
     latest_date = max(policy_date, ibr_date)
     period = latest_date.strftime("%Y-%m-%d")
@@ -2197,10 +2221,16 @@ def _fetch_trm_observation(client: httpx.Client) -> IndicatorObservation:
 def _fetch_banrep_series_rows(
     client: httpx.Client,
     series_id: int,
+    *,
+    limit: int = 5,
 ) -> list[dict[str, Any]] | None:
     response = client.get(
         f"{BANREP_SERIES_API_BASE}/consultaInformacionSerieXTipoDato",
-        params={"idSerie": str(series_id), "tipoDato": "1", "cantDatos": "5"},
+        params={
+            "idSerie": str(series_id),
+            "tipoDato": "1",
+            "cantDatos": str(limit),
+        },
         headers={"Content-type": "application/json; charset=utf-8"},
     )
     response.raise_for_status()
@@ -2210,11 +2240,21 @@ def _fetch_banrep_series_rows(
     return [row for row in rows if isinstance(row, dict)]
 
 
-def _fetch_policy_rate_ibr_observation(client: httpx.Client) -> IndicatorObservation:
+def _fetch_policy_rate_ibr_observation(
+    client: httpx.Client, as_of: datetime | None = None
+) -> IndicatorObservation:
     definition = _definition_map()["policy_rate_ibr"]
     try:
-        policy_rows = _fetch_banrep_series_rows(client, BANREP_POLICY_RATE_SERIES_ID)
-        ibr_rows = _fetch_banrep_series_rows(client, BANREP_IBR_OVERNIGHT_SERIES_ID)
+        policy_rows = _fetch_banrep_series_rows(
+            client,
+            BANREP_POLICY_RATE_SERIES_ID,
+            limit=BANREP_POLICY_IBR_ROWS_LIMIT,
+        )
+        ibr_rows = _fetch_banrep_series_rows(
+            client,
+            BANREP_IBR_OVERNIGHT_SERIES_ID,
+            limit=BANREP_POLICY_IBR_ROWS_LIMIT,
+        )
     except (httpx.HTTPError, ValueError) as exc:
         return _failed_observation(
             definition,
@@ -2225,11 +2265,13 @@ def _fetch_policy_rate_ibr_observation(client: httpx.Client) -> IndicatorObserva
             definition,
             "BanRep SUAMECA fetch returned non-list JSON.",
         )
-    observation = policy_rate_ibr_observation_from_rows(policy_rows, ibr_rows)
+    observation = policy_rate_ibr_observation_from_rows(
+        policy_rows, ibr_rows, as_of=as_of
+    )
     if observation is None:
         return _failed_observation(
             definition,
-            "BanRep SUAMECA fetch returned no parseable policy/IBR rows.",
+            "BanRep SUAMECA fetch returned no parseable non-future policy/IBR rows.",
         )
     return observation
 
@@ -2604,11 +2646,13 @@ def _failed_tax_collection_observation(message: str) -> IndicatorObservation:
     return observation
 
 
-def fetch_structured_indicator_observations() -> list[IndicatorObservation]:
+def fetch_structured_indicator_observations(
+    now: datetime | None = None,
+) -> list[IndicatorObservation]:
     with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
         observations = [
             _fetch_trm_observation(client),
-            _fetch_policy_rate_ibr_observation(client),
+            _fetch_policy_rate_ibr_observation(client, as_of=now),
         ]
         observations.extend(
             _fetch_dane_html_observation(client, indicator_id, url, parser)

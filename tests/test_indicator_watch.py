@@ -266,6 +266,64 @@ def test_policy_rate_ibr_observation_from_banrep_rows() -> None:
     assert observation.values["ibr_policy_spread_pp"] == -0.745
 
 
+def test_policy_rate_ibr_observation_ignores_future_rows() -> None:
+    observation = policy_rate_ibr_observation_from_rows(
+        [
+            {
+                "fecha": "05/07/2026",
+                "valor": 12.5,
+            },
+            {
+                "fecha": "02/07/2026",
+                "valor": 12.0,
+            },
+            {
+                "fecha": "01/07/2026",
+                "valor": 11.25,
+            },
+        ],
+        [
+            {
+                "fecha": "05/07/2026",
+                "valor": 11.9,
+            },
+            {
+                "fecha": "02/07/2026",
+                "valor": 11.195,
+            },
+        ],
+        as_of=datetime(2026, 7, 3, tzinfo=timezone.utc),
+    )
+
+    assert observation is not None
+    assert observation.period == "2026-07-02"
+    assert observation.release_date == "2026-07-02T00:00:00Z"
+    assert observation.values["policy_rate_pct"] == 12.0
+    assert observation.values["policy_rate_date"] == "2026-07-02"
+    assert observation.values["ibr_overnight_nominal_pct"] == 11.195
+    assert observation.values["ibr_date"] == "2026-07-02"
+
+
+def test_policy_rate_ibr_observation_returns_none_when_only_future_rows() -> None:
+    observation = policy_rate_ibr_observation_from_rows(
+        [
+            {
+                "fecha": "05/07/2026",
+                "valor": 12.5,
+            }
+        ],
+        [
+            {
+                "fecha": "05/07/2026",
+                "valor": 11.9,
+            }
+        ],
+        as_of=datetime(2026, 7, 3, tzinfo=timezone.utc),
+    )
+
+    assert observation is None
+
+
 def test_banrep_tes_curve_component_from_verified_child_series() -> None:
     component = banrep_tes_curve_component_from_rows(
         {
