@@ -1,0 +1,33 @@
+{
+  "schema_version": "resolved_status_overrides.v1",
+  "overrides": [
+    {
+      "override_id": "pl566_archived_gaceta800_project_text",
+      "canonical_bill_id": "bill:2026:camara:566",
+      "decision_state": "archived",
+      "m2_readiness_state": "resolved",
+      "reason": "Manual reconciliation on 2026-07-06 found the later Gaceta 800 item to be project-text publication evidence, not a live procedural revival.",
+      "source": "runs/2026-07-06/pl572_566_reconciliation.md",
+      "applies_when": {
+        "status_stage": "archived",
+        "latest_movement_action_types": [
+          "publicacion_de_gaceta"
+        ]
+      }
+    },
+    {
+      "override_id": "pl572_archived_gaceta791_project_text",
+      "canonical_bill_id": "bill:2026:camara:572",
+      "decision_state": "archived",
+      "m2_readiness_state": "resolved",
+      "reason": "Manual reconciliation on 2026-07-06 found the later Gaceta 791 item to be project-text publication evidence, not a live procedural revival.",
+      "source": "runs/2026-07-06/pl572_566_reconciliation.md",
+      "applies_when": {
+        "status_stage": "archived",
+        "latest_movement_action_types": [
+          "publicacion_de_gaceta"
+        ]
+      }
+    }
+  ]
+}

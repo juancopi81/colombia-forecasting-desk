@@ -32,7 +32,10 @@ from .indicator_tension_cards import (
     build_indicator_tension_cards,
     render_indicator_tension_cards,
 )
-from .legislative_reconciler import build_legislative_reconciliations
+from .legislative_reconciler import (
+    build_legislative_reconciliations,
+    load_resolved_status_overrides,
+)
 from .m2_review_packet import build_m2_review_packet, render_m2_review_packet
 from .m2_ranker import build_legislative_m2_ranking
 from .m3_preflight_opportunities import (
@@ -381,8 +384,14 @@ def run_single_source(
     with trace.span("fetch_sources", metadata={"source_count": 1}) as span:
         raw_items, failures = fetch_all([source], trace=trace)
         span.set_counts(raw_items=len(raw_items), source_failures=len(failures))
+    with trace.span("load_resolved_status_overrides") as span:
+        resolved_status_overrides = load_resolved_status_overrides()
+        span.set_counts(overrides=len(resolved_status_overrides))
     with trace.span("build_legislative_reconciliations") as span:
-        legislative_reconciliations = build_legislative_reconciliations(raw_items)
+        legislative_reconciliations = build_legislative_reconciliations(
+            raw_items,
+            resolved_status_overrides=resolved_status_overrides,
+        )
         span.set_counts(records=len(legislative_reconciliations))
 
     with trace.span("clean_and_rank_items") as span:
@@ -694,8 +703,14 @@ def run(
         raw_items = link_legislative_followups(raw_items)
         raw_items = link_official_legal_records(raw_items)
         span.set_counts(raw_items=len(raw_items))
+    with trace.span("load_resolved_status_overrides") as span:
+        resolved_status_overrides = load_resolved_status_overrides()
+        span.set_counts(overrides=len(resolved_status_overrides))
     with trace.span("build_legislative_reconciliations") as span:
-        legislative_reconciliations = build_legislative_reconciliations(raw_items)
+        legislative_reconciliations = build_legislative_reconciliations(
+            raw_items,
+            resolved_status_overrides=resolved_status_overrides,
+        )
         span.set_counts(records=len(legislative_reconciliations))
     logger.info(
         "Fetched %d raw items; %d source failures", len(raw_items), len(failures)

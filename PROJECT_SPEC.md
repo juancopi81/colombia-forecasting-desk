@@ -381,6 +381,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       status, latest movement, contradiction handling, and M2 readiness.
 - [x] Implement `legislative_reconciler.json` so M1 exposes one conservative
       bill-status record per reconciled legislative identity before M2 ranking.
+- [x] Add manual resolved-status overrides so completed legislative
+      reconciliation hygiene tasks can stop reappearing unless a new official
+      movement revives them.
 - [x] Generate `run_manifest.json` so historical daily runs can be compared
       without pretending all parser capabilities existed on every date.
 - [x] Generate `run_trace.json` so humans and AI agents can inspect stage/source

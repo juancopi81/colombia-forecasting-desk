@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from colombia_forecasting_desk.legislative_reconciler import (
     build_legislative_reconciliations,
+    load_resolved_status_overrides,
 )
 from colombia_forecasting_desk.models import RawItem
 
@@ -196,6 +197,134 @@ def test_registry_gaceta_contradiction_is_blocked() -> None:
     assert record["contradiction"]["has_contradiction"] is True
     assert record["contradiction"]["fields"] == ["status"]
     assert record["m2_readiness"]["state"] == "blocked"
+
+
+def test_resolved_status_override_suppresses_archived_project_text_artifact() -> None:
+    registry = _raw(
+        "camara_proyectos_ley_registry",
+        "Cámara registry — Proyecto de Ley 566 de 2026 Cámara — Obras",
+        metadata={
+            "legislative_registry": "camara_proyectos_ley",
+            "project_records": [_project("566", "2026", "Cámara")],
+            "has_clean_project_identity": True,
+            "bill_title": "Obras por impuestos",
+            "status": "Archivado",
+        },
+        published_at="2026-06-16T00:00:00Z",
+    )
+    gaceta = _raw(
+        "gacetas_congreso",
+        "Gaceta 800 — Proyecto de Ley 566 de 2026 Cámara",
+        metadata={
+            "content_extraction": "gaceta_pdf_text",
+            "edition_number": "800",
+            "project_label": "Proyecto de Ley 566 de 2026 Cámara",
+            "project_records": [_project("566", "2026", "Cámara")],
+            "document_title": "Proyecto de Ley 566 de 2026 Cámara",
+            "agenda_action_type": "publicacion de gaceta",
+        },
+        published_at="2026-07-01T00:00:00Z",
+    )
+    overrides = {
+        "bill:2026:camara:566": {
+            "override_id": "pl566_archived_gaceta800_project_text",
+            "decision_state": "archived",
+            "m2_readiness_state": "resolved",
+            "reason": "Manual reconciliation found project-text publication only.",
+            "source": "runs/2026-07-06/pl572_566_reconciliation.md",
+            "applies_when": {
+                "status_stage": "archived",
+                "latest_movement_action_types": ["publicacion_de_gaceta"],
+            },
+        }
+    }
+
+    record = build_legislative_reconciliations(
+        [registry, gaceta],
+        resolved_status_overrides=overrides,
+    )[0]
+
+    assert record["canonical_bill_id"] == "bill:2026:camara:566"
+    assert record["contradiction"]["has_contradiction"] is False
+    assert record["decision_state"] == "archived"
+    assert record["m2_readiness"]["state"] == "resolved"
+    assert record["resolved_status_override"]["override_id"] == (
+        "pl566_archived_gaceta800_project_text"
+    )
+
+
+def test_resolved_status_override_does_not_hide_substantive_later_movement() -> None:
+    registry = _raw(
+        "camara_proyectos_ley_registry",
+        "Cámara registry — Proyecto de Ley 566 de 2026 Cámara — Obras",
+        metadata={
+            "legislative_registry": "camara_proyectos_ley",
+            "project_records": [_project("566", "2026", "Cámara")],
+            "has_clean_project_identity": True,
+            "bill_title": "Obras por impuestos",
+            "status": "Archivado",
+        },
+        published_at="2026-06-16T00:00:00Z",
+    )
+    gaceta = _raw(
+        "gacetas_congreso",
+        "Gaceta 801 — Ponencia Proyecto de Ley 566 de 2026 Cámara",
+        metadata={
+            "content_extraction": "gaceta_pdf_text",
+            "edition_number": "801",
+            "project_label": "Proyecto de Ley 566 de 2026 Cámara",
+            "project_records": [_project("566", "2026", "Cámara")],
+            "document_title": "Ponencia para primer debate",
+            "agenda_action_type": "ponencia",
+        },
+        published_at="2026-07-02T00:00:00Z",
+    )
+    overrides = {
+        "bill:2026:camara:566": {
+            "override_id": "pl566_archived_gaceta800_project_text",
+            "decision_state": "archived",
+            "m2_readiness_state": "resolved",
+            "reason": "Manual reconciliation found project-text publication only.",
+            "applies_when": {
+                "status_stage": "archived",
+                "latest_movement_action_types": ["publicacion_de_gaceta"],
+            },
+        }
+    }
+
+    record = build_legislative_reconciliations(
+        [registry, gaceta],
+        resolved_status_overrides=overrides,
+    )[0]
+
+    assert record["latest_movement"]["action_type"] == "ponencia_publicada"
+    assert record["contradiction"]["has_contradiction"] is True
+    assert record["m2_readiness"]["state"] == "blocked"
+    assert "resolved_status_override" not in record
+
+
+def test_load_resolved_status_overrides_from_json(tmp_path) -> None:
+    path = tmp_path / "resolved_status_overrides.json"
+    path.write_text(
+        """
+{
+  "schema_version": "resolved_status_overrides.v1",
+  "overrides": [
+    {
+      "canonical_bill_id": "bill:2026:camara:566",
+      "reason": "done"
+    }
+  ]
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    overrides = load_resolved_status_overrides(path)
+
+    assert list(overrides) == ["bill:2026:camara:566"]
+    assert overrides["bill:2026:camara:566"]["reason"] == "done"
 
 
 def test_already_final_act_is_resolved_not_ready() -> None:

@@ -110,6 +110,11 @@ Each output record should follow this shape:
 }
 ```
 
+Some records may also include `resolved_status_override` when a prior manual
+reconciliation has resolved a narrow official-record contradiction. This is not
+new source evidence; it is desk memory that says "we already checked this
+specific artifact pattern."
+
 ## Required Fields
 
 - `schema_version`: fixed string for this contract version.
@@ -131,6 +136,8 @@ Each output record should follow this shape:
   inspect.
 - `decision_state`: one of `unresolved`, `resolved`, `archived`, or `unknown`.
 - `m2_readiness`: whether this bill can become a forecast question candidate.
+- `resolved_status_override` (optional): manual reconciliation metadata when a
+  tracked override suppresses a previously reviewed hygiene contradiction.
 
 ## M2 Readiness States
 
@@ -178,6 +185,15 @@ Contradictions are useful. They should not be hidden. A contradiction can become
 a public-interest research question, but it should block M2 ranking until the
 evidence is reconciled or explicitly framed as the question.
 
+Manual reconciliation overrides live in
+`colombia_forecasting_desk/data/resolved_status_overrides.json`. Use them
+sparingly, only after a human-reviewed note explains why a recurring source
+pattern is not a live procedural movement. Overrides are condition-gated: for
+example, an archived bill plus a later Gaceta project-text publication can be
+marked resolved, while a later ponencia, agenda, debate result, transfer,
+correction, archive reversal, or Diario Oficial item should still surface for
+review.
+
 ## Non-Goals
 
 The reconciler should not:
@@ -210,6 +226,10 @@ Implementation should include fixture-backed tests for these cases:
 
 5. **Registry/Gaceta contradiction**
    - Output sets `has_contradiction=true` and `m2_readiness.state=blocked`.
+   - If a matching manual override applies, output clears the contradiction,
+     records `resolved_status_override`, and sets readiness to `resolved`.
+   - If the later movement is substantive, such as a ponencia, the override
+     does not apply and the contradiction remains blocked.
 
 6. **Already-final act**
    - Output sets `decision_state=resolved` and `m2_readiness.state=resolved`.

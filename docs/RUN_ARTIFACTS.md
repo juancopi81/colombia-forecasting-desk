@@ -36,6 +36,13 @@ folders. For what each section of the HTML review surface means, see
 
 For legislative sources, `legislative_reconciler.json` is the broad case-file
 artifact, while `m2_ranked_questions.json` is only an advisory triage layer.
+The reconciler also ingests the tracked manual override file
+`colombia_forecasting_desk/data/resolved_status_overrides.json`. That file is
+desk memory for already-reviewed hygiene contradictions, such as an archived
+registry row followed only by Gaceta project-text publication. It does not
+replace official evidence, and it is condition-gated so later ponencias,
+agendas, debate results, transfers, corrections, archive reversals, or Diario
+Oficial items still surface for review.
 `m2_review_packet.json` / `.md` are the content-first M2 inputs: they package
 source excerpts and structured context so low-ranked items can still be sampled
 by a human or LLM when the evidence suggests possible heuristic blind spots.

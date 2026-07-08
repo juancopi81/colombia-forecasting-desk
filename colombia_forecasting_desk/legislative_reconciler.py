@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from .cleaner import fold_accents, normalize_whitespace
@@ -14,6 +16,10 @@ from .legal_identity import (
 from .models import RawItem
 
 SCHEMA_VERSION = "legislative_reconciler.v1"
+RESOLVED_STATUS_OVERRIDES_SCHEMA_VERSION = "resolved_status_overrides.v1"
+DEFAULT_RESOLVED_STATUS_OVERRIDES_PATH = (
+    Path(__file__).resolve().parent / "data" / "resolved_status_overrides.json"
+)
 
 LEGISLATIVE_SOURCE_IDS = frozenset(
     {
@@ -62,8 +68,48 @@ class _UnionFind:
         self.parent[second_root] = first_root
 
 
-def build_legislative_reconciliations(raw_items: list[RawItem]) -> list[dict[str, Any]]:
+def load_resolved_status_overrides(
+    path: Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Load manual resolved-status overrides keyed by canonical bill id."""
+    override_path = path or DEFAULT_RESOLVED_STATUS_OVERRIDES_PATH
+    if not override_path.exists():
+        return {}
+
+    payload = json.loads(override_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("resolved status overrides must be a JSON object")
+    schema_version = payload.get("schema_version")
+    if schema_version != RESOLVED_STATUS_OVERRIDES_SCHEMA_VERSION:
+        raise ValueError(
+            "resolved status overrides schema_version must be "
+            f"{RESOLVED_STATUS_OVERRIDES_SCHEMA_VERSION!r}"
+        )
+
+    rows = payload.get("overrides")
+    if not isinstance(rows, list):
+        raise ValueError("resolved status overrides must contain an overrides list")
+
+    output: dict[str, dict[str, Any]] = {}
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ValueError(f"resolved status override at index {index} is not an object")
+        canonical_bill_id = normalize_whitespace(str(row.get("canonical_bill_id") or ""))
+        if not canonical_bill_id:
+            raise ValueError(
+                f"resolved status override at index {index} is missing canonical_bill_id"
+            )
+        output[canonical_bill_id] = row
+    return output
+
+
+def build_legislative_reconciliations(
+    raw_items: list[RawItem],
+    *,
+    resolved_status_overrides: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     """Build one conservative bill-status record per reconciled identity."""
+    resolved_status_overrides = resolved_status_overrides or {}
     exact_items: dict[ProjectKey, list[RawItem]] = {}
     title_only: dict[str, list[RawItem]] = {}
     final_acts: dict[tuple[str, str, str], list[tuple[RawItem, dict[str, Any]]]] = {}
@@ -98,7 +144,9 @@ def build_legislative_reconciliations(raw_items: list[RawItem]) -> list[dict[str
         items = _unique_items(
             item for key in sorted(keys, key=_project_sort_key) for item in exact_items[key]
         )
-        reconciliations.append(_build_project_record(keys, items))
+        reconciliations.append(
+            _build_project_record(keys, items, resolved_status_overrides)
+        )
 
     for normalized_title, items in sorted(title_only.items()):
         reconciliations.append(_build_title_lead_record(normalized_title, items))
@@ -164,7 +212,11 @@ def _project_sort_key(key: ProjectKey) -> tuple[str, int, int]:
     return year, chamber_rank, number_rank
 
 
-def _build_project_record(keys: set[ProjectKey], items: list[RawItem]) -> dict[str, Any]:
+def _build_project_record(
+    keys: set[ProjectKey],
+    items: list[RawItem],
+    resolved_status_overrides: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     origin_key = _origin_project_key(keys, items)
     title = _best_title(items)
     status = _latest_status(items)
@@ -175,7 +227,7 @@ def _build_project_record(keys: set[ProjectKey], items: list[RawItem]) -> dict[s
     readiness = _m2_readiness(origin_key, title, status, latest_movement, contradiction)
 
     display_title = _display_title(origin_key, title)
-    return {
+    record = {
         "schema_version": SCHEMA_VERSION,
         "canonical_bill_id": _canonical_project_id(origin_key),
         "display_title": display_title,
@@ -189,6 +241,7 @@ def _build_project_record(keys: set[ProjectKey], items: list[RawItem]) -> dict[s
         "decision_state": decision_state,
         "m2_readiness": readiness,
     }
+    return _apply_resolved_status_override(record, resolved_status_overrides)
 
 
 def _build_title_lead_record(
@@ -732,6 +785,73 @@ def _decision_state(
     if stage == "active":
         return "unresolved"
     return "unknown"
+
+
+def _apply_resolved_status_override(
+    record: dict[str, Any],
+    resolved_status_overrides: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    override = resolved_status_overrides.get(str(record.get("canonical_bill_id") or ""))
+    if not override or not _resolved_status_override_applies(record, override):
+        return record
+
+    reason = normalize_whitespace(
+        str(override.get("reason") or "Manual resolved-status override applied.")
+    )
+    record = dict(record)
+    record["contradiction"] = {
+        "has_contradiction": False,
+        "severity": "none",
+        "fields": [],
+        "summary": f"Manual resolved-status override applied: {reason}",
+    }
+    record["decision_state"] = normalize_whitespace(
+        str(override.get("decision_state") or record.get("decision_state") or "archived")
+    )
+    record["m2_readiness"] = {
+        "state": normalize_whitespace(
+            str(override.get("m2_readiness_state") or "resolved")
+        ),
+        "reason": reason,
+        "missing": [],
+    }
+    record["resolved_status_override"] = {
+        "override_id": normalize_whitespace(str(override.get("override_id") or "")),
+        "reason": reason,
+        "source": normalize_whitespace(str(override.get("source") or "")),
+    }
+    return record
+
+
+def _resolved_status_override_applies(
+    record: dict[str, Any], override: dict[str, Any]
+) -> bool:
+    contradiction = record.get("contradiction")
+    if not isinstance(contradiction, dict) or not contradiction.get("has_contradiction"):
+        return False
+
+    applies_when = override.get("applies_when")
+    if not isinstance(applies_when, dict):
+        return True
+
+    expected_stage = normalize_whitespace(str(applies_when.get("status_stage") or ""))
+    status = record.get("status") if isinstance(record.get("status"), dict) else {}
+    if expected_stage and status.get("stage") != expected_stage:
+        return False
+
+    expected_actions = applies_when.get("latest_movement_action_types")
+    if isinstance(expected_actions, list) and expected_actions:
+        latest = (
+            record.get("latest_movement")
+            if isinstance(record.get("latest_movement"), dict)
+            else {}
+        )
+        action_type = str(latest.get("action_type") or "")
+        allowed = {str(action or "") for action in expected_actions}
+        if action_type not in allowed:
+            return False
+
+    return True
 
 
 def _m2_readiness(
