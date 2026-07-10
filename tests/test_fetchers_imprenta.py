@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from tests.fetcher_helpers import *  # noqa: F403
+from colombia_forecasting_desk.legislative_reconciler import (
+    build_legislative_reconciliations,
+)
 
 
 def test_extract_imprenta_table_includes_document_title_when_available(sample_source) -> None:
@@ -452,3 +455,130 @@ def test_enrich_gaceta_pdfs_marks_pdf_as_parsed_followup(sample_source) -> None:
     assert (
         "formResumen:dataTableResumen:0:btnDescargarPdf" in client.posts[0][1]
     )
+
+
+def test_enrich_gaceta_pdfs_splits_unrelated_projects_without_evidence_leak(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(sample_source, id="gacetas_congreso", type="legal")
+    html = """
+    <form id="formResumen" action="/gacetas/index.xhtml" method="post">
+      <input type="hidden" name="formResumen" value="formResumen" />
+      <input type="hidden" name="javax.faces.ViewState" value="view-state-816" />
+      <table>
+        <tr>
+          <td>816</td>
+          <td>Cámara de Representantes</td>
+          <td>07/07/2026</td>
+          <td></td>
+          <td><button name="formResumen:dataTableResumen:0:btnDescargarPdf">
+            ui-button
+          </button></td>
+        </tr>
+      </table>
+    </form>
+    """
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-07-10T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+    pdf_text = (
+        "Gaceta del Congreso 816. "
+        "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA "
+        "pormediodelacualsemodificalaLey 2123 de 2021 y se dictan otras "
+        "disposiciones. "
+        "PROYECTO DE LEY NÚMERO 320 DE 2025 CÁMARA por medio de la cual "
+        "se crean incentivos tributarios para las Empresas que patrocinen "
+        "equipos profesionales de fútbol femenino colombiano. Página 1"
+    )
+    monkeypatch.setattr(
+        imprenta_fetchers,
+        "_extract_pdf_text",
+        lambda *_args, **_kwargs: pdf_text,
+    )
+
+    enriched = _enrich_gaceta_pdfs(
+        items,
+        _FakeGacetaPdfClient(),
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        max_items=1,
+    )
+
+    assert len(enriched) == 2
+    by_number = {
+        item.metadata["project_records"][0]["number"]: item
+        for item in enriched
+    }
+    assert set(by_number) == {"150", "320"}
+    assert by_number["150"].metadata["project_records"] == [
+        {"number": "150", "year": "2025", "chamber": "Cámara"}
+    ]
+    assert by_number["320"].metadata["project_records"] == [
+        {"number": "320", "year": "2025", "chamber": "Cámara"}
+    ]
+    assert "Ley 2123" in by_number["150"].raw_text
+    assert "tributarios" not in by_number["150"].raw_text
+    assert "tributarios" in by_number["320"].raw_text
+    assert "Ley 2123" not in by_number["320"].raw_text
+
+    reconciled = {
+        record["canonical_bill_id"]: record
+        for record in build_legislative_reconciliations(enriched)
+    }
+    assert set(reconciled) == {
+        "bill:2025:camara:150",
+        "bill:2025:camara:320",
+    }
+    pl150 = reconciled["bill:2025:camara:150"]
+    pl320 = reconciled["bill:2025:camara:320"]
+    assert pl150["latest_movement"]["gaceta_number"] == "816"
+    assert pl320["latest_movement"]["gaceta_number"] == "816"
+    assert "Ley 2123" in pl150["source_evidence"][0]["summary"]
+    assert "tributarios" not in pl150["source_evidence"][0]["summary"]
+    assert "tributarios" in pl320["source_evidence"][0]["summary"]
+
+
+def test_parse_gaceta_pdf_documents_splits_descriptive_project_title(
+    sample_source,
+) -> None:
+    item = RawItem(
+        id="gaceta-816",
+        source_id="gacetas_congreso",
+        source_name="Gacetas del Congreso",
+        source_type="legal",
+        url="https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=816",
+        title="Gaceta del Congreso 816 — Cámara de Representantes",
+        fetched_at="2026-07-10T00:00:00Z",
+        published_at="2026-07-07T00:00:00Z",
+        raw_text="816 | Cámara de Representantes | 07/07/2026",
+        metadata={"extraction": "imprenta_nacional_jsf_table"},
+    )
+    parsed = imprenta_fetchers._parse_gaceta_pdf_documents(
+        item,
+        (
+            "PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA, Estampilla Pro "
+            "Universidad Nacional de Colombia, sede Amazonía "
+            "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA por medio de la cual "
+            "se modifica el artículo del Estatuto Tributario y demás normas "
+            "relacionadas con la devolución de saldos a favor. Página 1. "
+            "PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA con el voto "
+            "afirmativo de la comisión. Articulado, señor Presidente. "
+            "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA quedó anunciado "
+            "para una sesión posterior."
+        ),
+    )
+
+    assert len(parsed) == 2
+    by_number = {
+        document["project_records"][0]["number"]: document
+        for document in parsed
+    }
+    assert "Estampilla Pro Universidad" in by_number["126"]["document_title"]
+    assert "Estatuto Tributario" not in by_number["126"]["document_title"]
+    assert "Estatuto Tributario" in by_number["150"]["document_title"]

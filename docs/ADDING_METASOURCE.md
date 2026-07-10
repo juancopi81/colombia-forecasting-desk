@@ -171,9 +171,11 @@ Current examples are split by family under
   link-level with `content_extraction_error`.
 - `_enrich_gaceta_pdfs` — posts the official Imprenta/Gacetas JSF download
   button, extracts PDF text, and emits bill-item rows with `#project` / `#title`
-  URL fragments plus parsed Gaceta project/title metadata. If the PDF exposes a
-  clean title but no clean project number/year/chamber, keep it as a parsed
-  research lead rather than a rankable candidate.
+  URL fragments plus parsed Gaceta project/title metadata. Committee acts that
+  mention multiple unrelated bills emit one row per distinct project section;
+  linked Cámara/Senado identities from the same heading remain one row. If the
+  PDF exposes a clean title but no clean project number/year/chamber, keep it as
+  a parsed research lead rather than a rankable candidate.
 - `_enrich_diario_oficial_pdfs` — posts the official Imprenta/Diario JSF
   download button, extracts PDF text with `pdfplumber`, and emits one row per
   published legal-act heading such as `Resolución 2118 de 2025`. Referenced

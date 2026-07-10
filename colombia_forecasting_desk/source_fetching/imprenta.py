@@ -16,6 +16,10 @@ _GACETA_PROJECT_RECORD_RE = re.compile(
     r"(?P<year>\d{4})\s+(?P<chamber>C[ÁA]MARA|CAMARA|SENADO)\b",
     re.IGNORECASE,
 )
+_GACETA_PROJECT_START_RE = re.compile(
+    r"\b(?:AL\s+)?PROYECTO\s+DE\s+(?:LEY|ACTO\s+LEGISLATIVO)\b",
+    re.IGNORECASE,
+)
 _GACETA_TITLE_RE = re.compile(
     r"\b(por\s+(?:la|el|medio)\s+(?:cual\s+)?(?:se\s+)?"
     r".{24,280}?)(?:\.|\s+P[aá]gina|\s+Gaceta|$)",
@@ -400,6 +404,12 @@ def _normalize_gaceta_identity_text(text: str) -> str:
         (r"\bSENADODE\b", "SENADO DE"),
         (r"\bC[ÁA]MARAPOR\b", "CÁMARA por"),
         (r"\bSENADOPOR\b", "SENADO por"),
+        (r"pormediodelacual", "por medio de la cual "),
+        (r"porlacual", "por la cual "),
+        (r"porelcual", "por el cual "),
+        (r"\bsemodifica\b", "se modifica"),
+        (r"semodificalaley", "se modifica la Ley "),
+        (r"\bysedictan\b", "y se dictan"),
         (r"\bp\s+or\b", "por"),
         (r"\bdelacual\b", "de la cual"),
     )
@@ -519,6 +529,22 @@ def _has_usable_gaceta_identity(
     return _has_usable_gaceta_document_title(document_title)
 
 
+def _gaceta_document_title_after_identity(text: str) -> str:
+    identity = _GACETA_PROJECT_RECORD_RE.search(text)
+    if identity is None:
+        return ""
+    trailing = text[identity.end() :]
+    trailing = re.sub(r"^\s*(?:[,;:—-]+\s*)?", "", trailing)
+    trailing = re.split(
+        r"\s+P[aá]gina\b|\s+Gaceta\b",
+        trailing,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    title = normalize_whitespace(trailing).strip(" .,:;-—")
+    return title if _has_usable_gaceta_document_title(title) else ""
+
+
 def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
     clean_text = _normalize_gaceta_identity_text(text)
     if len(clean_text) < PDF_TEXT_MIN_CHARS:
@@ -545,6 +571,13 @@ def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
         document_title = normalize_whitespace(title_match.group(1)).strip(" .,:;-")
     elif item.metadata.get("document_title"):
         document_title = normalize_whitespace(str(item.metadata["document_title"]))
+    elif project_records:
+        document_title = _gaceta_document_title_after_identity(clean_text)
+        if document_title:
+            project_label = _gaceta_project_label_from_records(
+                _gaceta_project_kind(clean_text),
+                project_records,
+            )
 
     if not document_title:
         return None
@@ -573,6 +606,59 @@ def _parse_gaceta_pdf_text(item: RawItem, text: str) -> dict[str, Any] | None:
         "identity_quality": "project_and_title",
         "excerpt": clean_text[:PDF_TEXT_EXCERPT_CHARS],
     }
+
+
+def _project_record_keys(parsed: dict[str, Any]) -> set[tuple[str, str, str]]:
+    keys: set[tuple[str, str, str]] = set()
+    for record in parsed.get("project_records") or []:
+        if not isinstance(record, dict):
+            continue
+        key = (
+            str(record.get("number") or ""),
+            str(record.get("year") or ""),
+            str(record.get("chamber") or ""),
+        )
+        if all(key):
+            keys.add(key)
+    return keys
+
+
+def _parse_gaceta_pdf_documents(item: RawItem, text: str) -> list[dict[str, Any]]:
+    """Split unrelated project sections while preserving linked identities."""
+    parsed = _parse_gaceta_pdf_text(item, text)
+    if parsed is None:
+        return []
+
+    clean_text = _normalize_gaceta_identity_text(text)
+    starts = list(_GACETA_PROJECT_START_RE.finditer(clean_text))
+    if len(starts) <= 1:
+        return [parsed]
+
+    sections_by_keys: dict[
+        tuple[tuple[str, str, str], ...],
+        dict[str, Any],
+    ] = {}
+    for index, start in enumerate(starts):
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(clean_text)
+        section = _parse_gaceta_pdf_text(item, clean_text[start.start() : end])
+        if section is None:
+            continue
+        keys = _project_record_keys(section)
+        if not keys:
+            continue
+        sections_by_keys.setdefault(tuple(sorted(keys)), section)
+
+    covered_keys: set[tuple[str, str, str]] = set()
+    for keys in sections_by_keys:
+        key_set = set(keys)
+        if covered_keys & key_set:
+            return [parsed]
+        covered_keys.update(key_set)
+
+    sections = list(sections_by_keys.values())
+    if len(sections) < 2:
+        return [parsed]
+    return sections
 
 
 def _enrich_gaceta_pdfs(
@@ -626,8 +712,8 @@ def _enrich_gaceta_pdfs(
             )
             parsed_count += 1
             continue
-        parsed = _parse_gaceta_pdf_text(item, text)
-        if parsed is None:
+        parsed_documents = _parse_gaceta_pdf_documents(item, text)
+        if not parsed_documents:
             metadata.update(
                 {
                     "content_extraction_error": "no usable Gaceta project/title text found",
@@ -650,53 +736,62 @@ def _enrich_gaceta_pdfs(
             )
             parsed_count += 1
             continue
-        title_parts = [item.title]
-        if parsed["project_label"]:
-            title_parts.append(parsed["project_label"])
-        if parsed["document_title"]:
-            title_parts.append(parsed["document_title"][:180])
-        title = " — ".join(title_parts)
-        fragment_prefix = "project" if parsed["project_label"] else "title"
-        fragment = _imprenta_fragment(
-            fragment_prefix,
-            parsed["project_label"],
-            parsed["document_title"],
-        )
-        row_url = f"{item.url}#{fragment}"
-        metadata.update(
-            {
-                "content_extraction": "gaceta_pdf_text",
-                "document_row_type": "gaceta_bill_item",
-                "parent_edition_url": item.url,
-                "parent_item_id": item.id,
-                "document_title": parsed["document_title"],
-                "project_label": parsed["project_label"],
-                "project_records": parsed["project_records"],
-                "agenda_action_type": parsed["action_type"],
-                "gaceta_identity_quality": parsed["identity_quality"],
-                "matched_project_labels": [parsed["project_label"]]
-                if parsed["project_label"]
-                else [],
-                "pdf_text_chars": len(text),
-            }
-        )
-        enriched.append(
-            RawItem(
-                id=_make_id(item.source_id, row_url, title),
-                source_id=item.source_id,
-                source_name=item.source_name,
-                source_type=item.source_type,
-                url=row_url,
-                title=title,
-                fetched_at=item.fetched_at,
-                published_at=item.published_at,
-                raw_text=(
-                    f"{title}. Extracted from official Gaceta PDF. "
-                    f"PDF text excerpt: {parsed['excerpt']}"
-                ),
-                metadata=metadata,
+        for split_index, parsed in enumerate(parsed_documents, start=1):
+            title_parts = [item.title]
+            if parsed["project_label"]:
+                title_parts.append(parsed["project_label"])
+            if parsed["document_title"]:
+                title_parts.append(parsed["document_title"][:180])
+            title = " — ".join(title_parts)
+            fragment_prefix = "project" if parsed["project_label"] else "title"
+            fragment = _imprenta_fragment(
+                fragment_prefix,
+                parsed["project_label"],
+                parsed["document_title"],
             )
-        )
+            row_url = f"{item.url}#{fragment}"
+            child_metadata = dict(metadata)
+            child_metadata.update(
+                {
+                    "content_extraction": "gaceta_pdf_text",
+                    "document_row_type": "gaceta_bill_item",
+                    "parent_edition_url": item.url,
+                    "parent_item_id": item.id,
+                    "document_title": parsed["document_title"],
+                    "project_label": parsed["project_label"],
+                    "project_records": parsed["project_records"],
+                    "agenda_action_type": parsed["action_type"],
+                    "gaceta_identity_quality": parsed["identity_quality"],
+                    "matched_project_labels": [parsed["project_label"]]
+                    if parsed["project_label"]
+                    else [],
+                    "pdf_text_chars": len(text),
+                }
+            )
+            if len(parsed_documents) > 1:
+                child_metadata.update(
+                    {
+                        "project_split_index": split_index,
+                        "project_split_count": len(parsed_documents),
+                    }
+                )
+            enriched.append(
+                RawItem(
+                    id=_make_id(item.source_id, row_url, title),
+                    source_id=item.source_id,
+                    source_name=item.source_name,
+                    source_type=item.source_type,
+                    url=row_url,
+                    title=title,
+                    fetched_at=item.fetched_at,
+                    published_at=item.published_at,
+                    raw_text=(
+                        f"{title}. Extracted from official Gaceta PDF. "
+                        f"PDF text excerpt: {parsed['excerpt']}"
+                    ),
+                    metadata=child_metadata,
+                )
+            )
         parsed_count += 1
     return enriched
 
