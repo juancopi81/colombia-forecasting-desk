@@ -335,8 +335,14 @@ class _EvidenceIndexes:
     ) -> list[tuple[RawItem | None, CleanedItem | None]]:
         item_ids: list[str] = []
         for url in urls:
-            for key in _url_keys(url):
-                item_ids.extend(self.ids_by_url.get(key, []))
+            clean_url = str(url or "").strip()
+            if not clean_url:
+                continue
+            exact_ids = self.ids_by_url.get(clean_url, [])
+            if exact_ids:
+                item_ids.extend(exact_ids)
+                continue
+            item_ids.extend(self.ids_by_url.get(_defrag(clean_url), []))
         return self.by_item_ids(item_ids)
 
 

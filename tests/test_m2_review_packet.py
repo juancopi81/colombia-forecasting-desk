@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from colombia_forecasting_desk.cooccurrence_bundles import (
     attach_cooccurrence_bundles,
 )
@@ -232,6 +234,79 @@ def test_m2_review_packet_packages_source_excerpts_for_llm_review() -> None:
     assert "content-first" in rendered
     assert "Source excerpts" in rendered
     assert "Will Proyecto de Ley 560" in rendered
+
+
+def test_m2_review_packet_keeps_exact_gaceta_project_evidence_isolated() -> None:
+    parent_url = "https://example.com/gaceta-817"
+    pl320_url = f"{parent_url}#project-pl-320"
+    pl194_url = f"{parent_url}#project-pl-194"
+    pl320_raw = replace(
+        _raw_item(),
+        id="gaceta-817-pl-320",
+        url=pl320_url,
+        title="Proyecto de Ley 320 de 2025 Camara - incentivos tributarios",
+        raw_text="Proyecto de Ley 320 de 2025 Camara. Incentivos tributarios.",
+    )
+    pl194_raw = replace(
+        _raw_item(),
+        id="gaceta-817-pl-194",
+        url=pl194_url,
+        title="Proyecto de Ley 194 de 2025 Camara - devoluciones tributarias",
+        raw_text="Proyecto de Ley 194 de 2025 Camara. Devoluciones tributarias.",
+    )
+    pl320_cleaned = replace(
+        _cleaned_item(),
+        id=pl320_raw.id,
+        url=pl320_url,
+        title=pl320_raw.title,
+        clean_text=pl320_raw.raw_text,
+        summary="Incentivos tributarios para futbol femenino.",
+    )
+    pl194_cleaned = replace(
+        _cleaned_item(),
+        id=pl194_raw.id,
+        url=pl194_url,
+        title=pl194_raw.title,
+        clean_text=pl194_raw.raw_text,
+        summary="Cambios a devoluciones tributarias.",
+    )
+    ranked = {
+        **_ranked_question(),
+        "rank_id": "m2q_bill_320",
+        "canonical_bill_id": "bill:2025:camara:320",
+        "question_seed": "Will Proyecto de Ley 320 de 2025 Camara advance?",
+    }
+    record = {
+        **_legislative_record(),
+        "canonical_bill_id": "bill:2025:camara:320",
+        "display_title": pl320_raw.title,
+        "source_evidence": [
+            {
+                "source_id": "gacetas_congreso",
+                "role": "movement",
+                "date": "2026-07-07T00:00:00Z",
+                "url": pl320_url,
+                "summary": "Parsed PL 320 Gaceta evidence.",
+            }
+        ],
+    }
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [pl320_raw, pl194_raw],
+        [pl320_cleaned, pl194_cleaned],
+        {"candidates": []},
+        {"ranked_questions": [ranked], "heuristic_audit": {}},
+        [record],
+        [],
+        [],
+    )
+
+    item = packet["review_items"][0]
+    assert [excerpt["item_id"] for excerpt in item["source_excerpts"]] == [
+        "gaceta-817-pl-320"
+    ]
+    assert "Proyecto de Ley 194" not in item["source_excerpts"][0]["excerpt"]
 
 
 def test_m2_review_packet_adds_structured_indicator_context() -> None:
