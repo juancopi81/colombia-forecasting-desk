@@ -805,6 +805,13 @@ def _apply_resolved_status_override(
         "fields": [],
         "summary": f"Manual resolved-status override applied: {reason}",
     }
+    status_override = override.get("status_override")
+    if isinstance(status_override, dict):
+        record["status"] = {
+            str(key): normalize_whitespace(str(value))
+            for key, value in status_override.items()
+            if value is not None
+        }
     record["decision_state"] = normalize_whitespace(
         str(override.get("decision_state") or record.get("decision_state") or "archived")
     )
@@ -826,11 +833,18 @@ def _apply_resolved_status_override(
 def _resolved_status_override_applies(
     record: dict[str, Any], override: dict[str, Any]
 ) -> bool:
+    applies_when = override.get("applies_when")
     contradiction = record.get("contradiction")
-    if not isinstance(contradiction, dict) or not contradiction.get("has_contradiction"):
+    require_contradiction = not (
+        isinstance(applies_when, dict)
+        and applies_when.get("require_contradiction") is False
+    )
+    has_contradiction = isinstance(contradiction, dict) and bool(
+        contradiction.get("has_contradiction")
+    )
+    if require_contradiction and not has_contradiction:
         return False
 
-    applies_when = override.get("applies_when")
     if not isinstance(applies_when, dict):
         return True
 

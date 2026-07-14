@@ -303,6 +303,94 @@ def test_resolved_status_override_does_not_hide_substantive_later_movement() -> 
     assert "resolved_status_override" not in record
 
 
+def test_verified_archive_override_closes_gaceta_only_unknown_status() -> None:
+    gaceta = _raw(
+        "gacetas_congreso",
+        "Gaceta 819 — Proyecto de Ley 041 de 2025 Cámara",
+        metadata={
+            "content_extraction": "gaceta_pdf_text",
+            "edition_number": "819",
+            "project_label": "Proyecto de Ley 041 de 2025 Cámara",
+            "project_records": [_project("041", "2025", "Cámara")],
+            "document_title": "Proyecto de Ley 041 de 2025 Cámara",
+            "agenda_action_type": "publicacion de gaceta",
+        },
+        published_at="2026-07-07T00:00:00Z",
+    )
+    overrides = {
+        "bill:2025:camara:41": {
+            "override_id": "pl041_archived_verified_registry",
+            "decision_state": "archived",
+            "m2_readiness_state": "resolved",
+            "reason": "Official Cámara registry verified the project as archived.",
+            "status_override": {
+                "stage": "archived",
+                "label": "Archivado",
+                "as_of": "2026-07-14",
+                "source_id": "camara_proyectos_ley_registry",
+                "url": "https://www.camara.gov.co/maquinaria-amarilla-320/",
+            },
+            "applies_when": {
+                "require_contradiction": False,
+                "status_stage": "unknown",
+                "latest_movement_action_types": ["publicacion_de_gaceta"],
+            },
+        }
+    }
+
+    record = build_legislative_reconciliations(
+        [gaceta],
+        resolved_status_overrides=overrides,
+    )[0]
+
+    assert record["canonical_bill_id"] == "bill:2025:camara:41"
+    assert record["status"]["stage"] == "archived"
+    assert record["status"]["source_id"] == "camara_proyectos_ley_registry"
+    assert record["decision_state"] == "archived"
+    assert record["m2_readiness"]["state"] == "resolved"
+    assert record["resolved_status_override"]["override_id"] == (
+        "pl041_archived_verified_registry"
+    )
+
+
+def test_verified_archive_override_does_not_hide_later_ponencia() -> None:
+    gaceta = _raw(
+        "gacetas_congreso",
+        "Gaceta 900 — Ponencia Proyecto de Ley 041 de 2025 Cámara",
+        metadata={
+            "content_extraction": "gaceta_pdf_text",
+            "edition_number": "900",
+            "project_label": "Proyecto de Ley 041 de 2025 Cámara",
+            "project_records": [_project("041", "2025", "Cámara")],
+            "document_title": "Ponencia para segundo debate",
+            "agenda_action_type": "ponencia",
+        },
+        published_at="2026-07-15T00:00:00Z",
+    )
+    overrides = {
+        "bill:2025:camara:41": {
+            "override_id": "pl041_archived_verified_registry",
+            "decision_state": "archived",
+            "status_override": {"stage": "archived"},
+            "applies_when": {
+                "require_contradiction": False,
+                "status_stage": "unknown",
+                "latest_movement_action_types": ["publicacion_de_gaceta"],
+            },
+        }
+    }
+
+    record = build_legislative_reconciliations(
+        [gaceta],
+        resolved_status_overrides=overrides,
+    )[0]
+
+    assert record["latest_movement"]["action_type"] == "ponencia_publicada"
+    assert record["decision_state"] == "unknown"
+    assert record["m2_readiness"]["state"] == "research_lead"
+    assert "resolved_status_override" not in record
+
+
 def test_load_resolved_status_overrides_from_json(tmp_path) -> None:
     path = tmp_path / "resolved_status_overrides.json"
     path.write_text(

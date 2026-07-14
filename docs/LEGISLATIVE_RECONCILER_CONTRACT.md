@@ -192,7 +192,11 @@ pattern is not a live procedural movement. Overrides are condition-gated: for
 example, an archived bill plus a later Gaceta project-text publication can be
 marked resolved, while a later ponencia, agenda, debate result, transfer,
 correction, archive reversal, or Diario Oficial item should still surface for
-review.
+review. By default, an override only applies to a detected contradiction. A
+human-verified official status may set `require_contradiction: false` when the
+run has only `unknown` status evidence; it must still constrain the current
+status stage and allowed movement types, and should include `status_override`
+provenance for the verified official record.
 
 ## Non-Goals
 

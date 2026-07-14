@@ -2,6 +2,28 @@
   "schema_version": "resolved_status_overrides.v1",
   "overrides": [
     {
+      "override_id": "pl041_archived_verified_registry",
+      "canonical_bill_id": "bill:2025:camara:41",
+      "decision_state": "archived",
+      "m2_readiness_state": "resolved",
+      "reason": "Official Camara registry verified on 2026-07-14 that PL 041/2025C is archived under Article 190 of Law 5 of 1992; later Gaceta publication-only rows do not establish revival.",
+      "source": "docs/reconciliations/pl041_2025c_archive.md",
+      "status_override": {
+        "stage": "archived",
+        "label": "Archivado",
+        "as_of": "2026-07-14",
+        "source_id": "camara_proyectos_ley_registry",
+        "url": "https://www.camara.gov.co/maquinaria-amarilla-320/"
+      },
+      "applies_when": {
+        "require_contradiction": false,
+        "status_stage": "unknown",
+        "latest_movement_action_types": [
+          "publicacion_de_gaceta"
+        ]
+      }
+    },
+    {
       "override_id": "pl566_archived_gaceta800_project_text",
       "canonical_bill_id": "bill:2026:camara:566",
       "decision_state": "archived",
