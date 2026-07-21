@@ -2,6 +2,25 @@
   "schema_version": "resolved_status_overrides.v1",
   "overrides": [
     {
+      "override_id": "pl550_369_enacted_law2587",
+      "canonical_bill_id": "bill:2026:camara:550",
+      "decision_state": "resolved",
+      "m2_readiness_state": "resolved",
+      "reason": "Official Camara and SUIN records verify that PL 550/2026 Camara - 369/2026 Senado was enacted as Law 2587 of 2026 on 2026-07-02; the rollover Senado pending-first-debate row is stale.",
+      "source": "docs/reconciliations/pl550_369_2026_law2587.md",
+      "status_override": {
+        "stage": "resolved",
+        "label": "Ley 2587 de 2026",
+        "as_of": "2026-07-02",
+        "source_id": "suin_juriscol",
+        "url": "https://www.suin-juriscol.gov.co/clp/contenidos.dll/Leyes/30056675"
+      },
+      "applies_when": {
+        "require_contradiction": false,
+        "status_stage": "active"
+      }
+    },
+    {
       "override_id": "pl041_archived_verified_registry",
       "canonical_bill_id": "bill:2025:camara:41",
       "decision_state": "archived",

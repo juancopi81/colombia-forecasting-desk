@@ -391,6 +391,38 @@ def test_verified_archive_override_does_not_hide_later_ponencia() -> None:
     assert "resolved_status_override" not in record
 
 
+def test_verified_final_law_override_closes_stale_active_registry() -> None:
+    registry = _raw(
+        "senado_leyes_registry",
+        "Senado registry - Proyecto de Ley 369 de 2026 Senado",
+        metadata={
+            "legislative_registry": "senado_leyes",
+            "project_records": [
+                _project("369", "2026", "Senado"),
+                _project("550", "2026", "Camara"),
+            ],
+            "has_clean_project_identity": True,
+            "bill_title": "Adicion al Presupuesto General de la Nacion 2026",
+            "status": "PENDIENTE DISCUTIR PONENCIA PARA PRIMER DEBATE EN SENADO",
+        },
+        published_at="2026-04-16T00:00:00Z",
+    )
+
+    record = build_legislative_reconciliations(
+        [registry],
+        resolved_status_overrides=load_resolved_status_overrides(),
+    )[0]
+
+    assert record["canonical_bill_id"] == "bill:2026:camara:550"
+    assert record["status"]["stage"] == "resolved"
+    assert record["status"]["label"] == "Ley 2587 de 2026"
+    assert record["decision_state"] == "resolved"
+    assert record["m2_readiness"]["state"] == "resolved"
+    assert record["resolved_status_override"]["override_id"] == (
+        "pl550_369_enacted_law2587"
+    )
+
+
 def test_load_resolved_status_overrides_from_json(tmp_path) -> None:
     path = tmp_path / "resolved_status_overrides.json"
     path.write_text(
