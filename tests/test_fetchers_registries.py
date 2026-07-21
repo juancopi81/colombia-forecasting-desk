@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from colombia_forecasting_desk.source_fetching import registries
 from tests.fetcher_helpers import *  # noqa: F403
 
 
@@ -151,3 +152,155 @@ def test_fetch_camara_proyectos_registry_parses_ajax_and_detail(sample_source) -
     ]
     assert item.metadata["publication_links"][0]["title"] == "Ver Documento"
     assert "Prohibir el uso de recursos públicos" in item.raw_text
+
+
+def test_senado_registry_falls_back_when_new_legislature_is_empty(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="senado_leyes_registry",
+        name="Senado — Sección de Leyes / Proyectos de Ley",
+        type="legal",
+        url="https://leyes.senado.gov.co/",
+        fetch_method="html",
+        trust_role="agenda_signal",
+        max_items=1,
+    )
+    monkeypatch.setattr(
+        registries,
+        "_current_legislature_label",
+        lambda: "2026-2027",
+    )
+    payload = {
+        "success": True,
+        "data": [
+            {
+                "id": 9920,
+                "numero_senado": "377/26",
+                "numero_camara": "355/24",
+                "cuatrenio": "2022-2026",
+                "titulo": "POR MEDIO DE LA CUAL SE IMPLEMENTA LA ENSEÑANZA PARA LA PAZ",
+                "autor": "H.S. EJEMPLO",
+                "comision": "SEXTA",
+                "estado": "ARCHIVADO",
+            }
+        ],
+    }
+    posted_legislatures: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/":
+            return httpx.Response(200, text="<html>ok</html>")
+        if request.method == "POST" and request.url.path == "/api/search_pdly.php":
+            body = request.content.decode()
+            legislature = body.split("legislatura=", 1)[1]
+            posted_legislatures.append(legislature)
+            if legislature == "2026-2027":
+                return httpx.Response(
+                    200,
+                    json={"success": False, "data": [], "total_results": 0},
+                )
+            return httpx.Response(200, json=payload)
+        if request.method == "GET" and request.url.path == "/api/get_detalle_pdly.php":
+            return httpx.Response(
+                200,
+                text=(
+                    "<table><tr><td>Estado</td><td>ARCHIVADO</td>"
+                    "<td>Legislatura</td><td>2025-2026</td></tr></table>"
+                ),
+            )
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert posted_legislatures == ["2026-2027", "2025-2026"]
+    assert len(items) == 1
+    assert items[0].metadata["registry_query_legislature"] == "2025-2026"
+    assert items[0].metadata["registry_requested_legislature"] == "2026-2027"
+    assert items[0].metadata["registry_rollover_fallback"] is True
+
+
+def test_camara_registry_falls_back_when_new_legislature_is_empty(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="camara_proyectos_ley_registry",
+        name="Cámara de Representantes — Proyectos de Ley",
+        type="legal",
+        url="https://www.camara.gov.co/proyectos-de-ley/",
+        fetch_method="html",
+        trust_role="agenda_signal",
+        max_items=1,
+    )
+    monkeypatch.setattr(
+        registries,
+        "_current_legislature_label",
+        lambda: "2026-2027",
+    )
+    home_html = """
+    <script>window.PL_CFG = { PL_NONCE : "abc123" };</script>
+    <select id="legislaturaField">
+      <option value="20">2026-2027</option>
+      <option value="13">2025-2026</option>
+    </select>
+    """
+    previous_payload = {
+        "success": True,
+        "data": {
+            "items": [
+                {
+                    "nro_camara": "443/2025C",
+                    "nro_senado": None,
+                    "titulo": "POR MEDIO DE LA CUAL SE RECONOCE UN SUBSIDIO DE TRANSPORTE",
+                    "proyecto": "SUBSIDIO JUNTAS DE ACCION COMUNAL",
+                    "tipo": "Ley Ordinaria",
+                    "estado": "Archivado",
+                    "origen": "Cámara",
+                    "vigencia": "2025-2026",
+                    "link_web": "subsidio-juntas-accion-comunal",
+                    "comisiones_pack": "",
+                    "autores_pack": "",
+                    "otros_autores": None,
+                }
+            ],
+            "total": 1,
+            "total_pages": 1,
+        },
+    }
+    posted_legislatures: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/proyectos-de-ley/":
+            return httpx.Response(200, text=home_html)
+        if request.method == "POST" and request.url.path == "/wp-admin/admin-ajax.php":
+            body = request.content.decode()
+            legislature = body.split("legislatura=", 1)[1].split("&", 1)[0]
+            posted_legislatures.append(legislature)
+            if legislature == "20":
+                return httpx.Response(
+                    200,
+                    json={
+                        "success": True,
+                        "data": {"items": [], "total": 0, "total_pages": 0},
+                    },
+                )
+            return httpx.Response(200, json=previous_payload)
+        if request.method == "GET" and request.url.path == "/subsidio-juntas-accion-comunal":
+            return httpx.Response(200, text="<html>detail</html>")
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert posted_legislatures == ["20", "13"]
+    assert len(items) == 1
+    assert items[0].metadata["registry_query_legislature"] == "2025-2026"
+    assert items[0].metadata["registry_requested_legislature"] == "2026-2027"
+    assert items[0].metadata["registry_rollover_fallback"] is True

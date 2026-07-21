@@ -99,7 +99,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     max_items: 20
-    notes: "Primary structured legislative registry. Uses Senado's public search endpoint plus detail fragments to extract clean project number, chamber, title, status, commission, filing date, Gaceta/publication references, and filed-text links. Replaces agenda PDFs as the primary bill-identity source; agenda/Gacetas remain follow-up and fallback evidence."
+    notes: "Primary structured legislative registry. Uses Senado's public search endpoint plus detail fragments to extract clean project number, chamber, title, status, commission, filing date, Gaceta/publication references, and filed-text links. When a newly opened legislature has zero rows, it emits explicitly marked rollover context from the immediately prior legislature. Replaces agenda PDFs as the primary bill-identity source; agenda/Gacetas remain follow-up and fallback evidence."
 
   - id: camara_proyectos_ley_registry
     name: Cámara de Representantes — Proyectos de Ley
@@ -114,7 +114,7 @@ metasources:
     parsing_difficulty: medium
     enabled: true
     max_items: 20
-    notes: "Primary structured Cámara registry. Uses the public Proyectos de Ley AJAX table and project detail pages to extract project number, chamber, title, status, authors, commission, legislature, filing/publication dates, object text, and publication PDFs. Cross-checks Senado-origin records and reduces dependence on brittle PDF-first parsing."
+    notes: "Primary structured Cámara registry. Uses the public Proyectos de Ley AJAX table and project detail pages to extract project number, chamber, title, status, authors, commission, legislature, filing/publication dates, object text, and publication PDFs. When a newly opened legislature has zero rows, it emits explicitly marked rollover context from the immediately prior legislature. Cross-checks Senado-origin records and reduces dependence on brittle PDF-first parsing."
 
   - id: senado_agenda_legislativa
     name: Senado — Agenda Legislativa Actual

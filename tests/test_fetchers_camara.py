@@ -209,7 +209,7 @@ def test_fetch_camara_agenda_enriches_embedpress_pdf_entry(
     assert "content_extraction_error" not in items[0].metadata
 
 
-def test_enrich_camara_agenda_pdf_fails_closed_without_project_entry(
+def test_enrich_camara_agenda_pdf_marks_readable_non_bill_document_as_parsed(
     sample_source,
 ) -> None:
     source = _camara_source(sample_source)
@@ -236,13 +236,13 @@ def test_enrich_camara_agenda_pdf_fails_closed_without_project_entry(
     assert len(enriched) == 1
     item = enriched[0]
     assert item.url == EXPECTED_PDF_URL
-    assert "content_extraction" not in item.metadata
-    assert item.metadata["content_extraction_error"] == (
-        "no legislative project entries found"
-    )
-    assert item.metadata["pdf_parse_status"] == "not_parsed"
+    assert item.metadata["content_extraction"] == "camara_agenda_pdf"
+    assert item.metadata["pdf_parse_status"] == "parsed_no_legislative_entries"
+    assert item.metadata["document_row_type"] == "camara_agenda_document"
+    assert "content_extraction_error" not in item.metadata
     assert item.metadata["pdf_text_chars"] > 0
-    assert "low_quality:unparsed_pdf_link" in clean(item, source).quality_notes
+    assert "PDF body parsed" in item.raw_text
+    assert "low_quality:unparsed_pdf_link" not in clean(item, source).quality_notes
 
 
 def test_fetch_camara_agenda_preserves_fail_closed_empty_result(

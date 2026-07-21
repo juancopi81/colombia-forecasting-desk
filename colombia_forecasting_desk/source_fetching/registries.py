@@ -2,6 +2,17 @@ from __future__ import annotations
 
 from .common import *
 
+
+def _previous_legislature_label(label: str) -> str | None:
+    match = re.fullmatch(r"(\d{4})-(\d{4})", label)
+    if match is None:
+        return None
+    start, end = (int(value) for value in match.groups())
+    if end != start + 1:
+        return None
+    return f"{start - 1}-{end - 1}"
+
+
 def _field_key(label: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", fold_accents(label.lower())).strip("_")
 
@@ -148,6 +159,9 @@ def _senado_registry_row_to_item(
     source: Metasource,
     fetched_at: str,
     detail_url: str,
+    query_legislature: str = "",
+    requested_legislature: str = "",
+    rollover_fallback: bool = False,
 ) -> RawItem | None:
     title = normalize_whitespace(str(row.get("titulo") or ""))
     numero_senado = normalize_whitespace(str(row.get("numero_senado") or ""))
@@ -179,6 +193,12 @@ def _senado_registry_row_to_item(
         f"Estado: {status}" if status else "",
         f"Comisión: {commission}" if commission else "",
         f"Fecha de presentación: {filing_date}" if filing_date else "",
+        (
+            f"Registry rollover context: {query_legislature} results used because "
+            f"{requested_legislature} returned no rows"
+            if rollover_fallback
+            else ""
+        ),
     ]
     if publication_links:
         evidence_parts.append(
@@ -201,6 +221,9 @@ def _senado_registry_row_to_item(
         "legislature": fields.get("legislatura") or _current_legislature_label(),
         "cuatrenio": fields.get("cuatrenio") or str(row.get("cuatrenio") or ""),
         "source_row_id": str(row.get("id") or ""),
+        "registry_query_legislature": query_legislature,
+        "registry_requested_legislature": requested_legislature,
+        "registry_rollover_fallback": rollover_fallback,
     }
     if publication_links:
         metadata["publication_links"] = publication_links
@@ -227,16 +250,36 @@ def _fetch_senado_leyes_registry(
 ) -> list[RawItem]:
     search_url = urljoin(source.url, "api/search_pdly.php")
     detail_base = urljoin(source.url, "api/get_detalle_pdly.php")
-    response = _http_post_form(
-        client,
-        search_url,
-        {"legislatura": _current_legislature_label()},
-    )
-    payload = response.json()
-    rows = payload.get("data") if isinstance(payload, dict) else None
-    if not isinstance(rows, list):
-        raise ValueError("unexpected Senado registry payload")
+    requested_legislature = _current_legislature_label()
+
+    def fetch_rows(legislature: str) -> list[object]:
+        response = _http_post_form(
+            client,
+            search_url,
+            {"legislatura": legislature},
+        )
+        payload = response.json()
+        rows = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            raise ValueError("unexpected Senado registry payload")
+        return rows
+
+    query_legislature = requested_legislature
+    rows = fetch_rows(query_legislature)
+    rollover_fallback = False
+    previous_legislature = _previous_legislature_label(requested_legislature)
+    if not rows and previous_legislature:
+        query_legislature = previous_legislature
+        rows = fetch_rows(query_legislature)
+        rollover_fallback = bool(rows)
+        if rollover_fallback:
+            logger.info(
+                "Senado registry %s is empty; using %s rollover context",
+                requested_legislature,
+                query_legislature,
+            )
     limit = source.max_items or LEGISLATIVE_REGISTRY_DEFAULT_LIMIT
+
     def row_sort_key(row: object) -> int:
         if not isinstance(row, dict):
             return -1
@@ -260,6 +303,9 @@ def _fetch_senado_leyes_registry(
             source=source,
             fetched_at=fetched_at,
             detail_url=detail_url,
+            query_legislature=query_legislature,
+            requested_legislature=requested_legislature,
+            rollover_fallback=rollover_fallback,
         )
         if item is not None:
             items.append(item)
@@ -288,6 +334,20 @@ def _extract_camara_legislature_id(html_text: str, label: str) -> str:
         if not fallback and re.search(r"\d{4}\s*-\s*\d{4}", text):
             fallback = value
     return fallback or "All"
+
+
+def _extract_camara_legislature_options(html_text: str) -> dict[str, str]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    select = soup.find("select", id="legislaturaField")
+    if select is None:
+        return {}
+    options: dict[str, str] = {}
+    for option in select.find_all("option"):
+        text = normalize_whitespace(option.get_text(" ", strip=True))
+        value = str(option.get("value") or "").strip()
+        if value and value.lower() != "all" and text:
+            options[text] = value
+    return options
 
 
 def _camara_pack_names(pack: str | None) -> str:
@@ -350,6 +410,9 @@ def _camara_registry_row_to_item(
     source: Metasource,
     fetched_at: str,
     detail_url: str,
+    query_legislature: str = "",
+    requested_legislature: str = "",
+    rollover_fallback: bool = False,
 ) -> RawItem | None:
     title = normalize_whitespace(str(row.get("titulo") or ""))
     short_title = normalize_whitespace(str(row.get("proyecto") or ""))
@@ -393,6 +456,12 @@ def _camara_registry_row_to_item(
         if fields.get("fecha_de_radicacion")
         else "",
         f"Objeto: {object_text}" if object_text else "",
+        (
+            f"Registry rollover context: {query_legislature} results used because "
+            f"{requested_legislature} returned no rows"
+            if rollover_fallback
+            else ""
+        ),
     ]
     metadata: dict[str, Any] = {
         "content_extraction": "camara_proyectos_ley_registry",
@@ -411,6 +480,9 @@ def _camara_registry_row_to_item(
         "legislature": str(row.get("vigencia") or ""),
         "origin": str(row.get("origen") or ""),
         "bill_type": str(row.get("tipo") or ""),
+        "registry_query_legislature": query_legislature,
+        "registry_requested_legislature": requested_legislature,
+        "registry_rollover_fallback": rollover_fallback,
     }
     if object_text:
         metadata["object"] = object_text
@@ -439,36 +511,54 @@ def _fetch_camara_proyectos_ley_registry(
     nonce = _extract_camara_pl_nonce(home_html)
     if not nonce:
         raise ValueError("Camara proyectos page missing PL_NONCE")
-    legislature = _extract_camara_legislature_id(
-        home_html,
-        _current_legislature_label(),
-    )
+    requested_legislature = _current_legislature_label()
+    legislature_options = _extract_camara_legislature_options(home_html)
     limit = source.max_items or LEGISLATIVE_REGISTRY_DEFAULT_LIMIT
     ajax_url = urljoin(source.url, "/wp-admin/admin-ajax.php")
-    response = _http_post_form(
-        client,
-        ajax_url,
-        {
-            "action": "get_proyectos_ley_page",
-            "_ajax_nonce": nonce,
-            "page": "1",
-            "per_page": str(limit),
-            "term": "",
-            "comision": "",
-            "tipo": "All",
-            "estado": "All",
-            "origen": "All",
-            "legislatura": legislature,
-            "ley_numero": "",
-            "ley_fecha": "",
-            "comision_adv": "All",
-        },
-    )
-    payload = response.json()
-    data = payload.get("data") if isinstance(payload, dict) else None
-    rows = data.get("items") if isinstance(data, dict) else None
-    if not isinstance(rows, list):
-        raise ValueError("unexpected Camara proyectos payload")
+
+    def fetch_rows(legislature_id: str) -> list[object]:
+        response = _http_post_form(
+            client,
+            ajax_url,
+            {
+                "action": "get_proyectos_ley_page",
+                "_ajax_nonce": nonce,
+                "page": "1",
+                "per_page": str(limit),
+                "term": "",
+                "comision": "",
+                "tipo": "All",
+                "estado": "All",
+                "origen": "All",
+                "legislatura": legislature_id,
+                "ley_numero": "",
+                "ley_fecha": "",
+                "comision_adv": "All",
+            },
+        )
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        rows = data.get("items") if isinstance(data, dict) else None
+        if not isinstance(rows, list):
+            raise ValueError("unexpected Camara proyectos payload")
+        return rows
+
+    query_legislature = requested_legislature
+    current_id = legislature_options.get(requested_legislature)
+    rows = fetch_rows(current_id) if current_id else []
+    rollover_fallback = False
+    previous_legislature = _previous_legislature_label(requested_legislature)
+    previous_id = legislature_options.get(previous_legislature or "")
+    if not rows and previous_legislature and previous_id:
+        query_legislature = previous_legislature
+        rows = fetch_rows(previous_id)
+        rollover_fallback = bool(rows)
+        if rollover_fallback:
+            logger.info(
+                "Camara registry %s is empty; using %s rollover context",
+                requested_legislature,
+                query_legislature,
+            )
     items: list[RawItem] = []
     for row in rows[:limit]:
         if not isinstance(row, dict):
@@ -486,12 +576,13 @@ def _fetch_camara_proyectos_ley_registry(
             source=source,
             fetched_at=fetched_at,
             detail_url=detail_url,
+            query_legislature=query_legislature,
+            requested_legislature=requested_legislature,
+            rollover_fallback=rollover_fallback,
         )
         if item is not None:
             items.append(item)
     return items
-
-
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]

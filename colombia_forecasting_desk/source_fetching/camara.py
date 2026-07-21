@@ -408,6 +408,42 @@ def _camara_agenda_link_with_error(
     )
 
 
+def _camara_agenda_parsed_document_without_projects(
+    item: RawItem,
+    text: str,
+) -> RawItem:
+    metadata = {
+        key: value
+        for key, value in dict(item.metadata).items()
+        if key != "content_extraction_error"
+    }
+    metadata.update(
+        {
+            "content_extraction": "camara_agenda_pdf",
+            "document_row_type": "camara_agenda_document",
+            "pdf_parse_status": "parsed_no_legislative_entries",
+            "pdf_text_chars": len(text),
+        }
+    )
+    excerpt = normalize_whitespace(text)[:PDF_TEXT_EXCERPT_CHARS]
+    raw_text = normalize_whitespace(
+        f"{item.title}. PDF body parsed; no legislative project entries found. "
+        f"Document excerpt: {excerpt}"
+    )
+    return RawItem(
+        id=item.id,
+        source_id=item.source_id,
+        source_name=item.source_name,
+        source_type=item.source_type,
+        url=item.url,
+        title=item.title,
+        fetched_at=item.fetched_at,
+        published_at=item.published_at,
+        raw_text=raw_text,
+        metadata=metadata,
+    )
+
+
 def _enrich_camara_agenda_pdfs(
     items: list[RawItem],
     client: httpx.Client,
@@ -436,13 +472,7 @@ def _enrich_camara_agenda_pdfs(
         if entries:
             enriched.extend(entries)
         else:
-            metadata.update(
-                {
-                    "content_extraction_error": "no legislative project entries found",
-                    "pdf_text_chars": len(text),
-                }
-            )
-            enriched.append(_camara_agenda_link_with_error(item, metadata))
+            enriched.append(_camara_agenda_parsed_document_without_projects(item, text))
         parsed_count += 1
     return enriched
 
