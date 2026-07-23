@@ -56,6 +56,8 @@ def _art(**overrides) -> dict:
         "_human_decision": None,
         "_human_monitor_queue": [],
         "_candidate_monitor_queue": [],
+        "_forecast_log": [],
+        "_forecast_log_parse_errors": 0,
     }
     art.update(overrides)
     return art
@@ -178,6 +180,121 @@ def test_derive_decision_is_review_when_ready_for_m3_bucket_present() -> None:
     art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
     decision = rh.derive_decision(art)
     assert decision.m3_ready is True
+
+
+def test_forecast_resolution_queue_finds_only_past_unresolved_windows() -> None:
+    art = _art(
+        _run_date="2026-07-23",
+        _forecast_log=[
+            {
+                "forecast_id": "resolved",
+                "status": "resolved",
+                "question": "Already closed?",
+                "resolution_check_window_end": "2026-05-01",
+            },
+            {
+                "forecast_id": "overdue",
+                "status": "draft_for_human_review",
+                "question": "Needs resolution?",
+                "probability": 0.57,
+                "resolution_check_window_end": "2026-07-03",
+                "resolution_source": "Official registry",
+            },
+            {
+                "forecast_id": "still_open",
+                "status": "draft_for_human_review",
+                "question": "Not due yet?",
+                "resolution_deadline": "2026-07-30",
+            },
+        ],
+    )
+
+    summary = rh.derive_forecast_resolution_queue(art)
+
+    assert summary["total_count"] == 3
+    assert summary["resolved_count"] == 1
+    assert summary["pending_count"] == 2
+    assert summary["parse_error_count"] == 0
+    assert summary["overdue"] == [
+        {
+            "forecast_id": "overdue",
+            "question": "Needs resolution?",
+            "probability": 0.57,
+            "due_date": "2026-07-03",
+            "days_overdue": 20,
+            "resolution_source": "Official registry",
+        }
+    ]
+
+
+def test_render_daily_shows_overdue_forecast_resolution_queue() -> None:
+    art = _art(
+        _run_date="2026-07-23",
+        _forecast_log=[
+            {
+                "forecast_id": "fcst_example",
+                "status": "draft_for_human_review",
+                "question": "Will the official result exceed the threshold?",
+                "probability": 0.54,
+                "resolution_check_window_end": "2026-07-01",
+                "resolution_source": "Official result page",
+            }
+        ],
+    )
+
+    html_out = rh.render_daily_review_html(art)
+
+    assert "Forecast resolution queue" in html_out
+    assert "22 days overdue" in html_out
+    assert "54% YES" in html_out
+    assert "Official result page" in html_out
+    assert "does not change M1, M2, M3, or the post decision" in html_out
+
+
+def test_render_daily_shows_clear_forecast_resolution_queue() -> None:
+    art = _art(
+        _run_date="2026-07-23",
+        _forecast_log=[
+            {
+                "forecast_id": "resolved",
+                "status": "resolved",
+                "question": "Already closed?",
+                "resolution_check_window_end": "2026-07-01",
+            },
+            {
+                "forecast_id": "future",
+                "status": "draft_for_human_review",
+                "question": "Still open?",
+                "resolution_check_window_end": "2026-07-30",
+            },
+        ],
+    )
+
+    html_out = rh.render_daily_review_html(art)
+
+    assert "Forecast resolution queue" in html_out
+    assert "No tracked forecast is past its resolution check window." in html_out
+    assert "1 resolved · 1 open within its window · 2 total tracked" in html_out
+
+
+def test_render_daily_does_not_claim_clear_queue_when_forecast_log_is_malformed() -> None:
+    art = _art(
+        _run_date="2026-07-23",
+        _forecast_log=[
+            {
+                "forecast_id": "resolved",
+                "status": "resolved",
+                "question": "Already closed?",
+            }
+        ],
+        _forecast_log_parse_errors=1,
+    )
+
+    html_out = rh.render_daily_review_html(art)
+
+    assert "1 forecast-log row(s) could not be parsed" in html_out
+    assert "Queue status is incomplete" in html_out
+    assert "No tracked forecast is past its resolution check window." not in html_out
 
 
 def test_derive_decision_surfaces_recorded_human_decision() -> None:
@@ -630,6 +747,28 @@ def test_load_run_artifacts_extracts_candidate_questions_monitor_queue(tmp_path:
             "note": "Monitor Queue",
         },
     ]
+
+
+def test_load_run_artifacts_reads_repo_forecast_log_tolerantly(tmp_path: Path) -> None:
+    run_dir = tmp_path / "runs" / "2026-07-23"
+    run_dir.mkdir(parents=True)
+    forecast_dir = tmp_path / "forecasts"
+    forecast_dir.mkdir()
+    (forecast_dir / "forecast_log.jsonl").write_text(
+        (
+            '{"forecast_id":"fcst_valid","status":"resolved"}\n'
+            "not valid json\n"
+            '["not", "an", "object"]\n'
+        ),
+        encoding="utf-8",
+    )
+
+    art = rh.load_run_artifacts(run_dir)
+
+    assert art["_forecast_log"] == [
+        {"forecast_id": "fcst_valid", "status": "resolved"}
+    ]
+    assert art["_forecast_log_parse_errors"] == 2
 
 
 # --------------------------------------------------------------------------- #

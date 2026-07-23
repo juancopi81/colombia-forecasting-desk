@@ -465,6 +465,9 @@ Goal: produce one human-reviewable forecast draft.
 - [ ] Generate a draft X post.
 - [ ] Save the draft and supporting evidence.
 - [ ] Record human decision: publish, edit, monitor, discard, or research more.
+- [x] Surface tracked forecasts whose resolution-check window has passed in the
+      deterministic daily review, while keeping outcome resolution explicit and
+      source-backed.
 
 ### M4 — Public X Experiment
 

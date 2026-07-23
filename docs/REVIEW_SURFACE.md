@@ -56,6 +56,9 @@ or reinterpret them. In particular:
 - It does **not** add insights or investigation leads to the forecast log, and it
   assigns no probabilities. It mirrors the
   [`Final Output Contract`](FINAL_OUTPUT_CONTRACT.md) lanes.
+- It reads `forecasts/forecast_log.jsonl` only to show whether unresolved
+  forecasts have passed their resolution-check windows. This queue is a
+  follow-up control, not an M3 promotion or an automatic resolver.
 - The recorded human decision (if any) is read from `human_decisions.md` for
   display only; the page's primary status is always the artifact-derived one.
 - Numbered monitor queues are parsed for display only. The renderer prefers
@@ -90,6 +93,7 @@ visibility gap to one deterministic bucket:
 | --- | --- | --- |
 | Decision banner | `analyst_leads.json`, `m2_ranked_questions.json`, `human_decisions.md` | Derived post/monitor status; surfaces the recorded human decision when present. |
 | Why no M3 today | `analyst_leads.json`, `m2_ranked_questions.json` | The gating facts (forecast-question count, M2 buckets, review-queue size). |
+| Forecast resolution queue | `forecasts/forecast_log.jsonl` | Lists unresolved forecasts whose check window has passed, or explicitly reports that the queue is clear. Malformed JSONL rows fail closed as an incomplete-queue warning. Display only; outcomes still require explicit source-backed resolution. |
 | At a glance | `run_summary.json`, `run_manifest.json`, `analyst_leads.json` | Counts grid. |
 | Upcoming M3 preflight opportunities | `m3_preflight_opportunities.json` | Scheduled-event prompts such as imminent official decisions with clean resolvers. These ask whether to scaffold M3; they do **not** count as forecast questions or `ready_for_m3`. |
 | Top analyst insights | `analyst_leads.json` (`analyst_insight`) | Source-backed findings; not forecasts. |

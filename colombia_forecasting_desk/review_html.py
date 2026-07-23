@@ -1,10 +1,10 @@
 """Deterministic HTML review surface for daily runs and recent-run trends.
 
 This module renders a human-friendly review surface from the structured run
-artifacts that the M1/M2 pipeline already writes. It is intentionally a *pure
-renderer*: it never runs an LLM, never touches the network, and adds no new
-dependency. HTML is hand-built with :func:`html.escape`, mirroring the way
-``brief.py`` builds Markdown.
+artifacts that the M1/M2 pipeline already writes plus the forecast log. It is
+intentionally a *pure renderer*: it never runs an LLM, never touches the
+network, and adds no new dependency. HTML is hand-built with
+:func:`html.escape`, mirroring the way ``brief.py`` builds Markdown.
 
 Two surfaces are produced:
 
@@ -188,6 +188,29 @@ def _read_json(path: Path) -> Any | None:
         return None
 
 
+def _read_jsonl(path: Path) -> tuple[list[dict[str, Any]], int]:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return [], 0
+
+    rows: list[dict[str, Any]] = []
+    parse_errors = 0
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            parse_errors += 1
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+        else:
+            parse_errors += 1
+    return rows, parse_errors
+
+
 def _extract_recorded_decision(run_dir: Path, present: set[str]) -> dict[str, str] | None:
     """Best-effort, tolerant parse of the recorded human decision.
 
@@ -324,6 +347,11 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     art["_human_decision"] = _extract_recorded_decision(run_dir, present)
     art["_human_monitor_queue"] = _extract_human_monitor_queue(run_dir, present)
     art["_candidate_monitor_queue"] = _extract_candidate_monitor_queue(run_dir, present)
+    forecast_log, forecast_log_parse_errors = _read_jsonl(
+        run_dir.parent.parent / "forecasts" / "forecast_log.jsonl"
+    )
+    art["_forecast_log"] = forecast_log
+    art["_forecast_log_parse_errors"] = forecast_log_parse_errors
     return art
 
 
@@ -348,6 +376,64 @@ def _as_int(value: Any, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def derive_forecast_resolution_queue(art: dict[str, Any]) -> dict[str, Any]:
+    """Summarize unresolved forecasts whose check windows have passed.
+
+    This is display-only state derived from ``forecast_log.jsonl``. It never
+    resolves a forecast or changes the daily M3/post decision.
+    """
+    entries = art.get("_forecast_log")
+    parse_error_count = _as_int(art.get("_forecast_log_parse_errors"))
+    if not isinstance(entries, list) or not entries:
+        return {
+            "total_count": 0,
+            "resolved_count": 0,
+            "pending_count": 0,
+            "overdue": [],
+            "parse_error_count": parse_error_count,
+        }
+
+    run_date = _parse_date(art.get("_run_date"))
+    resolved_count = 0
+    pending_count = 0
+    overdue: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("status", "")).lower() == "resolved":
+            resolved_count += 1
+            continue
+
+        pending_count += 1
+        due_value = (
+            entry.get("resolution_check_window_end")
+            or entry.get("resolution_deadline")
+            or ""
+        )
+        due_date = _parse_date(due_value)
+        if not run_date or not due_date or due_date >= run_date:
+            continue
+        overdue.append(
+            {
+                "forecast_id": str(entry.get("forecast_id", "")),
+                "question": str(entry.get("question", "")),
+                "probability": entry.get("probability"),
+                "due_date": due_date.isoformat(),
+                "days_overdue": (run_date - due_date).days,
+                "resolution_source": str(entry.get("resolution_source", "")),
+            }
+        )
+
+    overdue.sort(key=lambda row: (row["due_date"], row["forecast_id"]))
+    return {
+        "total_count": resolved_count + pending_count,
+        "resolved_count": resolved_count,
+        "pending_count": pending_count,
+        "overdue": overdue,
+        "parse_error_count": parse_error_count,
+    }
 
 
 @dataclass
@@ -1749,6 +1835,80 @@ def _render_queue_items(queue: list[dict[str, str]]) -> str:
     return "".join(rows)
 
 
+def _render_forecast_resolution_queue(art: dict[str, Any], index: int) -> str:
+    summary = derive_forecast_resolution_queue(art)
+    total = summary["total_count"]
+    parse_error_count = summary["parse_error_count"]
+    if not total and not parse_error_count:
+        return ""
+
+    overdue = summary["overdue"]
+    parse_warning = (
+        '<p class="caveat__reason">'
+        f'{_esc(parse_error_count)} forecast-log row(s) could not be parsed. '
+        "Queue status is incomplete until the JSONL is repaired.</p>"
+        if parse_error_count
+        else ""
+    )
+    if overdue:
+        rows: list[str] = []
+        for item in overdue:
+            probability = item.get("probability")
+            probability_text = (
+                f" · {float(probability):.0%} YES"
+                if isinstance(probability, (int, float))
+                else ""
+            )
+            source = item.get("resolution_source", "")
+            source_html = (
+                '<details class="detail detail--queue">'
+                f"<summary>Resolver</summary><p>{_esc(source)}</p></details>"
+                if source
+                else ""
+            )
+            rows.append(
+                '<li class="queue__item">'
+                f'<div class="queue__label">{_esc(item["question"])}</div>'
+                f'<div class="queue__meta">{_pill("overdue", "alert")}'
+                f'<span class="queue__note">window ended {_esc(item["due_date"])} · '
+                f'{_esc(item["days_overdue"])} days overdue{_esc(probability_text)} · '
+                f'<code>{_esc(item["forecast_id"])}</code></span></div>'
+                f"{source_html}"
+                "</li>"
+            )
+        body = (
+            f"{parse_warning}"
+            f'<ol class="queue">{"".join(rows)}</ol>'
+            '<p class="more">Resolve against the recorded criteria; do not infer '
+            "health from an unchanged forecast-log hash.</p>"
+        )
+    elif parse_error_count:
+        body = (
+            f"{parse_warning}"
+            '<p class="more">No overdue row was found among the forecast-log '
+            "entries that parsed successfully.</p>"
+        )
+    else:
+        body = (
+            '<p class="empty">No tracked forecast is past its resolution check window.</p>'
+            '<p class="more">'
+            f'{_esc(summary["resolved_count"])} resolved · '
+            f'{_esc(summary["pending_count"])} open within its window · '
+            f"{_esc(total)} total tracked"
+            "</p>"
+        )
+
+    return _section(
+        "Forecast resolution queue",
+        body,
+        note=(
+            "Derived from forecasts/forecast_log.jsonl for visibility only. "
+            "It does not change M1, M2, M3, or the post decision."
+        ),
+        index=index,
+    )
+
+
 def render_daily_review_html(art: dict[str, Any]) -> str:
     """Render the per-run daily review HTML from a loaded artifact dict."""
     run_date = art.get("_run_date", "")
@@ -1813,7 +1973,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top analyst insights",
         insight_body,
         note="Source-backed findings. These are not forecasts and carry no probability.",
-        index=5,
+        index=6,
     )
 
     investigations = _leads_of_type(art, "investigation_lead")
@@ -1831,7 +1991,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         "Top investigation leads",
         inv_body,
         note="Plausible leads that need more research before they could become insights or forecasts.",
-        index=6,
+        index=7,
     )
 
     queue = derive_monitor_queue(art)
@@ -1842,7 +2002,7 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
             f'Monitor queue ({queue_source["label"]})',
             f'<ol class="queue">{queue_items}</ol>',
             note=queue_source["daily_note"],
-            index=7,
+            index=8,
         )
     else:
         queue_section = ""
@@ -1852,16 +2012,17 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + _render_banner(decision)
         + stats
         + why_section
-        + _render_m3_preflight_opportunities(art, index=3)
-        + _render_official_indicator_moves(art, index=4)
+        + _render_forecast_resolution_queue(art, index=3)
+        + _render_m3_preflight_opportunities(art, index=4)
+        + _render_official_indicator_moves(art, index=5)
         + insight_section
         + inv_section
         + queue_section
-        + _render_source_caveats(art, index=8)
-        + _render_tension_cards(art, index=9)
-        + _render_market_pricing(art, index=10)
-        + _render_bundles(art, index=11)
-        + _render_links(art, index=12)
+        + _render_source_caveats(art, index=9)
+        + _render_tension_cards(art, index=10)
+        + _render_market_pricing(art, index=11)
+        + _render_bundles(art, index=12)
+        + _render_links(art, index=13)
         + _footer()
     )
     return _page(f"Daily Review — {run_date}", body)

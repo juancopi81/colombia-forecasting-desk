@@ -9,8 +9,9 @@ This reads the structured artifacts a run already produced and writes:
   last ``--window`` runs.
 
 It is a pure renderer: no LLM, no network, no new dependency, byte-stable for a
-given set of artifacts. Run it any time after ``scan_metasources.py``; it never
-re-runs the pipeline and never promotes or reinterprets anything.
+given set of run artifacts plus ``forecasts/forecast_log.jsonl``. Run it any
+time after ``scan_metasources.py``; it never re-runs the pipeline and never
+promotes or reinterprets anything.
 
 Usage:
     uv run python scripts/render_review.py

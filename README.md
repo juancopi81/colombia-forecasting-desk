@@ -20,7 +20,7 @@ forecast" explicitly instead of inventing one.*
 
 The interesting part isn't the scraping — it's the guardrails:
 
-- **Deterministic by default.** Rendering and ranking are pure functions of the run artifacts: no LLM, no network, byte-stable outputs. Regenerated runs can be compared with an artifact parity guard.
+- **Deterministic by default.** Rendering and ranking are pure functions of the run and forecast-log artifacts: no LLM, no network, byte-stable outputs. Regenerated runs can be compared with an artifact parity guard.
 - **Fail-closed, never silent.** A single broken source never crashes a run; every failure is surfaced in `source_failures.json` and per-source health counts, so silence is never mistaken for "nothing happened."
 - **Advisory, not authoritative.** Heuristic scores, cross-impact hypotheses, and tension cards are labeled as review prompts — the human/LLM reviewer is explicitly told to read the underlying source excerpts before trusting them.
 - **Contracts everywhere.** Legislative records, M3 evidence packs, and final outputs each have documented contracts with validation scripts and a pytest suite behind them.
@@ -49,10 +49,12 @@ uv run python scripts/render_review.py    # deterministic HTML daily review + re
 
 `render_review.py` writes `runs/YYYY-MM-DD/review.html` (the daily TLDR) and
 `runs/review_index.html` (recent-runs trends) from artifacts a run already
-produced. It is a pure renderer: no LLM, no network, no new dependency, and
-byte-stable for a given set of artifacts. Open either file directly in a
-browser; `--date`, `--window N`, `--daily-only`, and `--index-only` control
-what gets rendered. See
+produced plus `forecasts/forecast_log.jsonl`. The daily view makes overdue
+forecast resolutions explicit so an unchanged log is not mistaken for a
+healthy one. It is a pure renderer: no LLM, no network, no new dependency, and
+byte-stable for a given set of inputs. Open either file directly in a browser;
+`--date`, `--window N`, `--daily-only`, and `--index-only` control what gets
+rendered. See
 [`docs/REVIEW_SURFACE.md`](docs/REVIEW_SURFACE.md) for what each section means
 and the guardrails it preserves.
 
