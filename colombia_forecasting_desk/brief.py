@@ -642,6 +642,8 @@ def _indicator_seed_questions(
 
     trm = by_id.get("trm_usd_cop")
     if trm and any("`material_move`" in a for a in _indicator_alerts(trm, indicators, run_date)):
+        move = trm.values.get("seven_day_change_pct")
+        comparison = "above" if isinstance(move, int | float) and move > 0 else "below"
         value = trm.values.get("trm_cop_per_usd")
         value_text = f"{value:.2f} COP/USD" if isinstance(value, int | float) else "the latest official TRM"
         seeds.append(
@@ -649,7 +651,7 @@ def _indicator_seed_questions(
                 "theme": "FX move persistence",
                 "trigger": trm.headline,
                 "question": (
-                    "Will the official TRM remain at least 2% weaker than its "
+                    f"Will the official TRM remain at least 2% {comparison} its "
                     "seven-day-ago level seven calendar days after this run?"
                 ),
                 "resolution": "Superintendencia Financiera / datos.gov.co official TRM.",

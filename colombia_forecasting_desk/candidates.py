@@ -488,6 +488,7 @@ def _indicator_candidates(
         move = trm.values.get("seven_day_change_pct")
         if isinstance(move, int | float) and abs(move) >= 2:
             value = trm.values.get("trm_cop_per_usd")
+            comparison = "above" if move > 0 else "below"
             value_text = (
                 f"{value:.2f} COP/USD"
                 if isinstance(value, int | float)
@@ -500,7 +501,7 @@ def _indicator_candidates(
                         "theme": "FX move persistence",
                         "trigger": trm.headline,
                         "question": (
-                            "Will the official TRM remain at least 2% weaker than "
+                            f"Will the official TRM remain at least 2% {comparison} "
                             "its seven-day-ago level seven calendar days after this run?"
                         ),
                         "resolution": "Superintendencia Financiera / datos.gov.co official TRM.",

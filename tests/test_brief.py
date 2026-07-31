@@ -357,7 +357,49 @@ def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
     assert "Candidate DB Snapshot" in out
     assert "Required M2 Output Schema" in out
     assert "combines RSS with Colombia section cards" in out
-    assert "Will the official TRM remain" in out
+    assert (
+        "Will the official TRM remain at least 2% above its seven-day-ago "
+        "level seven calendar days after this run?"
+    ) in out
+
+
+def test_m2_handoff_uses_below_for_trm_appreciation() -> None:
+    summary = RunSummary(
+        run_date="2026-07-31",
+        started_at="2026-07-31T12:00:00Z",
+        finished_at="2026-07-31T12:00:30Z",
+        sources_checked=1,
+        sources_failed=0,
+        raw_items=1,
+        cleaned_items=1,
+        clusters=0,
+    )
+    indicator = IndicatorObservation(
+        indicator_id="trm_usd_cop",
+        name="TRM / USD-COP",
+        category="markets",
+        status="observed",
+        frequency="daily",
+        source_name="SFC",
+        source_url="https://example.com/trm",
+        period="2026-07-31",
+        headline="TRM vigente: 3132.42 COP/USD.",
+        values={"trm_cop_per_usd": 3132.42, "seven_day_change_pct": -2.7},
+        freshness_status="current",
+    )
+
+    out = render_m2_handoff(
+        summary,
+        [],
+        [],
+        [],
+        indicator_watch=[indicator],
+    )
+
+    assert (
+        "Will the official TRM remain at least 2% below its seven-day-ago "
+        "level seven calendar days after this run?"
+    ) in out
 
 
 def test_m2_handoff_prioritizes_document_caveats_before_cap() -> None:

@@ -318,9 +318,44 @@ def test_indicator_seed_candidate_from_observed_trm_move() -> None:
     assert candidate["resolution_source"] == (
         "Superintendencia Financiera / datos.gov.co official TRM."
     )
+    assert candidate["question_seed"] == (
+        "Will the official TRM remain at least 2% above its seven-day-ago "
+        "level seven calendar days after this run?"
+    )
     assert candidate["evidence"]["values"]["seven_day_change_pct"] == 2.4
     assert candidate["evidence"]["links"][0]["url"] == (
         "https://www.superfinanciera.gov.co/trm"
+    )
+
+
+def test_indicator_seed_candidate_uses_below_for_trm_appreciation() -> None:
+    trm = IndicatorObservation(
+        indicator_id="trm_usd_cop",
+        name="TRM / USD-COP",
+        category="markets",
+        status="observed",
+        frequency="daily",
+        source_name="Superfinanciera",
+        source_url="https://www.superfinanciera.gov.co/trm",
+        period="2026-07-31",
+        release_date="2026-07-31T00:00:00Z",
+        headline="TRM vigente: 3132.42 COP/USD.",
+        values={"seven_day_change_pct": -2.7, "trm_cop_per_usd": 3132.42},
+        freshness_status="current",
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [],
+        [],
+        topic_keywords=[],
+        indicator_watch=[trm],
+        generated_at="2026-07-31T12:00:31Z",
+    )
+
+    assert out["candidates"][0]["question_seed"] == (
+        "Will the official TRM remain at least 2% below its seven-day-ago "
+        "level seven calendar days after this run?"
     )
 
 
