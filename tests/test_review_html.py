@@ -773,6 +773,78 @@ def test_load_run_artifacts_extracts_candidate_questions_monitor_queue(tmp_path:
     ]
 
 
+def test_load_run_artifacts_surfaces_active_research_packs_from_human_decisions(
+    tmp_path: Path,
+) -> None:
+    run_dir = tmp_path / "runs" / "2026-08-04"
+    run_dir.mkdir(parents=True)
+    (run_dir / "human_decisions.md").write_text(
+        (
+            "Existing PGN 2027 research pack still warranted: yes.\n"
+            "Existing PL 119 August 5 research pack still warranted: yes.\n"
+            "Existing pension contribution-crediting research pack still warranted: yes.\n"
+        ),
+        encoding="utf-8",
+    )
+
+    pack_specs = [
+        (
+            "2026-07-29",
+            "01_minhacienda_pension_contribution_crediting.draft.md",
+            "Will the pension contribution-crediting draft be issued?",
+        ),
+        (
+            "2026-07-30",
+            "01_pgn_2027_budget_package.draft.md",
+            "Will the PGN 2027 package retain its contingent component?",
+        ),
+        (
+            "2026-08-03",
+            "01_pl_119_reconnection_fees_august_5.draft.md",
+            "Will the Senate approve PL 119 in second debate?",
+        ),
+    ]
+    for pack_date, filename, question in pack_specs:
+        pack_dir = tmp_path / "runs" / pack_date / "evidence_packs"
+        pack_dir.mkdir(parents=True)
+        (pack_dir / filename).write_text(
+            (
+                "## M3 Case File\n\n"
+                "```yaml\n"
+                "schema_version: m3_case_file.v1\n"
+                f"question: {question}\n"
+                "resolution_source: Official source.\n"
+                "resolution_criteria: Official outcome.\n"
+                "deadline_or_window: Before the official event closes.\n"
+                "source_excerpts: []\n"
+                "missing_evidence:\n"
+                "  - More research.\n"
+                "duplicate_check:\n"
+                "  status: not_checked\n"
+                "m3_gate: research_more\n"
+                "gate_reason: Research-stage case.\n"
+                "```\n"
+            ),
+            encoding="utf-8",
+        )
+
+    art = rh.load_run_artifacts(run_dir)
+
+    assert [pack["run_date"] for pack in art["_active_research_packs"]] == [
+        "2026-07-29",
+        "2026-07-30",
+        "2026-08-03",
+    ]
+    html_out = rh.render_daily_review_html(art)
+    assert html_out.count("Active M3 research packs") == 1
+    assert html_out.count("research pack") >= 3
+    assert "PGN 2027" in html_out
+    assert "PL 119 August 5" in html_out
+    assert "pension contribution-crediting" in html_out
+    assert "../2026-08-03/evidence_packs/01_pl_119_reconnection_fees_august_5.draft.md" in html_out
+    assert "no probability or forecast-log update" in html_out
+
+
 def test_load_run_artifacts_reads_repo_forecast_log_tolerantly(tmp_path: Path) -> None:
     run_dir = tmp_path / "runs" / "2026-07-23"
     run_dir.mkdir(parents=True)

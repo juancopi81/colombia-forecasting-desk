@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 from .brief import _indicator_alerts
+from .m3_case_file import extract_m3_case_file, validate_evidence_pack_markdown
 from .models import IndicatorComponent, IndicatorObservation
 
 SCHEMA_VERSION = "review_html.v1"
@@ -99,6 +100,7 @@ LINK_ARTIFACTS: tuple[tuple[str, str], ...] = (
 HUMAN_NOTE_FILES: tuple[tuple[str, str], ...] = (
     ("human_decisions.md", "Human decisions"),
     ("daily_comparison.md", "Daily comparison"),
+    ("pl119_pre_event_check.md", "PL 119 pre-event check"),
 )
 
 HIGH_IMPACT_SOURCE_TERMS = {
@@ -352,7 +354,93 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     )
     art["_forecast_log"] = forecast_log
     art["_forecast_log_parse_errors"] = forecast_log_parse_errors
+    art["_active_research_packs"] = _load_active_research_packs(run_dir, present)
     return art
+
+
+def _load_active_research_packs(
+    run_dir: Path, present: set[str]
+) -> list[dict[str, Any]]:
+    """Load research-stage packs explicitly kept active by human notes.
+
+    Pack files are historical run artifacts, so discovering every
+    ``research_more`` file would surface stale or closed cases. The current
+    human decision is the authority for which existing packs remain active;
+    this function only matches those statements to validated pack metadata.
+    """
+    if "human_decisions.md" not in present:
+        return []
+    try:
+        human_text = (run_dir / "human_decisions.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+
+    descriptors = [
+        normalize_markdown_text(match.group(1))
+        for match in re.finditer(
+            r"Existing\s+(.+?)\s+research pack still warranted:\s*yes",
+            human_text,
+            flags=re.IGNORECASE,
+        )
+    ]
+    if not descriptors:
+        return []
+
+    repo_root = run_dir.parent.parent
+    packs: list[dict[str, Any]] = []
+    for pack_path in sorted(
+        run_dir.parent.glob("*/evidence_packs/*.md"),
+        key=lambda path: (path.parent.parent.name, path.name),
+    ):
+        try:
+            text = pack_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if validate_evidence_pack_markdown(text):
+            continue
+        case_file = extract_m3_case_file(text)
+        if not isinstance(case_file, dict):
+            continue
+        gate = str(case_file.get("m3_gate") or "")
+        if gate not in {"research_more", "ready_for_m3"}:
+            continue
+        search_text = normalize_markdown_text(
+            f"{pack_path.stem} {case_file.get('question', '')}"
+        ).lower()
+        matched_descriptor = next(
+            (
+                descriptor
+                for descriptor in descriptors
+                if _descriptor_matches_pack(descriptor, search_text)
+            ),
+            None,
+        )
+        if matched_descriptor is None:
+            continue
+        packs.append(
+            {
+                "path": pack_path,
+                "relative_path": pack_path.relative_to(repo_root),
+                "link_path": Path("..")
+                / pack_path.parent.parent.name
+                / "evidence_packs"
+                / pack_path.name,
+                "run_date": pack_path.parent.parent.name,
+                "question": str(case_file.get("question") or ""),
+                "gate": gate,
+                "gate_reason": str(case_file.get("gate_reason") or ""),
+                "descriptor": matched_descriptor,
+            }
+        )
+    return packs
+
+
+def _descriptor_matches_pack(descriptor: str, search_text: str) -> bool:
+    folded = descriptor.lower()
+    tokens = [token for token in re.findall(r"[a-z0-9]+", folded) if len(token) >= 3]
+    if not tokens:
+        return False
+    return all(token in search_text for token in tokens)
 
 
 def find_run_dirs(runs_root: Path, window: int | None = DEFAULT_WINDOW) -> list[Path]:
@@ -1923,6 +2011,50 @@ def _render_forecast_resolution_queue(art: dict[str, Any], index: int) -> str:
     )
 
 
+def _render_active_research_packs(art: dict[str, Any], index: int) -> str:
+    packs = art.get("_active_research_packs") or []
+    if not isinstance(packs, list) or not packs:
+        return ""
+
+    cards: list[str] = []
+    for pack in packs:
+        if not isinstance(pack, dict):
+            continue
+        gate = str(pack.get("gate") or "research_more")
+        gate_variant = "watch" if gate == "research_more" else "post"
+        link_path = str(pack.get("link_path") or "")
+        link = (
+            f'<a href="{_attr(link_path)}">Open evidence pack</a>'
+            if link_path
+            else ""
+        )
+        reason = str(pack.get("gate_reason") or "")
+        reason_html = f'<p class="card__next">{_esc(reason)}</p>' if reason else ""
+        cards.append(
+            '<article class="card card--research">'
+            '<div class="tags">'
+            f'{_pill("research pack", "watch")}'
+            f'{_pill(gate, gate_variant)}'
+            "</div>"
+            f'<h3 class="card__title">{_esc(pack.get("descriptor") or "Research case")}</h3>'
+            f'<p class="card__claim">{_esc(pack.get("question") or "")}</p>'
+            f'<p class="indicator__source">{_esc(pack.get("run_date") or "")} · {link}</p>'
+            f"{reason_html}"
+            "</article>"
+        )
+    if not cards:
+        return ""
+    return _section(
+        "Active M3 research packs",
+        f'<div class="cards">{"".join(cards)}</div>',
+        note=(
+            "Existing evidence packs explicitly kept active by human decisions. "
+            "Research-stage only; no probability or forecast-log update."
+        ),
+        index=index,
+    )
+
+
 def render_daily_review_html(art: dict[str, Any]) -> str:
     """Render the per-run daily review HTML from a loaded artifact dict."""
     run_date = art.get("_run_date", "")
@@ -2027,8 +2159,9 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + stats
         + why_section
         + _render_forecast_resolution_queue(art, index=3)
-        + _render_m3_preflight_opportunities(art, index=4)
-        + _render_official_indicator_moves(art, index=5)
+        + _render_active_research_packs(art, index=4)
+        + _render_m3_preflight_opportunities(art, index=5)
+        + _render_official_indicator_moves(art, index=6)
         + insight_section
         + inv_section
         + queue_section
@@ -2338,6 +2471,7 @@ code{font-family:var(--mono); font-size:.82em; color:var(--ink-soft);
   border-radius:4px; padding:16px 18px}
 .card--market{border-left-color:var(--link)}
 .card--indicator{border-left-color:var(--accent)}
+.card--research{border-left-color:var(--watch)}
 .card__title{font-family:var(--serif); font-weight:600; font-size:18px; line-height:1.3;
   margin:8px 0 6px; letter-spacing:-.01em}
 .card__claim{font-size:15px; color:var(--ink-soft); margin:0 0 10px}

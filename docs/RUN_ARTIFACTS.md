@@ -69,6 +69,11 @@ missing calendar coverage is surfaced as a caveat instead of looking like a
 quiet day. The artifact asks whether to scaffold M3; it does not create a
 forecast, assign probability, update `forecast_log.jsonl`, or mark a lead
 `ready_for_m3`.
+The daily HTML also shows an `Active M3 research packs` section when the current
+`human_decisions.md` explicitly keeps an older validated evidence pack active.
+This is a display bridge across run folders, not a new promotion artifact: it
+does not infer activity from every historical `research_more` file and it never
+assigns probability or changes the forecast log.
 `analyst_leads.json` / `.md` apply the
 [`Final Output Contract`](FINAL_OUTPUT_CONTRACT.md): `forecast_question`
 for evidenced M3-ready questions, `analyst_insight` for source-backed findings
