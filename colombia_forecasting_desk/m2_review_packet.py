@@ -538,6 +538,8 @@ def _review_item_from_candidate(
             "Read the source excerpts and decide whether this M1 candidate is "
             "actually public-interest and forecastable."
         ),
+        "resolution_source": str(candidate.get("resolution_source") or ""),
+        "deadline_or_window": str(candidate.get("deadline_or_window") or ""),
         "missing_evidence": list(candidate.get("missing_evidence") or []),
         "source_ids": list(candidate.get("source_ids") or []),
         "source_urls": _unique_preserve_order(urls),
@@ -1056,9 +1058,17 @@ def _render_review_item(index: int, item: dict[str, Any]) -> list[str]:
         f"- Heuristic score: `{score_text}`",
         f"- Risk flags: "
         f"{', '.join(item.get('heuristic_risk_flags') or []) or 'none'}",
-        f"- LLM review hint: {item.get('llm_review_hint', '')}",
-        "",
     ]
+    if item.get("resolution_source"):
+        lines.append(f"- Resolution source: {item['resolution_source']}")
+    if item.get("deadline_or_window"):
+        lines.append(f"- Deadline or window: {item['deadline_or_window']}")
+    lines.extend(
+        [
+            f"- LLM review hint: {item.get('llm_review_hint', '')}",
+            "",
+        ]
+    )
     if item.get("heuristic_reasons"):
         lines.append("Reasons surfaced:")
         lines.extend(f"- {reason}" for reason in item["heuristic_reasons"])

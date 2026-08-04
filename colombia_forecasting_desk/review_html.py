@@ -1366,7 +1366,10 @@ def _render_m3_preflight_opportunities(art: dict[str, Any], index: int) -> str:
         for item in payload.get("opportunities") or []
         if isinstance(item, dict)
     ]
-    if not opportunities:
+    preflight_caveats = [
+        item for item in payload.get("caveats") or [] if isinstance(item, dict)
+    ]
+    if not opportunities and not preflight_caveats:
         return ""
 
     blocks: list[str] = []
@@ -1395,10 +1398,10 @@ def _render_m3_preflight_opportunities(art: dict[str, Any], index: int) -> str:
         evidence_html = _evidence_dl(item.get("evidence", []) or [])
         resolver_html = _evidence_dl(item.get("resolution_sources", []) or [])
         linked_html = _evidence_dl(item.get("linked_tension_cards", []) or [])
-        caveats = list(item.get("missing_evidence") or []) + list(
+        item_caveats = list(item.get("missing_evidence") or []) + list(
             item.get("guardrails") or []
         )
-        caveats_html = _caveats_list(caveats)
+        caveats_html = _caveats_list(item_caveats)
         blocks.append(
             '<article class="card">'
             f'<div class="tags">{"".join(tags)}</div>'
@@ -1412,6 +1415,17 @@ def _render_m3_preflight_opportunities(art: dict[str, Any], index: int) -> str:
             f"{linked_html}"
             f"{evidence_html}"
             f"{caveats_html}"
+            "</article>"
+        )
+    for caveat in preflight_caveats:
+        detector = str(caveat.get("detector") or "unknown detector").replace("_", " ")
+        reason = str(caveat.get("reason") or "unknown reason").replace("_", " ")
+        blocks.append(
+            '<article class="card">'
+            f'<div class="tags">{_pill("coverage caveat", "alert")}</div>'
+            '<h3 class="card__title">Schedule coverage caveat</h3>'
+            f'<p class="card__claim">{_esc(detector)}</p>'
+            f'<p class="card__why">{_esc(reason)}</p>'
             "</article>"
         )
     body = f'<div class="cards">{"".join(blocks)}</div>'

@@ -63,8 +63,10 @@ energy/tariff/subsidy context, and Colombia market-pricing context. They are
 neutral routing aids for M2: the agent must review cross-bundle links and
 unbundled items instead of treating the bundles as the only possible stories.
 `m3_preflight_opportunities.json` / `.md` flags near-term scheduled official
-events with clean resolution sources, such as a BanRep board decision named in
-official minutes. It asks whether to scaffold M3; it does not create a
+events with clean resolution sources. BanRep policy decisions use the official
+Junta calendar as the primary schedule clock and parsed minutes as a fallback;
+missing calendar coverage is surfaced as a caveat instead of looking like a
+quiet day. The artifact asks whether to scaffold M3; it does not create a
 forecast, assign probability, update `forecast_log.jsonl`, or mark a lead
 `ready_for_m3`.
 `analyst_leads.json` / `.md` apply the

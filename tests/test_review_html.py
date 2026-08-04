@@ -167,6 +167,30 @@ def test_preflight_opportunities_do_not_flip_m3_decision() -> None:
     assert "Monitoring — no new forecast" in html_out
 
 
+def test_preflight_caveat_is_visible_without_opportunity() -> None:
+    art = _art(
+        **{
+            "m3_preflight_opportunities.json": {
+                "schema_version": "m3_preflight_opportunities.v1",
+                "summary": {"opportunity_count": 0, "caveat_count": 1},
+                "opportunities": [],
+                "caveats": [
+                    {
+                        "detector": "banrep_policy_rate_decision",
+                        "reason": "future_meeting_date_missing",
+                    }
+                ],
+            }
+        }
+    )
+
+    html_out = rh.render_daily_review_html(art)
+
+    assert "Upcoming M3 preflight opportunities" in html_out
+    assert "Schedule coverage caveat" in html_out
+    assert "future meeting date missing" in html_out
+
+
 def test_derive_decision_is_review_when_forecast_question_present() -> None:
     art = _art()
     art["analyst_leads.json"]["summary"]["forecast_question_count"] = 1

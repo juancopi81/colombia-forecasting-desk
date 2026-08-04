@@ -330,6 +330,34 @@ def test_m2_review_packet_adds_structured_indicator_context() -> None:
     assert "ISE grew 4.0%" in item["source_excerpts"][0]["excerpt"]
 
 
+def test_m2_review_packet_preserves_candidate_resolution_fields() -> None:
+    indicator = _indicator_observation()
+    candidate = {
+        **_indicator_candidate(),
+        "resolution_source": "DANE ISE next monthly release.",
+        "deadline_or_window": "Next DANE ISE release.",
+    }
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [],
+        [],
+        {"candidates": [candidate]},
+        {"ranked_questions": [], "heuristic_audit": {}},
+        [],
+        [],
+        [indicator],
+    )
+
+    item = packet["review_items"][0]
+    assert item["resolution_source"] == "DANE ISE next monthly release."
+    assert item["deadline_or_window"] == "Next DANE ISE release."
+
+    rendered = render_m2_review_packet(packet)
+    assert "Resolution source: DANE ISE next monthly release." in rendered
+    assert "Deadline or window: Next DANE ISE release." in rendered
+
+
 def test_m2_review_packet_surfaces_indicator_tension_cards() -> None:
     tension_card = {
         "schema_version": "indicator_tension_cards.v1",

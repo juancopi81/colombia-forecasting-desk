@@ -42,6 +42,21 @@ metasources:
     enabled: true
     notes: "Primary source for monetary policy decisions. Direct HTTP remains the first path, but M1.26 falls back to Playwright when BanRep returns Radware Bot Manager so the existing Junta/minutas parser still receives official rendered HTML."
 
+  - id: banrep_junta_calendar
+    name: Banco de la República — Calendario Junta Directiva
+    url: https://www.banrep.gov.co/es/calendario-junta-directiva
+    type: calendar
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: medium
+    enabled: true
+    max_items: 12
+    notes: "Primary schedule clock for policy-rate decisions. The parser reads BanRep's embedded FullCalendar JSON and keeps only meetings explicitly marked as decisions on the intervention rate; it uses the shared BanRep browser fallback when Radware blocks direct HTTP, and comunicados remain the resolution source."
+
   - id: dane_rss
     name: DANE — RSS Noticias
     url: http://www.dane.gov.co/index.php?option=com_rss&feed=RSS1.0&no_html=1

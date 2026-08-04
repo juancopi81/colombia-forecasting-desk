@@ -15,6 +15,7 @@ MARKDOWN_FILENAME = "m3_preflight_opportunities.md"
 DEFAULT_WINDOW_DAYS = 7
 
 BANREP_RESOLVER_SOURCE_ID = "banrep_junta_comunicados"
+BANREP_CALENDAR_SOURCE_ID = "banrep_junta_calendar"
 BANREP_EVENT_TYPE = "banrep_policy_rate_decision"
 
 _SPANISH_MONTHS = {
@@ -89,13 +90,28 @@ def build_m3_preflight_opportunities(
         caveats.append(banrep_check["caveat"])
         opportunities: list[dict[str, Any]] = []
     else:
+        if sources is not None:
+            calendar_check = _schedule_source_check(
+                source_by_id=source_by_id,
+                health_by_id=health_by_id,
+                source_health_present=source_health is not None,
+            )
+            if not calendar_check["passed"]:
+                caveats.append(calendar_check["caveat"])
+            elif not _has_current_or_future_calendar_event(raw_records, run_day):
+                caveats.append(
+                    {
+                        "detector": BANREP_EVENT_TYPE,
+                        "reason": "future_meeting_date_missing",
+                    }
+                )
         opportunities = _banrep_policy_rate_opportunities(
             run_day=run_day,
             raw_items=raw_records,
             indicator_watch=indicator_watch or [],
             indicator_tension_cards=indicator_tension_cards or [],
             resolver_source=source_by_id[BANREP_RESOLVER_SOURCE_ID],
-            source_health=health_by_id.get(BANREP_RESOLVER_SOURCE_ID, {}),
+            source_health_by_id=health_by_id,
             window_days=window_days,
             forecast_log_path=forecast_log_path,
         )
@@ -245,12 +261,14 @@ def _banrep_policy_rate_opportunities(
     indicator_watch: list[Any],
     indicator_tension_cards: list[dict[str, Any]],
     resolver_source: Metasource,
-    source_health: dict[str, Any],
+    source_health_by_id: dict[str, dict[str, Any]],
     window_days: int,
     forecast_log_path: str | Path,
 ) -> list[dict[str, Any]]:
     by_event_date: dict[date, dict[str, Any]] = {}
     policy_rate_from_indicators = _policy_rate_from_indicators(indicator_watch)
+
+    # Parsed minutes remain a fallback schedule signal.
     for item in raw_items:
         if item.get("source_id") != BANREP_RESOLVER_SOURCE_ID:
             continue
@@ -259,7 +277,7 @@ def _banrep_policy_rate_opportunities(
             continue
         context = str(metadata.get("next_meeting_context") or "").strip()
         policy_rate = _format_rate(
-            metadata.get("policy_rate_pct") or policy_rate_from_indicators
+            policy_rate_from_indicators or metadata.get("policy_rate_pct")
         )
         if not context or not policy_rate:
             continue
@@ -278,8 +296,20 @@ def _banrep_policy_rate_opportunities(
                 policy_rate=policy_rate,
                 item=item,
                 context=context,
+                evidence_label="BanRep next meeting context",
+                metadata_key="next_meeting_context",
+                why_now=(
+                    f"The previous BanRep minutes point to the "
+                    f"{_spanish_display_date(event_day)} board session, which is "
+                    "inside the preflight window."
+                ),
                 resolver_source=resolver_source,
-                source_health=source_health,
+                resolver_source_health=source_health_by_id.get(
+                    BANREP_RESOLVER_SOURCE_ID, {}
+                ),
+                schedule_source_health=source_health_by_id.get(
+                    BANREP_RESOLVER_SOURCE_ID, {}
+                ),
                 linked_tension_cards=_linked_tension_cards(indicator_tension_cards),
                 active_forecast_ids=_active_forecast_ids(
                     forecast_log_path,
@@ -290,6 +320,60 @@ def _banrep_policy_rate_opportunities(
                 current["source_evidence"][0]
             ):
                 by_event_date[event_day] = candidate
+
+    # The official calendar is the primary schedule clock and overrides a
+    # same-day minutes fallback. A current policy-rate observation is required
+    # so the generated binary question has an explicit baseline.
+    if not policy_rate_from_indicators:
+        return list(by_event_date.values())
+    for item in raw_items:
+        if item.get("source_id") != BANREP_CALENDAR_SOURCE_ID:
+            continue
+        metadata = item.get("metadata")
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("event_type") != BANREP_EVENT_TYPE
+        ):
+            continue
+        scheduled_at = str(
+            metadata.get("scheduled_at_local")
+            or metadata.get("scheduled_date")
+            or item.get("published_at")
+            or ""
+        )
+        event_day = _parse_optional_date(scheduled_at)
+        if event_day is None:
+            continue
+        days_until = (event_day - run_day).days
+        if days_until < 0 or days_until > window_days:
+            continue
+        context = str(item.get("title") or "").strip() or scheduled_at
+        by_event_date[event_day] = _banrep_opportunity(
+            run_day=run_day,
+            event_day=event_day,
+            days_until=days_until,
+            policy_rate=policy_rate_from_indicators,
+            item=item,
+            context=context,
+            evidence_label="Official BanRep policy-rate calendar",
+            metadata_key="scheduled_at_local",
+            why_now=(
+                "The official BanRep calendar schedules a policy-rate decision "
+                f"for {_spanish_display_date(event_day)}, inside the preflight window."
+            ),
+            resolver_source=resolver_source,
+            resolver_source_health=source_health_by_id.get(
+                BANREP_RESOLVER_SOURCE_ID, {}
+            ),
+            schedule_source_health=source_health_by_id.get(
+                BANREP_CALENDAR_SOURCE_ID, {}
+            ),
+            linked_tension_cards=_linked_tension_cards(indicator_tension_cards),
+            active_forecast_ids=_active_forecast_ids(
+                forecast_log_path,
+                event_date=event_day.isoformat(),
+            ),
+        )
     return list(by_event_date.values())
 
 
@@ -301,25 +385,28 @@ def _banrep_opportunity(
     policy_rate: str,
     item: dict[str, Any],
     context: str,
+    evidence_label: str,
+    metadata_key: str,
+    why_now: str,
     resolver_source: Metasource,
-    source_health: dict[str, Any],
+    resolver_source_health: dict[str, Any],
+    schedule_source_health: dict[str, Any],
     linked_tension_cards: list[dict[str, str]],
     active_forecast_ids: list[str],
 ) -> dict[str, Any]:
     event_date = event_day.isoformat()
     display_date = _display_date(event_day)
-    spanish_display_date = _spanish_display_date(event_day)
     question_seed = (
-        "Will Banco de la Republica raise its policy rate above the current "
+        "Will Banco de la Republica change its policy rate from "
         f"{policy_rate}% at the {display_date} board decision?"
     )
     resolver_criteria = (
-        "Resolve from the official Junta Directiva communique for this "
-        "policy-rate decision, cross-checked against the official "
-        "policy-rate series if needed."
+        f"Resolve YES if the official Junta Directiva communique sets a policy "
+        f"rate different from {policy_rate}%, and NO if it leaves the rate "
+        "unchanged; cross-check the official policy-rate series if needed."
     )
     evidence = {
-        "label": "BanRep next meeting context",
+        "label": evidence_label,
         "value": context,
         "source": str(item.get("source_name") or "BanRep"),
         "url": str(item.get("url") or ""),
@@ -355,10 +442,7 @@ def _banrep_opportunity(
         "disposition": disposition,
         "active_forecast_ids": active_forecast_ids,
         "question_seed": question_seed,
-        "why_now": (
-            f"The previous BanRep minutes point to the {spanish_display_date} "
-            "board session, which is inside the preflight window."
-        ),
+        "why_now": why_now,
         "resolution_source": {
             "source_id": resolver_source.id,
             "source_name": resolver_source.name,
@@ -382,9 +466,20 @@ def _banrep_opportunity(
             "source_health": {
                 "status": "pass",
                 "source_id": resolver_source.id,
-                "failure_count": _int(source_health.get("failure_count")),
-                "raw_count": _int(source_health.get("raw_count")),
-                "acceptance_status": source_health.get("acceptance_status", "unknown"),
+                "failure_count": _int(resolver_source_health.get("failure_count")),
+                "raw_count": _int(resolver_source_health.get("raw_count")),
+                "acceptance_status": resolver_source_health.get(
+                    "acceptance_status", "unknown"
+                ),
+            },
+            "schedule_source_health": {
+                "status": "pass",
+                "source_id": str(item.get("source_id") or ""),
+                "failure_count": _int(schedule_source_health.get("failure_count")),
+                "raw_count": _int(schedule_source_health.get("raw_count")),
+                "acceptance_status": schedule_source_health.get(
+                    "acceptance_status", "unknown"
+                ),
             },
             "current_policy_rate_context": {
                 "status": "pass",
@@ -400,7 +495,7 @@ def _banrep_opportunity(
                 "title": str(item.get("title") or ""),
                 "url": str(item.get("url") or ""),
                 "published_at": item.get("published_at"),
-                "metadata_key": "next_meeting_context",
+                "metadata_key": metadata_key,
                 "excerpt": context,
             }
         ],
@@ -479,6 +574,57 @@ def _resolver_check(
     if _int(health.get("raw_count")) <= 0:
         return _failed_check(detector, "resolver_source_had_no_raw_items")
     return {"passed": True, "caveat": None}
+
+
+def _schedule_source_check(
+    *,
+    source_by_id: dict[str, Metasource],
+    health_by_id: dict[str, dict[str, Any]],
+    source_health_present: bool,
+) -> dict[str, Any]:
+    source = source_by_id.get(BANREP_CALENDAR_SOURCE_ID)
+    if source is None:
+        return _failed_check(BANREP_EVENT_TYPE, "schedule_source_missing_from_config")
+    if source.trust_role != "agenda_signal":
+        return _failed_check(BANREP_EVENT_TYPE, "schedule_source_not_agenda_signal")
+    if not source_health_present:
+        return _failed_check(BANREP_EVENT_TYPE, "source_health_artifact_missing")
+    health = health_by_id.get(BANREP_CALENDAR_SOURCE_ID)
+    if health is None:
+        return _failed_check(
+            BANREP_EVENT_TYPE,
+            "schedule_source_missing_from_source_health",
+        )
+    if _int(health.get("failure_count")) > 0 or health.get("status") == "failed":
+        return _failed_check(BANREP_EVENT_TYPE, "schedule_source_failed")
+    if _int(health.get("raw_count")) <= 0:
+        return _failed_check(BANREP_EVENT_TYPE, "schedule_source_had_no_raw_items")
+    return {"passed": True, "caveat": None}
+
+
+def _has_current_or_future_calendar_event(
+    raw_items: list[dict[str, Any]],
+    run_day: date,
+) -> bool:
+    for item in raw_items:
+        if item.get("source_id") != BANREP_CALENDAR_SOURCE_ID:
+            continue
+        metadata = item.get("metadata")
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("event_type") != BANREP_EVENT_TYPE
+        ):
+            continue
+        scheduled = str(
+            metadata.get("scheduled_at_local")
+            or metadata.get("scheduled_date")
+            or item.get("published_at")
+            or ""
+        )
+        event_day = _parse_optional_date(scheduled)
+        if event_day is not None and event_day >= run_day:
+            return True
+    return False
 
 
 def _failed_check(detector: str, reason: str) -> dict[str, Any]:

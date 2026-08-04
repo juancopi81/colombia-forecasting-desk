@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from .common import *
 from .html import *
 
@@ -367,6 +369,99 @@ def _is_banrep_minutas_item(item: RawItem) -> bool:
     return "minutas" in folded and (
         "/minutas" in folded or "minutas-banrep" in folded
     )
+
+
+def _extract_banrep_junta_calendar(
+    html_text: str,
+    base_url: str,
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    """Extract policy-rate decisions from BanRep's embedded FullCalendar JSON."""
+    soup = BeautifulSoup(html_text, "html.parser")
+    settings_node = soup.select_one(
+        'script[type="application/json"][data-drupal-selector="drupal-settings-json"]'
+    )
+    if settings_node is None:
+        return []
+    try:
+        settings = json.loads(settings_node.get_text())
+    except (TypeError, ValueError):
+        return []
+
+    items: list[RawItem] = []
+    seen: set[tuple[str, str]] = set()
+    for view in settings.get("fullCalendarView") or []:
+        if not isinstance(view, dict):
+            continue
+        options = view.get("calendar_options")
+        if isinstance(options, str):
+            try:
+                options = json.loads(options)
+            except ValueError:
+                continue
+        if not isinstance(options, dict):
+            continue
+        timezone_name = str(options.get("timeZone") or "America/Bogota")
+        for event in options.get("events") or []:
+            if not isinstance(event, dict):
+                continue
+            title = normalize_whitespace(str(event.get("title") or ""))
+            folded = fold_accents(title.lower())
+            if (
+                "reunion de la junta directiva" not in folded
+                or "decision sobre la tasa de interes de intervencion" not in folded
+            ):
+                continue
+            scheduled_at = _banrep_calendar_scheduled_at(
+                str(event.get("start") or ""),
+                timezone_name,
+            )
+            if not scheduled_at:
+                continue
+            event_date = scheduled_at[:10]
+            resolved = urljoin(base_url, str(event.get("url") or base_url))
+            key = (event_date, canonicalize_url(resolved))
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append(
+                RawItem(
+                    id=_make_id(source.id, resolved, title),
+                    source_id=source.id,
+                    source_name=source.name,
+                    source_type=source.type,
+                    url=resolved,
+                    title=title,
+                    fetched_at=fetched_at,
+                    published_at=scheduled_at,
+                    raw_text=f"{title}. Fecha programada: {scheduled_at}.",
+                    metadata={
+                        "content_extraction": "banrep_junta_calendar",
+                        "event_type": "banrep_policy_rate_decision",
+                        "scheduled_date": event_date,
+                        "scheduled_at_local": scheduled_at,
+                        "timezone": timezone_name,
+                    },
+                )
+            )
+    items.sort(key=lambda item: item.published_at or "", reverse=True)
+    return items
+
+
+def _banrep_calendar_scheduled_at(value: str, timezone_name: str) -> str | None:
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        return parsed.isoformat()
+    if timezone_name == "America/Bogota":
+        return parsed.replace(tzinfo=timezone(timedelta(hours=-5))).isoformat()
+    return parsed.isoformat()
 
 
 def _extract_banrep_minutas_links(
@@ -803,6 +898,33 @@ def _fetch_banrep_junta_with_browser(
             require_date=False,
         )
         return _enrich_banrep_minutas_html_with_browser(items, page)
+    finally:
+        browser.close()
+        playwright.stop()
+
+
+def _fetch_banrep_calendar_with_browser(
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    playwright, browser, page = _banrep_browser_page()
+    try:
+        page.goto(
+            source.url,
+            wait_until="domcontentloaded",
+            timeout=BANREP_JUNTA_BROWSER_TIMEOUT_MS,
+        )
+        _wait_for_browser_network_idle(page)
+        html_text = page.content()
+        marker = _detect_bot_block(html_text)
+        if marker:
+            raise BotBlockError(f"browser fetch still bot-blocked: {marker}")
+        return _extract_banrep_junta_calendar(
+            html_text,
+            page.url,
+            source,
+            fetched_at,
+        )
     finally:
         browser.close()
         playwright.stop()

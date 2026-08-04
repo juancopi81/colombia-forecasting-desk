@@ -77,6 +77,55 @@ def _banrep_source(**overrides) -> Metasource:
     return Metasource(**base)
 
 
+def _banrep_calendar_source(**overrides) -> Metasource:
+    base = dict(
+        id="banrep_junta_calendar",
+        name="Banco de la Republica - Calendario Junta Directiva",
+        url="https://www.banrep.gov.co/es/calendario-junta-directiva",
+        type="calendar",
+        country_relevance="high",
+        access_status="html_public",
+        fetch_method="html",
+        priority="high",
+        update_frequency="daily",
+        trust_role="agenda_signal",
+        parsing_difficulty="medium",
+        enabled=True,
+    )
+    base.update(overrides)
+    return Metasource(**base)
+
+
+def _banrep_calendar_event(
+    scheduled_at: str = "2026-07-31T08:30:00-05:00",
+) -> RawItem:
+    event_date = scheduled_at[:10]
+    return RawItem(
+        id=f"banrep-calendar-{event_date}",
+        source_id="banrep_junta_calendar",
+        source_name="Banco de la Republica - Calendario Junta Directiva",
+        source_type="calendar",
+        url=(
+            "https://www.banrep.gov.co/es/noticias/"
+            "calendario-actividades-junta-directiva/reunion-julio-2026"
+        ),
+        title=(
+            "Reunion de la Junta Directiva de julio de 2026 - "
+            "Decision sobre la tasa de interes de intervencion"
+        ),
+        fetched_at="2026-07-30T15:00:00Z",
+        published_at=scheduled_at,
+        raw_text="Official BanRep policy-rate decision calendar event.",
+        metadata={
+            "content_extraction": "banrep_junta_calendar",
+            "event_type": "banrep_policy_rate_decision",
+            "scheduled_date": event_date,
+            "scheduled_at_local": scheduled_at,
+            "timezone": "America/Bogota",
+        },
+    )
+
+
 def test_banrep_next_meeting_context_flags_m3_preflight(tmp_path) -> None:
     payload = build_m3_preflight_opportunities(
         [_banrep_minutes()],
@@ -102,13 +151,123 @@ def test_banrep_next_meeting_context_flags_m3_preflight(tmp_path) -> None:
     assert opportunity["days_until_event"] == 1
     assert opportunity["urgency"] == "imminent"
     assert opportunity["disposition"] == "consider_m3_preflight"
-    assert "above the current 11.25%" in opportunity["question_seed"]
+    assert "change its policy rate from 11.25%" in opportunity["question_seed"]
     assert opportunity["linked_tension_cards"][0]["label"] == "High ex-post real policy rate"
 
     rendered = render_m3_preflight_opportunities(payload)
     assert "BanRep board policy-rate decision" in rendered
     assert "not forecasts" in rendered
     assert "30 de junio" in rendered
+
+
+def test_banrep_calendar_recovers_july_31_preflight_miss(tmp_path) -> None:
+    payload = build_m3_preflight_opportunities(
+        [_banrep_minutes(), _banrep_calendar_event()],
+        [_policy_rate(12.0)],
+        [
+            {
+                "card_id": "real_policy_rate",
+                "family": "monetary_stance",
+                "title": "High ex-post real policy rate",
+                "trigger": "Policy rate minus annual IPC is +5.86 pp.",
+            }
+        ],
+        run_date="2026-07-30",
+        sources=[_banrep_source(), _banrep_calendar_source()],
+        source_health=[
+            {
+                "source_id": "banrep_junta_comunicados",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+            {
+                "source_id": "banrep_junta_calendar",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+        ],
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    assert payload["summary"]["opportunity_count"] == 1
+    opportunity = payload["opportunities"][0]
+    assert opportunity["event_date"] == "2026-07-31"
+    assert opportunity["days_until_event"] == 1
+    assert "change its policy rate from 12%" in opportunity["question_seed"]
+    assert "official BanRep calendar" in opportunity["why_now"]
+    assert opportunity["source_evidence"][0]["source_id"] == "banrep_junta_calendar"
+    assert (
+        opportunity["source_evidence"][0]["metadata_key"] == "scheduled_at_local"
+    )
+    assert opportunity["linked_tension_cards"][0]["label"] == (
+        "High ex-post real policy rate"
+    )
+    assert payload["caveats"] == []
+
+
+def test_banrep_calendar_coverage_gap_is_explicit(tmp_path) -> None:
+    payload = build_m3_preflight_opportunities(
+        [_banrep_minutes(), _banrep_calendar_event("2026-07-31T08:30:00-05:00")],
+        [_policy_rate(12.0)],
+        [],
+        run_date="2026-08-04",
+        sources=[_banrep_source(), _banrep_calendar_source()],
+        source_health=[
+            {
+                "source_id": "banrep_junta_comunicados",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+            {
+                "source_id": "banrep_junta_calendar",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+        ],
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    assert payload["opportunities"] == []
+    assert payload["caveats"] == [
+        {
+            "detector": "banrep_policy_rate_decision",
+            "reason": "future_meeting_date_missing",
+        }
+    ]
+
+
+def test_banrep_future_calendar_date_outside_window_is_not_a_coverage_gap(
+    tmp_path,
+) -> None:
+    payload = build_m3_preflight_opportunities(
+        [_banrep_minutes(), _banrep_calendar_event("2026-09-30T08:30:00-05:00")],
+        [_policy_rate(12.0)],
+        [],
+        run_date="2026-08-04",
+        sources=[_banrep_source(), _banrep_calendar_source()],
+        source_health=[
+            {
+                "source_id": "banrep_junta_comunicados",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+            {
+                "source_id": "banrep_junta_calendar",
+                "status": "ok",
+                "raw_count": 1,
+                "failure_count": 0,
+            },
+        ],
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    assert payload["opportunities"] == []
+    assert payload["caveats"] == []
 
 
 def test_banrep_preflight_fails_closed_outside_window(tmp_path) -> None:

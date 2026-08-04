@@ -54,6 +54,10 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             browser_items = _fetch_banrep_junta_with_browser(source, fetched_at)
             if browser_items:
                 return browser_items
+        if source.id == "banrep_junta_calendar":
+            browser_items = _fetch_banrep_calendar_with_browser(source, fetched_at)
+            if browser_items:
+                return browser_items
         if source.id == "minhacienda_proyectos_decreto":
             browser_items = _fetch_minhacienda_decree_projects_with_fallbacks(
                 source,
@@ -167,6 +171,13 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
         )
         if items:
             return _enrich_banrep_minutas_html(items, client)
+    if source.id == "banrep_junta_calendar":
+        return _extract_banrep_junta_calendar(
+            response.text,
+            str(response.url),
+            source,
+            fetched_at,
+        )
     if source.id == "diario_oficial":
         items = _extract_imprenta_jsf_table(
             response.text,

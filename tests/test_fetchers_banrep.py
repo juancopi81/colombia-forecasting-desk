@@ -1,6 +1,161 @@
 from __future__ import annotations
 
+import json
+
 from tests.fetcher_helpers import *  # noqa: F403
+
+
+def _banrep_calendar_html() -> str:
+    calendar_options = {
+        "timeZone": "America/Bogota",
+        "events": [
+            {
+                "title": (
+                    "Reunión de la Junta Directiva de julio de 2026 - "
+                    "Decisión sobre la tasa de interés de intervención"
+                ),
+                "start": "2026-07-31T08:30:00",
+                "url": (
+                    "/es/noticias/calendario-actividades-junta-directiva/"
+                    "reunion-julio-2026"
+                ),
+            },
+            {
+                "title": (
+                    "Publicación de las minutas de la reunión de la Junta "
+                    "Directiva de julio de 2026"
+                ),
+                "start": "2026-08-05T17:00:00",
+                "url": (
+                    "/es/noticias/calendario-actividades-junta-directiva/"
+                    "publicacion-minutas-julio-2026"
+                ),
+            },
+        ],
+    }
+    settings = {
+        "fullCalendarView": [
+            {"calendar_options": json.dumps(calendar_options, ensure_ascii=False)}
+        ]
+    }
+    return (
+        '<html><body><script type="application/json" '
+        'data-drupal-selector="drupal-settings-json">'
+        f"{json.dumps(settings, ensure_ascii=False)}"
+        "</script></body></html>"
+    )
+
+
+def test_extract_banrep_calendar_keeps_only_policy_rate_decisions(
+    sample_source,
+) -> None:
+    source = replace(
+        sample_source,
+        id="banrep_junta_calendar",
+        name="BanRep Junta calendar",
+        type="calendar",
+        url="https://www.banrep.gov.co/es/calendario-junta-directiva",
+        trust_role="agenda_signal",
+    )
+
+    items = fetchers._extract_banrep_junta_calendar(
+        _banrep_calendar_html(),
+        source.url,
+        source,
+        "2026-07-30T12:00:00Z",
+    )
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.title.startswith("Reunión de la Junta Directiva de julio de 2026")
+    assert item.url.endswith("/reunion-julio-2026")
+    assert item.published_at == "2026-07-31T08:30:00-05:00"
+    assert item.metadata == {
+        "content_extraction": "banrep_junta_calendar",
+        "event_type": "banrep_policy_rate_decision",
+        "scheduled_date": "2026-07-31",
+        "scheduled_at_local": "2026-07-31T08:30:00-05:00",
+        "timezone": "America/Bogota",
+    }
+
+
+def test_fetch_banrep_calendar_uses_structured_calendar_parser(
+    sample_source,
+) -> None:
+    source = replace(
+        sample_source,
+        id="banrep_junta_calendar",
+        name="BanRep Junta calendar",
+        type="calendar",
+        url="https://www.banrep.gov.co/es/calendario-junta-directiva",
+        trust_role="agenda_signal",
+    )
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            text=_banrep_calendar_html(),
+            request=request,
+        )
+    )
+
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    assert items[0].metadata["scheduled_date"] == "2026-07-31"
+
+
+def test_fetch_banrep_calendar_uses_browser_on_bot_block(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(
+        sample_source,
+        id="banrep_junta_calendar",
+        name="BanRep Junta calendar",
+        type="calendar",
+        url="https://www.banrep.gov.co/es/calendario-junta-directiva",
+        trust_role="agenda_signal",
+    )
+    browser_item = RawItem(
+        id="banrep-calendar-browser-item",
+        source_id=source.id,
+        source_name=source.name,
+        source_type=source.type,
+        url=(
+            "https://www.banrep.gov.co/es/noticias/"
+            "calendario-actividades-junta-directiva/reunion-julio-2026"
+        ),
+        title="Reunión Junta Directiva julio 2026 - decisión tasa",
+        fetched_at="2026-07-30T12:00:00Z",
+        published_at="2026-07-31T08:30:00-05:00",
+        raw_text="Official BanRep calendar event.",
+        metadata={
+            "content_extraction": "banrep_junta_calendar",
+            "event_type": "banrep_policy_rate_decision",
+            "scheduled_date": "2026-07-31",
+        },
+    )
+    calls: list[str] = []
+
+    def fake_browser_fetch(source_arg, fetched_at):
+        calls.append(source_arg.id)
+        return [browser_item]
+
+    monkeypatch.setattr(
+        fetchers,
+        "_fetch_banrep_calendar_with_browser",
+        fake_browser_fetch,
+    )
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text="<html>Radware Bot Manager</html>")
+    )
+
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items = fetch_html(source, client)
+
+    assert items == [browser_item]
+    assert calls == ["banrep_junta_calendar"]
 
 
 def test_fetch_banrep_junta_uses_browser_on_bot_block(

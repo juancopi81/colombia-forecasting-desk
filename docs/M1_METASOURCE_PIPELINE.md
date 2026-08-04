@@ -520,6 +520,13 @@ on recent minutas detail pages. This keeps normal runs fast while preventing
 bot-block pages from turning BanRep policy/minutas coverage into a source
 failure.
 
+The enabled `banrep_junta_calendar` source reads BanRep's embedded FullCalendar
+JSON and retains only meetings explicitly labeled as intervention-rate
+decisions. This is the primary schedule clock for M3 preflight; parsed minutes
+remain a fallback date signal, and `banrep_junta_comunicados` remains the
+official resolution source. When Radware blocks direct HTTP, the calendar uses
+the same Playwright-backed BanRep browser path.
+
 M1.27 adds a MinHacienda decree-project browser parser for
 `minhacienda_proyectos_decreto`. The source still tries direct HTTP first, but
 if the 2026 page returns Radware the fetcher renders the official page with
@@ -762,7 +769,8 @@ runs/YYYY-MM-DD/m3_preflight_opportunities.md
 ```
 
 These artifacts flag near-term scheduled official events with clean resolution
-sources, such as a BanRep board policy-rate decision named in official minutes.
+sources, such as a BanRep board policy-rate decision named in the official
+Junta calendar (with parsed minutes as a fallback).
 They are preflight prompts only: they can tell a human/LLM to consider
 scaffolding an M3 case file, but they do not create forecasts, assign
 probabilities, update `forecast_log.jsonl`, or mark anything `ready_for_m3`.
