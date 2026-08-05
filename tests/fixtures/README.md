@@ -1,8 +1,7 @@
-# Source HTML fixtures
+# Source fixtures
 
-Each `<source_id>/<YYYY-MM-DD>.html` file is a captured response from the live URL
-in `config/metasources.yaml`. They are used by `tests/test_fixture_parsers.py` to
-exercise parsers without hitting the network.
+Each `<source_id>/<YYYY-MM-DD>.<ext>` file is a captured response from an
+official source. They exercise parsers without hitting the network.
 
 To refresh a fixture:
 
@@ -40,3 +39,9 @@ parser keys off the Excel filename pattern (`anex-ICOCED-{mes}{anio}.xlsx`) for
 the data period and the same-row date for the release date, so the test
 exercises the real parser logic.
 Replace with a live capture when convenient using the refresh script above.
+
+## Binary regression fixtures
+
+| source_id | file | purpose |
+| --- | --- | --- |
+| `senado_agenda_legislativa` | `senado_agenda_legislativa/2026-08-03.pdf` | Official August 3-6 Senate agenda used to verify all 19 plenary bill identities, dates, and second-debate actions survive PDF extraction. |

@@ -92,7 +92,8 @@ def _minhacienda_tes_title_slug(title: str) -> str | None:
     slug = re.sub(r"[^a-z0-9]+", "-", folded).strip("-")
     return slug or None
 SENADO_AGENDA_PARSE_LIMIT = 2
-SENADO_AGENDA_ENTRY_LIMIT = 10
+SENADO_AGENDA_ENTRY_LIMIT = 40
+SENADO_AGENDA_TEXT_MAX_CHARS = 100_000
 CAMARA_AGENDA_PARSE_LIMIT = 2
 CAMARA_AGENDA_ENTRY_LIMIT = 10
 GACETA_PDF_PARSE_LIMIT = 5

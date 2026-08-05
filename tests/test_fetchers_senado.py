@@ -1,6 +1,23 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from tests.fetcher_helpers import *  # noqa: F403
+
+
+class _AugustThirdSenadoAgendaClient:
+    def get(self, url, params=None):  # noqa: ANN001 - mirrors httpx.Client.get
+        fixture = (
+            Path(__file__).parent
+            / "fixtures"
+            / "senado_agenda_legislativa"
+            / "2026-08-03.pdf"
+        )
+        return _FakeBinaryResponse(
+            fixture.read_bytes(),
+            headers={"content-type": "application/pdf"},
+            url=url,
+        )
 
 
 def test_extract_senado_agenda_entries_from_pdf_text() -> None:
@@ -119,3 +136,39 @@ def test_enrich_senado_agenda_pdfs_replaces_pdf_link_with_entries() -> None:
     assert enriched[0].metadata["content_extraction"] == "senado_agenda_pdf"
     assert enriched[0].url.endswith("#project-1")
     assert "Agenda Legislativa" not in enriched[0].title
+
+
+def test_enrich_senado_agenda_preserves_august_third_bill_identities() -> None:
+    item = RawItem(
+        id="senado-agenda-2026-08-03",
+        source_id="senado_agenda_legislativa",
+        source_name="Senado — Agenda Legislativa Actual",
+        source_type="calendar",
+        url="https://www.senado.gov.co/documentos/agenda-3-6-agosto/file",
+        title="Agenda Legislativa del 3 al 6 de agosto de 2026",
+        fetched_at="2026-08-03T15:10:00Z",
+        published_at="2026-08-03T00:00:00Z",
+        raw_text="Agenda Legislativa del 3 al 6 de agosto de 2026",
+        metadata={"extraction": "anchor"},
+    )
+
+    enriched = _enrich_senado_agenda_pdfs(
+        [item],
+        _AugustThirdSenadoAgendaClient(),
+        max_items=1,
+    )
+
+    assert len(enriched) == 19
+    assert all(row.metadata["has_clean_project_identity"] for row in enriched)
+
+    by_project = {
+        row.metadata["project_label"]: row
+        for row in enriched
+    }
+    assert "Proyecto de Ley 014 de 2025 Senado" in by_project
+    assert "Proyecto de Ley 119 de 2025 Senado" in by_project
+    assert "Proyecto de Ley 224 de 2025 Senado" in by_project
+
+    pl_119 = by_project["Proyecto de Ley 119 de 2025 Senado"]
+    assert pl_119.metadata["scheduled_date"] == "2026-08-05T00:00:00Z"
+    assert pl_119.metadata["agenda_action_type"] == "segundo debate"

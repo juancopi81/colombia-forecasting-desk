@@ -48,7 +48,11 @@ def _year_from_iso(value: str | None) -> int | None:
 
 def _senado_project_label(match: re.Match[str]) -> str:
     records = _senado_project_records(match)
-    kind = records[0]["kind"] if records else normalize_whitespace(match.group("kind"))
+    kind = (
+        records[0]["kind"]
+        if records
+        else _normalize_senado_project_kind(match.group("kind"))
+    )
     labels = [
         f"{record['number']} de {record['year']} {record['chamber']}"
         for record in records
@@ -57,7 +61,7 @@ def _senado_project_label(match: re.Match[str]) -> str:
 
 
 def _senado_project_records(match: re.Match[str]) -> list[dict[str, str]]:
-    kind = normalize_whitespace(match.group("kind"))
+    kind = _normalize_senado_project_kind(match.group("kind"))
     records = [
         {
             "kind": kind,
@@ -79,6 +83,11 @@ def _senado_project_records(match: re.Match[str]) -> list[dict[str, str]]:
     return records
 
 
+def _normalize_senado_project_kind(value: str) -> str:
+    folded = fold_accents(normalize_whitespace(value).lower())
+    return "Acto Legislativo" if folded == "acto legislativo" else "Ley"
+
+
 def _normalize_senado_chamber(value: str | None) -> str:
     folded = fold_accents((value or "").lower())
     return "Cámara" if "camara" in folded else "Senado"
@@ -86,14 +95,14 @@ def _normalize_senado_chamber(value: str | None) -> str:
 
 def _senado_agenda_action(context: str) -> str:
     folded = fold_accents(context.lower())
-    if "primer debate" in folded:
-        return "primer debate"
-    if "segundo debate" in folded:
-        return "segundo debate"
-    if "tercer debate" in folded:
-        return "tercer debate"
     if "cuarto debate" in folded:
         return "cuarto debate"
+    if "tercer debate" in folded:
+        return "tercer debate"
+    if "segundo debate" in folded:
+        return "segundo debate"
+    if "primer debate" in folded:
+        return "primer debate"
     if "ponencia" in folded:
         return "ponencia"
     if "discusion" in folded or "discusion" in folded:
@@ -102,7 +111,7 @@ def _senado_agenda_action(context: str) -> str:
 
 
 def _senado_document_title(context: str) -> str:
-    quote_match = re.search(r"[“\"]([^”\"]{24,220})[”\"]", context)
+    quote_match = re.search(r"[“\"]([^”\"]{24,600})[”\"]", context)
     if quote_match:
         return _repair_senado_document_title(quote_match.group(1))
     tema_match = re.search(
@@ -226,9 +235,13 @@ def _looks_like_senado_public_interest_title(title: str) -> bool:
 def _senado_scheduled_date(
     text: str, position: int, default_year: int | None
 ) -> str | None:
-    latest: re.Match[str] | None = None
-    for match in _SENADO_AGENDA_DAY_RE.finditer(text[:position]):
-        latest = match
+    matches = list(_SENADO_AGENDA_DAY_RE.finditer(text[:position]))
+    heading_matches = [
+        match
+        for match in matches
+        if match.group(0).split(maxsplit=1)[0].isupper()
+    ]
+    latest = (heading_matches or matches)[-1] if matches else None
     if latest is None:
         return None
     year_text = latest.group(3)
@@ -260,7 +273,7 @@ def _extract_senado_agenda_entries_from_text(
         seen_labels.add(label)
         detailed_positions.append(match.start())
         context_start = max(0, match.start() - 180)
-        context_end = min(len(text), match.end() + 520)
+        context_end = min(len(text), match.end() + 900)
         context = normalize_whitespace(match_text[context_start:context_end])
         scheduled_at = _senado_scheduled_date(match_text, match.start(), default_year)
         action = _senado_agenda_action(context)
@@ -420,7 +433,15 @@ def _enrich_senado_agenda_pdfs(
         metadata = dict(item.metadata)
         try:
             response = _http_get(client, item.url)
-            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+            text = _extract_pdf_text_with_pdfplumber(
+                response.content,
+                max_chars=SENADO_AGENDA_TEXT_MAX_CHARS,
+            )
+            if not text:
+                text = _extract_pdf_text(
+                    response.content,
+                    max_chars=SENADO_AGENDA_TEXT_MAX_CHARS,
+                )
         except Exception as exc:  # noqa: BLE001 - preserve link-level item
             metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
             enriched.append(

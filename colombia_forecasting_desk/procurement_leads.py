@@ -27,6 +27,19 @@ MIN_DIRECT_RECORDS = 2
 MIN_DIRECT_SHARE = 0.60
 MIN_LOW_COMPETITION_RECORDS = 2
 MIN_CANCELLED_RECORDS = 2
+MISSING_PARTY_VALUES = frozenset(
+    {
+        "n/a",
+        "no aplica",
+        "no definido",
+        "no disponible",
+        "no registrado",
+        "null",
+        "por definir",
+        "sin definir",
+        "sin informacion",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,13 +109,13 @@ def _procurement_records(
         entity = _first_text(metadata.get("entity") if isinstance(metadata, dict) else "")
         if not entity:
             entity = _entity_from_text(item)
-        supplier = _first_text(
+        supplier = _first_meaningful_party_text(
             fields.get("proveedor_adjudicado"),
             fields.get("nombre_del_proveedor"),
             fields.get("nom_raz_social_contratista"),
             fields.get("nombre_contratista"),
         )
-        supplier_id = _first_text(
+        supplier_id = _first_meaningful_party_text(
             fields.get("documento_proveedor"),
             fields.get("nit_del_proveedor_adjudicado"),
             fields.get("nit_del_contratista"),
@@ -238,6 +251,7 @@ def _low_competition_lead(records: list[ProcurementRecord]) -> dict[str, Any] | 
             record.entity
             and record.response_count is not None
             and record.response_count <= 1
+            and not _is_direct_contracting(record.modality)
             and _has_competition_window_closed(record.status)
         ):
             by_entity[_key(record.entity)].append(record)
@@ -378,6 +392,14 @@ def _first_text(*values: Any) -> str:
             continue
         text = normalize_whitespace(str(value))
         if text:
+            return text
+    return ""
+
+
+def _first_meaningful_party_text(*values: Any) -> str:
+    for value in values:
+        text = _first_text(value)
+        if text and _key(text) not in MISSING_PARTY_VALUES:
             return text
     return ""
 

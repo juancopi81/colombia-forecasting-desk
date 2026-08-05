@@ -304,7 +304,8 @@ def _extract_pdf_text(content: bytes, *, max_chars: int = PDF_TEXT_EXCERPT_CHARS
 
 
 _SENADO_AGENDA_PROJECT_RE = re.compile(
-    r"\bProyecto\s+de\s+(?P<kind>Ley|Acto\s+Legislativo)\s+No\.?\s+"
+    r"\bProyecto\s+de\s+(?P<kind>Ley|Acto\s+Legislativo)\s+"
+    r"(?:No\.?|N[uú]mero)\s+"
     r"(?P<first_number>\d{1,4})\s+(?:de|del)\s+"
     r"(?P<first_year>\d{4})\s+(?P<first_chamber>Senado|C[aá]mara)"
     r"(?:[,;\s]+(?P<second_number>\d{1,4})\s+(?:de|del)\s+"
@@ -429,10 +430,10 @@ def _extract_pdf_text_with_pdfplumber(
 ) -> str:
     """Extract PDF text with layout when pdfplumber is available.
 
-    MinHacienda TES auction reports are numeric tables; preserving spaces and
-    line breaks is materially better than the generic no-dependency extractor.
-    The fallback keeps the source fail-closed in environments that have not
-    synced the dependency yet.
+    Layout-sensitive official documents such as tables and legislative agendas
+    preserve materially more identity and numeric information through this
+    path. The fallback keeps extraction fail-closed in environments that have
+    not synced the dependency yet.
     """
     try:
         import pdfplumber

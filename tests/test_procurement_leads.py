@@ -155,6 +155,39 @@ def test_procurement_leads_surface_direct_contracting_concentration(
     assert any("legal and routine" in caveat for caveat in lead["caveats"])
 
 
+def test_procurement_leads_do_not_treat_placeholder_supplier_as_repeated_winner(
+    make_raw,
+    make_cleaned,
+) -> None:
+    raw = [
+        _secop_raw(
+            make_raw,
+            item_id,
+            {
+                "proveedor_adjudicado": "No Definido",
+                "modalidad_de_contratacion": "Contratación directa",
+            },
+            entity="INSTITUTO DISTRITAL DE RECREACION Y DEPORTE",
+        )
+        for item_id in ("idrd-1", "idrd-2", "idrd-3")
+    ]
+    cleaned = [
+        _secop_cleaned(make_cleaned, item_id)
+        for item_id in ("idrd-1", "idrd-2", "idrd-3")
+    ]
+
+    leads = build_procurement_concentration_leads(raw, cleaned)
+
+    assert [
+        lead["review_context"]["pattern"]
+        for lead in leads
+    ] == ["direct_contracting_concentration"]
+    assert all(
+        "No Definido" not in evidence["value"]
+        for evidence in leads[0]["evidence"]
+    )
+
+
 def test_procurement_leads_ignore_non_secop_and_low_signal_rows(
     make_raw,
     make_cleaned,
@@ -230,3 +263,44 @@ def test_procurement_leads_do_not_count_open_processes_as_low_competition(
     ]
 
     assert build_procurement_concentration_leads(raw, cleaned) == []
+
+
+def test_procurement_leads_do_not_count_direct_processes_as_low_competition(
+    make_raw,
+    make_cleaned,
+) -> None:
+    raw = [
+        make_raw(
+            id=item_id,
+            source_id="secop_ii_procesos",
+            source_name="SECOP II Procesos",
+            source_type="dataset",
+            metadata={
+                "entity": "IDRD - ENTIDAD OFICIAL.",
+                "socrata_fields": {
+                    "estado_del_procedimiento": "Evaluación",
+                    "proveedores_unicos_con": "0",
+                    "modalidad_de_contratacion": "Contratación directa",
+                    "nombre_del_proveedor": "No Definido",
+                },
+            },
+        )
+        for item_id in ("idrd-1", "idrd-2", "idrd-3")
+    ]
+    cleaned = [
+        make_cleaned(
+            id=item_id,
+            source_id="secop_ii_procesos",
+            source_name="SECOP II Procesos",
+            source_type="dataset",
+            published_at="2026-08-05T00:00:00Z",
+        )
+        for item_id in ("idrd-1", "idrd-2", "idrd-3")
+    ]
+
+    leads = build_procurement_concentration_leads(raw, cleaned)
+
+    assert [
+        lead["review_context"]["pattern"]
+        for lead in leads
+    ] == ["direct_contracting_concentration"]
