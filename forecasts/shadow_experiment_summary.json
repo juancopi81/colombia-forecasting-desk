@@ -1,0 +1,51 @@
+{
+  "disposition_counts": {},
+  "interpretation_guardrail": "Descriptive only. This small sample does not establish model quality.",
+  "official_source_follow_up": {
+    "completed_runs": 0,
+    "completion_rate": null,
+    "incomplete_runs": 0
+  },
+  "runs": {
+    "counted_decision_grade_runs": 0,
+    "latest_run_date": null,
+    "remaining_decision_grade_runs": 10,
+    "run_dates": [],
+    "skipped_runs": {
+      "invalid_agent_analysis": {
+        "count": 0,
+        "run_dates": []
+      },
+      "missing_agent_analysis": {
+        "count": 0,
+        "run_dates": []
+      },
+      "non_decision_grade": {
+        "count": 0,
+        "reasons": {},
+        "run_dates": []
+      }
+    },
+    "start_date": "2026-08-12",
+    "target_decision_grade_runs": 10
+  },
+  "schema_version": "shadow_experiment_summary.v1",
+  "shadow_forecasts": {
+    "baseline_fields_missing": 0,
+    "baseline_fields_present": 0,
+    "brier_mean_resolved": null,
+    "created": 0,
+    "invalid_log_rows_ignored": 0,
+    "open": 0,
+    "overdue": 0,
+    "resolved": 0,
+    "resolved_with_brier": 0
+  },
+  "status": "collecting",
+  "tension_card_review": {
+    "coverage_rate": null,
+    "reviewed_cards": 0,
+    "triggered_cards": 0,
+    "unreviewed_cards": 0
+  }
+}

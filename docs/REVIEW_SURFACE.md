@@ -59,6 +59,9 @@ or reinterpret them. In particular:
 - It reads `forecasts/forecast_log.jsonl` only to show whether unresolved
   forecasts have passed their resolution-check windows. This queue is a
   follow-up control, not an M3 promotion or an automatic resolver.
+- It reads `agent_analysis.json` and the separate shadow ledger for visibility
+  only. An internal probability never flips the public post/monitor banner,
+  creates an M3-ready item, or writes the selected forecast log.
 - The recorded human decision (if any) is read from `human_decisions.md` for
   display only; the page's primary status is always the artifact-derived one.
 - Numbered monitor queues are parsed for display only. The renderer prefers
@@ -93,10 +96,12 @@ visibility gap to one deterministic bucket:
 | --- | --- | --- |
 | Decision banner | `analyst_leads.json`, `m2_ranked_questions.json`, `human_decisions.md` | Derived post/monitor status; surfaces the recorded human decision when present. |
 | Why no M3 today | `analyst_leads.json`, `m2_ranked_questions.json` | The gating facts (forecast-question count, M2 buckets, review-queue size). |
+| Agent intelligence pass | `agent_analysis.json` | Shows the authored interpretation, alternatives, falsifiers, tension-card reviews, relationships, bounded official follow-up, and public-interest disposition. It is judgment, not a deterministic conclusion. |
+| Internal shadow forecasting | `agent_analysis.json`, `forecasts/shadow_forecast_log.jsonl`, `forecasts/shadow_experiment_summary.json` | Shows today's internal disposition or forecast, model probability versus baseline, open/resolved/overdue counts, and 10-run progress. Protected internal lane; never a public post or M3 promotion. |
 | Forecast resolution queue | `forecasts/forecast_log.jsonl` | Lists unresolved forecasts whose check window has passed, or explicitly reports that the queue is clear. Malformed JSONL rows fail closed as an incomplete-queue warning. Display only; outcomes still require explicit source-backed resolution. |
 | At a glance | `run_summary.json`, `run_manifest.json`, `analyst_leads.json` | Counts grid. |
 | Active M3 research packs | `human_decisions.md` plus matching validated `evidence_packs/*.md` from prior runs | Shows only packs explicitly kept active by the current human decision. Research-stage display only; it does not promote a case, assign probability, or update `forecast_log.jsonl`. |
-| Upcoming M3 preflight opportunities | `m3_preflight_opportunities.json` | Scheduled-event prompts such as imminent official decisions with clean resolvers, plus explicit schedule-coverage caveats when a configured clock is missing or stale. These ask whether to scaffold M3; they do **not** count as forecast questions or `ready_for_m3`. |
+| Upcoming M3 preflight opportunities | `m3_preflight_opportunities.json` | Scheduled-event prompts from BanRep and DANE across a 60-day research horizon. Days 8–60 are research-only; the final seven days may invite M3 preflight. They do **not** count as forecast questions or `ready_for_m3`. |
 | Top analyst insights | `analyst_leads.json` (`analyst_insight`) | Source-backed findings; not forecasts. |
 | Top investigation leads | `analyst_leads.json` (`investigation_lead`) | Underqualified leads needing more research. |
 | Monitor queue | `human_decisions.md` numbered queue, then `candidate_questions.md` `## Monitor Queue`, then `analyst_leads.json` + `m2_ranked_questions.json` | Human/editorial priority queue when recorded; candidate-review queue when human notes omit one; otherwise "what to sample next" from artifacts. Source is labeled clearly. Not a promotion. |

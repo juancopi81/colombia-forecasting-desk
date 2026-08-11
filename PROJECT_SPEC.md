@@ -132,6 +132,7 @@ colombia-forecasting-desk/
   prompts/
     daily_scout.md
     question_selection.md
+    agent_analysis.md
     evidence_pack.md
     forecast_draft.md
     x_post.md
@@ -145,6 +146,7 @@ colombia-forecasting-desk/
     build_daily_brief.py
     build_evidence_pack.py
     draft_forecast.py
+    finalize_agent_analysis.py
 
   colombia_forecasting_desk/
     fetchers.py
@@ -169,6 +171,8 @@ colombia-forecasting-desk/
       cooccurrence_bundles.md
       m3_preflight_opportunities.json
       m3_preflight_opportunities.md
+      agent_analysis.json
+      agent_analysis.md
       legislative_reconciler.json
       m2_ranked_questions.json
       m2_review_packet.json
@@ -194,6 +198,9 @@ colombia-forecasting-desk/
 
   forecasts/
     forecast_log.jsonl
+    shadow_forecast_log.jsonl
+    shadow_experiment_summary.json
+    shadow_experiment_summary.md
     resolved/
 ```
 
@@ -409,6 +416,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Generate `m3_preflight_opportunities.json` / `.md` for advisory
       scheduled-event prompts that can suggest M3 scaffolding without creating
       forecasts, probabilities, or evidence packs.
+- [x] Expand scheduled-event preflight to a 60-day research horizon, preserving
+      a separate seven-day imminent band, and ingest selected DANE official
+      publication clocks.
 - [x] Generate `analyst_leads.json` / `.md` as the final output-surface v0,
       separating M3-ready forecast-question candidates from source-backed
       analyst insights and underqualified investigation leads.
@@ -423,6 +433,9 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
       matches only when act number/year and MinCIT or zone-name context agree.
 - [x] Add DANE PIB and ISE official pages as first-class Indicator Watch cards
       and promote strong ISE readings as M2 activity-acceleration seeds.
+- [x] Parse BanRep's official monthly analyst-expectations survey into a compact
+      inflation, policy-rate, and TRM consensus baseline with explicit
+      freshness; never treat consensus as the desk's conclusion.
 
 ### M2 — Question Discovery
 
@@ -446,6 +459,15 @@ one clean bill-status record before M2 ranks them.
       after `candidate_questions.md` so sampled candidates, M2 decisions,
       missing M3 fields, duplicate status, and exact ranker links are durable
       before any M3 preflight work.
+- [x] Require a contract-validated daily `agent_analysis.json` intelligence
+      pass with competing explanations, falsifiers, all triggered tension-card
+      reviews, cross/unbundled reasoning, and one bounded official follow-up.
+- [x] Add a protected internal shadow-forecast ledger with named baselines,
+      explicit official resolution, Brier scoring, and no authority to publish
+      or update `forecasts/forecast_log.jsonl`.
+- [x] Run a deterministic 10 decision-grade-run shadow experiment beginning
+      2026-08-12 before deciding whether the lane improves useful forecast
+      formation.
 - [ ] Generate final candidate questions.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.

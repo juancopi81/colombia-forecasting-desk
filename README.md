@@ -24,6 +24,7 @@ The interesting part isn't the scraping — it's the guardrails:
 - **Fail-closed, never silent.** A single broken source never crashes a run; every failure is surfaced in `source_failures.json` and per-source health counts, so silence is never mistaken for "nothing happened."
 - **Advisory, not authoritative.** Heuristic scores, cross-impact hypotheses, and tension cards are labeled as review prompts — the human/LLM reviewer is explicitly told to read the underlying source excerpts before trusting them.
 - **Contracts everywhere.** Legislative records, M3 evidence packs, and final outputs each have documented contracts with validation scripts and a pytest suite behind them.
+- **LLM judgment is explicit.** The daily intelligence pass records its strongest signal, alternatives, falsifiers, tension-card reviews, and bounded official follow-up in `agent_analysis.json`; internal shadow forecasts use a separate protected ledger and cannot change the public M3 gate.
 
 ![Market-pricing context cards](docs/images/review_market_pricing.png)
 
@@ -45,11 +46,13 @@ uv run pytest -q
 uv run python scripts/scan_metasources.py
 uv run python scripts/scan_metasources.py --source-report
 uv run python scripts/render_review.py    # deterministic HTML daily review + recent-runs index
+# after the LLM authors runs/YYYY-MM-DD/agent_analysis.json:
+uv run python scripts/finalize_agent_analysis.py --date YYYY-MM-DD
 ```
 
 `render_review.py` writes `runs/YYYY-MM-DD/review.html` (the daily TLDR) and
 `runs/review_index.html` (recent-runs trends) from artifacts a run already
-produced plus `forecasts/forecast_log.jsonl`. The daily view makes overdue
+produced plus the public and internal forecast ledgers. The daily view makes overdue
 forecast resolutions explicit so an unchanged log is not mistaken for a
 healthy one. It is a pure renderer: no LLM, no network, no new dependency, and
 byte-stable for a given set of inputs. Open either file directly in a browser;
@@ -87,9 +90,10 @@ config/metasources.yaml      # registry of public sources (enabled/disabled, fet
 scripts/scan_metasources.py  # M1 entry point
 scripts/check_artifact_parity.py # stable generated-artifact comparison guard
 scripts/validate_m3_case_file.py # M3 evidence-pack readiness contract guard
-prompts/                     # placeholder prompts (used in later milestones)
+scripts/finalize_agent_analysis.py # validate intelligence pass, shadow ledger, summary, HTML
+prompts/agent_analysis.md     # accountable daily LLM intelligence-pass prompt
 runs/YYYY-MM-DD/             # generated run artifacts (gitignored content)
-forecasts/                   # forecast log (used in later milestones)
+forecasts/                   # selected ledger plus protected shadow experiment artifacts
 tests/                       # pytest suite
 ```
 
@@ -110,7 +114,8 @@ selected runtime summaries before catalog edits.
 
 ## Status
 
-Currently at **M2.7 — experimental market-pricing context for M2**, building on the
+Currently at **M2.8 — accountable intelligence pass and internal shadow-forecast
+experiment**, building on M2.7 experimental market-pricing context and the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
@@ -129,14 +134,23 @@ navigation, but still marked as parser feasibility rather than rankable
 evidence. DANE PIB and ISE official pages are now first-class Indicator Watch
 cards, including PIB sector drivers and current-release official document
 links, so GDP/ISE releases can become M2-ready activity seeds instead of only
-appearing as indirect context. Legislative records now also get an advisory M2
+appearing as indirect context. DANE's official publication-calendar RSS adds
+pre-release clocks for selected high-value economic releases. BanRep's official
+monthly analyst-expectations survey supplies a compact consensus baseline for
+inflation, the policy rate, and TRM; its release age is explicit, and stale
+surveys remain raw context rather than current ranked evidence. Legislative records now also get an advisory M2
 ranking with explicit score reasons, review buckets, and heuristic-risk audit
 flags. M2.4 keeps that content-first review packet but balances the queue across
 legislative records, indicator seeds, event leads, and conservative
 cross-impact hypotheses and deterministic Indicator Tension Cards. Those
 hypotheses and cards are review prompts only, not causal claims or probability
 inputs, so humans and LLMs can challenge brittle rules instead of inheriting
-them silently. See
+them silently. The `agent_analysis.v1` contract then requires the reviewing
+model to form an interpretation, challenge it, review every triggered tension
+card, reason across and outside bundles, and complete one bounded official
+follow-up. At most one clean case may enter the separate internal shadow
+ledger; a 10 decision-grade-run experiment begins on 2026-08-12 without
+lowering the public M3 or posting threshold. See
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
 detailed plan, the
 [`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md)

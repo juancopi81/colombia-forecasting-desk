@@ -69,6 +69,7 @@ JSON_ARTIFACTS = (
     "market_pricing_watch.json",
     "cooccurrence_bundles.json",
     "m3_preflight_opportunities.json",
+    "agent_analysis.json",
     "source_health.json",
 )
 
@@ -82,12 +83,14 @@ LINK_ARTIFACTS: tuple[tuple[str, str], ...] = (
     ("market_pricing_watch.md", "Market-pricing watch"),
     ("cooccurrence_bundles.md", "Co-occurrence bundles"),
     ("m3_preflight_opportunities.md", "M3 preflight opportunities"),
+    ("agent_analysis.md", "Agent intelligence pass"),
     ("candidate_questions.md", "Candidate questions"),
     ("m2_sampling_decisions.md", "M2 sampling decisions"),
     ("analyst_leads.json", "Analyst leads (JSON)"),
     ("m1_candidates.json", "M1 candidates (JSON)"),
     ("m2_sampling_decisions.json", "M2 sampling decisions (JSON)"),
     ("m3_preflight_opportunities.json", "M3 preflight opportunities (JSON)"),
+    ("agent_analysis.json", "Agent intelligence pass (JSON)"),
     ("indicator_watch.json", "Indicator watch (JSON)"),
     ("source_health.json", "Source health (JSON)"),
     ("acceptance_report.json", "Acceptance report (JSON)"),
@@ -354,6 +357,15 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     )
     art["_forecast_log"] = forecast_log
     art["_forecast_log_parse_errors"] = forecast_log_parse_errors
+    forecasts_dir = run_dir.parent.parent / "forecasts"
+    shadow_log, shadow_log_parse_errors = _read_jsonl(
+        forecasts_dir / "shadow_forecast_log.jsonl"
+    )
+    art["_shadow_forecast_log"] = shadow_log
+    art["_shadow_forecast_log_parse_errors"] = shadow_log_parse_errors
+    art["_shadow_experiment_summary"] = _read_json(
+        forecasts_dir / "shadow_experiment_summary.json"
+    )
     art["_active_research_packs"] = _load_active_research_packs(run_dir, present)
     return art
 
@@ -1359,6 +1371,271 @@ def _caveats_list(caveats: list[Any]) -> str:
     return f'<ul class="caveats">{lis}{extra_html}</ul>'
 
 
+def _percent(value: Any) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "n/a"
+    return f"{float(value) * 100:.1f}%"
+
+
+def _render_evidence_refs(refs: Any) -> str:
+    if not isinstance(refs, list):
+        return ""
+    rows: list[str] = []
+    for ref in refs[:EVIDENCE_LIMIT]:
+        if not isinstance(ref, dict):
+            continue
+        artifact = str(ref.get("artifact") or "artifact")
+        locator = str(ref.get("locator") or "")
+        note = str(ref.get("note") or "")
+        detail = " · ".join(value for value in (locator, note) if value)
+        rows.append(
+            '<div class="dl__row">'
+            f"<dt>{_esc(artifact)}</dt><dd>{_esc(detail)}</dd>"
+            "</div>"
+        )
+    return f'<dl class="dl">{"".join(rows)}</dl>' if rows else ""
+
+
+def _render_agent_intelligence(art: dict[str, Any], index: int) -> str:
+    analysis = art.get("agent_analysis.json")
+    if not isinstance(analysis, dict):
+        return ""
+
+    signal = analysis.get("strongest_changed_signal")
+    signal = signal if isinstance(signal, dict) else {}
+    disposition = str(analysis.get("overall_disposition") or "unknown")
+    alternatives_list = _caveats_list(signal.get("alternative_explanations") or [])
+    alternatives = (
+        f'<h4 class="subhead">Alternative explanations</h4>{alternatives_list}'
+        if alternatives_list
+        else ""
+    )
+    falsifiers_list = _caveats_list(signal.get("falsifiers") or [])
+    falsifiers = (
+        f'<h4 class="subhead">Falsifiers</h4>{falsifiers_list}'
+        if falsifiers_list
+        else ""
+    )
+    signal_card = (
+        '<article class="card">'
+        '<div class="tags">'
+        f'{_pill("LLM analysis", "watch")}'
+        f'{_pill(disposition.replace("_", " "))}'
+        "</div>"
+        '<h3 class="card__title">Strongest changed signal</h3>'
+        f'<p class="card__claim">{_esc(signal.get("signal") or "Not recorded.")}</p>'
+        f'<p class="card__why">{_esc(signal.get("interpretation") or "")}</p>'
+        f'{_render_evidence_refs(signal.get("evidence_refs"))}'
+        f'{alternatives}{falsifiers}'
+        "</article>"
+    )
+
+    reviews: list[str] = []
+    for review in analysis.get("tension_card_reviews") or []:
+        if not isinstance(review, dict):
+            continue
+        reviews.append(
+            '<article class="card">'
+            '<div class="tags">'
+            f'{_pill("tension review", "watch")}'
+            f'{_pill(str(review.get("disposition") or "unknown").replace("_", " "))}'
+            "</div>"
+            f'<h3 class="card__title">{_esc(review.get("card_id") or "Unknown card")}</h3>'
+            f'<p class="card__claim">{_esc(review.get("assessment") or "")}</p>'
+            f'<p class="card__why">{_esc(review.get("forecast_implication") or "")}</p>'
+            "</article>"
+        )
+
+    relationship_cards: list[str] = []
+    for relationship in analysis.get("relationships") or []:
+        if not isinstance(relationship, dict):
+            continue
+        relationship_cards.append(
+            '<article class="card">'
+            '<div class="tags">'
+            f'{_pill(str(relationship.get("type") or "relationship").replace("_", " "))}'
+            "</div>"
+            f'<h3 class="card__title">{_esc(relationship.get("relationship") or "Relationship")}</h3>'
+            f'<p class="card__why">{_esc(relationship.get("interpretation") or "")}</p>'
+            f'{_render_evidence_refs(relationship.get("evidence_refs"))}'
+            f'{_caveats_list(relationship.get("caveats") or [])}'
+            "</article>"
+        )
+
+    follow_up = analysis.get("official_source_follow_up")
+    follow_up = follow_up if isinstance(follow_up, dict) else {}
+    sources_checked = [
+        source
+        for source in follow_up.get("sources_checked") or []
+        if isinstance(source, dict)
+    ]
+    source_rows = "".join(
+        '<div class="dl__row">'
+        f'<dt><a href="{_attr(_safe_url(source.get("url")))}">'
+        f'{_esc(source.get("source_id") or "official source")}</a></dt>'
+        f'<dd>{_esc(source.get("result") or "")}</dd>'
+        "</div>"
+        if _safe_url(source.get("url"))
+        else '<div class="dl__row">'
+        f'<dt>{_esc(source.get("source_id") or "official source")}</dt>'
+        f'<dd>{_esc(source.get("result") or "")}</dd></div>'
+        for source in sources_checked
+    )
+    follow_up_card = (
+        '<article class="card">'
+        f'<div class="tags">{_pill("bounded official follow-up", "ok")}</div>'
+        f'<h3 class="card__title">{_esc(follow_up.get("candidate") or "Official-source follow-up")}</h3>'
+        f'<p class="card__claim">{_esc(follow_up.get("bounded_scope") or "")}</p>'
+        f'<p class="card__why">{_esc(follow_up.get("result") or "")}</p>'
+        f'<dl class="dl">{source_rows}</dl>'
+        "</article>"
+    )
+
+    candidate = analysis.get("public_interest_candidate")
+    candidate = candidate if isinstance(candidate, dict) else {}
+    candidate_card = (
+        '<article class="card">'
+        '<div class="tags">'
+        f'{_pill("public-interest candidate", "watch")}'
+        f'{_pill(str(candidate.get("disposition") or "unknown").replace("_", " "))}'
+        "</div>"
+        f'<h3 class="card__title">{_esc(candidate.get("candidate") or "No candidate recorded")}</h3>'
+        f'<p class="card__why">{_esc(candidate.get("rationale") or "")}</p>'
+        f'{_render_evidence_refs(candidate.get("evidence_refs"))}'
+        f'{_caveats_list(candidate.get("missing_evidence") or [])}'
+        "</article>"
+    )
+
+    cards = [signal_card, *reviews, *relationship_cards, follow_up_card, candidate_card]
+    rationale = _esc(analysis.get("overall_rationale") or "")
+    body = (
+        f'<p class="section__summary">{rationale}</p>'
+        f'<div class="cards">{"".join(cards)}</div>'
+    )
+    return _section(
+        "Agent intelligence pass",
+        body,
+        note=(
+            "Authored LLM judgment over the run artifacts. Internal analysis only; "
+            "it cannot change the deterministic public-post or M3 gate."
+        ),
+        index=index,
+    )
+
+
+def _render_shadow_forecasts(art: dict[str, Any], index: int) -> str:
+    analysis = art.get("agent_analysis.json")
+    rows = [
+        row
+        for row in art.get("_shadow_forecast_log") or []
+        if isinstance(row, dict)
+    ]
+    parse_errors = int(art.get("_shadow_forecast_log_parse_errors") or 0)
+    summary = art.get("_shadow_experiment_summary")
+    if not isinstance(analysis, dict) and not rows and not isinstance(summary, dict):
+        return ""
+
+    run_day = _parse_date(art.get("_run_date"))
+    open_rows = [row for row in rows if row.get("status") == "open"]
+    resolved_rows = [row for row in rows if row.get("status") == "resolved"]
+    overdue = [
+        row
+        for row in open_rows
+        if run_day
+        and _parse_date(
+            row.get("resolution_check_window_end")
+            or row.get("resolution_deadline")
+        )
+        and _parse_date(
+            row.get("resolution_check_window_end")
+            or row.get("resolution_deadline")
+        )
+        < run_day
+    ]
+
+    current_rows = [row for row in rows if row.get("run_date") == art.get("_run_date")]
+    cards: list[str] = []
+    for row in current_rows:
+        baseline = row.get("baseline") if isinstance(row.get("baseline"), dict) else {}
+        cards.append(
+            '<article class="card">'
+            '<div class="tags">'
+            f'{_pill("internal only", "watch")}'
+            f'{_pill(str(row.get("status") or "unknown"))}'
+            "</div>"
+            f'<h3 class="card__title">{_esc(row.get("question") or "Shadow forecast")}</h3>'
+            f'<p class="card__claim">Model {_percent(row.get("probability"))} · '
+            f'baseline {_percent(baseline.get("probability"))}</p>'
+            f'<p class="card__why">Resolver: {_esc(row.get("resolution_source") or "")}</p>'
+            f'<p class="indicator__meta">deadline {_esc(row.get("resolution_deadline") or "n/a")} · '
+            f'check through {_esc(row.get("resolution_check_window_end") or "n/a")}</p>'
+            "</article>"
+        )
+
+    if not current_rows and isinstance(analysis, dict):
+        disposition = str(analysis.get("overall_disposition") or "unknown")
+        cards.append(
+            '<article class="card">'
+            f'<div class="tags">{_pill("internal disposition", "watch")}</div>'
+            '<h3 class="card__title">No shadow forecast recorded today</h3>'
+            f'<p class="card__claim">{_esc(disposition.replace("_", " "))}</p>'
+            '<p class="card__why">Abstention is recorded rather than replaced by a quota-driven forecast.</p>'
+            "</article>"
+        )
+
+    experiment_html = ""
+    if isinstance(summary, dict):
+        runs = summary.get("runs") if isinstance(summary.get("runs"), dict) else {}
+        forecasts = (
+            summary.get("shadow_forecasts")
+            if isinstance(summary.get("shadow_forecasts"), dict)
+            else {}
+        )
+        experiment_html = (
+            '<article class="card">'
+            f'<div class="tags">{_pill(str(summary.get("status") or "collecting").replace("_", " "), "ok")}</div>'
+            '<h3 class="card__title">10-run experiment progress</h3>'
+            f'<p class="card__claim">{_esc(runs.get("counted_decision_grade_runs") or 0)} / '
+            f'{_esc(runs.get("target_decision_grade_runs") or 10)} decision-grade runs</p>'
+            f'<p class="card__why">{_esc(forecasts.get("created") or 0)} created · '
+            f'{_esc(forecasts.get("resolved") or 0)} resolved · '
+            f'{_esc(forecasts.get("overdue") or 0)} overdue</p>'
+            "</article>"
+        )
+        cards.append(experiment_html)
+
+    warnings: list[str] = []
+    if parse_errors:
+        warnings.append(
+            f"Shadow ledger contains {parse_errors} malformed row(s); counts may be incomplete."
+        )
+    if overdue:
+        warnings.append(
+            f"{len(overdue)} open shadow forecast(s) are past their resolution check window."
+        )
+    warning_html = _caveats_list(warnings)
+    stats = (
+        '<div class="stats">'
+        + _stat(len(open_rows), "open shadows")
+        + _stat(len(resolved_rows), "resolved shadows")
+        + _stat(len(overdue), "overdue shadows", "post" if overdue else "muted")
+        + "</div>"
+    )
+    links = (
+        '<p class="more"><a href="../../forecasts/shadow_forecast_log.jsonl">Shadow ledger</a> · '
+        '<a href="../../forecasts/shadow_experiment_summary.md">Experiment summary</a></p>'
+    )
+    return _section(
+        "Internal shadow forecasting",
+        stats + warning_html + f'<div class="cards">{"".join(cards)}</div>' + links,
+        note=(
+            "Protected internal experiment. These rows are never public posts and "
+            "never write forecasts/forecast_log.jsonl."
+        ),
+        index=index,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Daily view
 # --------------------------------------------------------------------------- #
@@ -2158,18 +2435,20 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         + _render_banner(decision)
         + stats
         + why_section
-        + _render_forecast_resolution_queue(art, index=3)
-        + _render_active_research_packs(art, index=4)
-        + _render_m3_preflight_opportunities(art, index=5)
-        + _render_official_indicator_moves(art, index=6)
+        + _render_agent_intelligence(art, index=3)
+        + _render_shadow_forecasts(art, index=4)
+        + _render_forecast_resolution_queue(art, index=5)
+        + _render_active_research_packs(art, index=6)
+        + _render_m3_preflight_opportunities(art, index=7)
+        + _render_official_indicator_moves(art, index=8)
         + insight_section
         + inv_section
         + queue_section
-        + _render_source_caveats(art, index=9)
-        + _render_tension_cards(art, index=10)
-        + _render_market_pricing(art, index=11)
-        + _render_bundles(art, index=12)
-        + _render_links(art, index=13)
+        + _render_source_caveats(art, index=11)
+        + _render_tension_cards(art, index=12)
+        + _render_market_pricing(art, index=13)
+        + _render_bundles(art, index=14)
+        + _render_links(art, index=15)
         + _footer()
     )
     return _page(f"Daily Review — {run_date}", body)
@@ -2365,7 +2644,8 @@ def _footer() -> str:
     return (
         '<footer class="foot">'
         f"Generated deterministically by <code>scripts/render_review.py</code> "
-        f"({SCHEMA_VERSION}) from run artifacts. No LLM, no network. "
+        f"({SCHEMA_VERSION}) from run artifacts. The renderer makes no LLM or network call; "
+        "the Agent intelligence pass is an explicitly authored input. "
         "Tension cards, market-pricing rows, and bundles are advisory context, "
         "never probability inputs."
         "</footer>"

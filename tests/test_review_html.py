@@ -1559,3 +1559,118 @@ def test_render_index_aggregates_source_reliability_bucket_labels(tmp_path: Path
     assert "Source reliability issues" in html_out
     assert "Registraduría Noticias" in html_out
     assert "High-impact source failures" in html_out
+
+
+def test_daily_review_surfaces_agent_analysis_and_internal_shadow_forecast() -> None:
+    analysis = {
+        "schema_version": "agent_analysis.v1",
+        "run_date": "2026-05-29",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "strongest_changed_signal": {
+            "signal": "The peso appreciated rapidly over seven days.",
+            "interpretation": "The move is worth a bounded internal direction test.",
+            "evidence_refs": [
+                {
+                    "artifact": "market_pricing_watch.json",
+                    "locator": "series_id=trm",
+                    "note": "Official TRM observation.",
+                }
+            ],
+            "alternative_explanations": ["Broad dollar weakness."],
+            "falsifiers": ["A sharp risk-off reversal."],
+        },
+        "tension_card_reviews": [],
+        "relationships": [
+            {
+                "type": "unbundled",
+                "relationship": "TRM move versus domestic rate stance",
+                "interpretation": "Possible policy-space signal.",
+                "evidence_refs": [],
+                "caveats": ["Short-horizon FX is noisy."],
+            }
+        ],
+        "official_source_follow_up": {
+            "candidate": "TRM direction",
+            "bounded_scope": "Checked the official TRM series.",
+            "sources_checked": [
+                {
+                    "source_id": "datos_gov_trm",
+                    "url": "https://www.datos.gov.co/",
+                    "result": "A clean official resolver exists.",
+                }
+            ],
+            "result": "Suitable for an internal test only.",
+        },
+        "public_interest_candidate": {
+            "candidate": "No public forecast today",
+            "disposition": "none",
+            "rationale": "The move lacks a public-interest decision hook.",
+            "evidence_refs": [],
+            "missing_evidence": [],
+        },
+        "overall_disposition": "shadow_track",
+        "overall_rationale": "Test the model internally without lowering M3 gates.",
+    }
+    shadow = {
+        "schema_version": "shadow_forecast.v1",
+        "forecast_id": "shadow_trm",
+        "run_date": "2026-05-29",
+        "question": "Will TRM exceed 3,200 COP/USD on June 5?",
+        "probability": 0.58,
+        "status": "open",
+        "resolution_deadline": "2026-06-05",
+        "resolution_check_window_end": "2026-06-06",
+        "resolution_source": "Official TRM series",
+        "baseline": {"label": "coin flip", "probability": 0.5},
+    }
+    summary = {
+        "status": "collecting",
+        "runs": {
+            "counted_decision_grade_runs": 1,
+            "target_decision_grade_runs": 10,
+        },
+        "shadow_forecasts": {"created": 1, "resolved": 0, "overdue": 0},
+    }
+    art = _art(
+        **{
+            "agent_analysis.json": analysis,
+            "_shadow_forecast_log": [shadow],
+            "_shadow_forecast_log_parse_errors": 0,
+            "_shadow_experiment_summary": summary,
+        }
+    )
+
+    decision = rh.derive_decision(art)
+    html_out = rh.render_daily_review_html(art)
+
+    assert decision.status == "monitor_no_post"
+    assert "Agent intelligence pass" in html_out
+    assert "The peso appreciated rapidly" in html_out
+    assert "Internal shadow forecasting" in html_out
+    assert "Model 58.0%" in html_out
+    assert "1 / 10 decision-grade runs" in html_out
+    assert "Monitoring — no new forecast" in html_out
+
+
+def test_shadow_ledger_parse_errors_and_overdue_rows_fail_closed_in_review() -> None:
+    art = _art(
+        **{
+            "_run_date": "2026-06-07",
+            "_shadow_forecast_log": [
+                {
+                    "status": "open",
+                    "run_date": "2026-05-29",
+                    "resolution_deadline": "2026-06-05",
+                    "resolution_check_window_end": "2026-06-06",
+                }
+            ],
+            "_shadow_forecast_log_parse_errors": 2,
+        }
+    )
+
+    html_out = rh.render_daily_review_html(art)
+
+    assert "2 malformed row(s)" in html_out
+    assert "1 open shadow forecast(s) are past" in html_out
+    assert "Monitoring — no new forecast" in html_out

@@ -12,6 +12,8 @@ content:
     - evidence_pack
     - forecast_draft
     - x_post_draft
+    - agent_analysis
+    - shadow_forecast
   prohibited_outputs:
     - investment_advice
     - trading_signals
@@ -31,3 +33,15 @@ forecasting:
     - low
     - medium
     - high
+
+shadow_experiment:
+  public: false
+  ledger: forecasts/shadow_forecast_log.jsonl
+  max_forecasts_per_run: 1
+  target_forecasts_per_week: "1-3"
+  quota_enforced: false
+  require_exact_official_resolver: true
+  require_resolution_deadline: true
+  require_named_baseline: true
+  require_human_review_before_public_migration: true
+  public_forecast_log_mutation: prohibited

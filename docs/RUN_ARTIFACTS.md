@@ -14,7 +14,9 @@ folders. For what each section of the HTML review surface means, see
 - `indicator_tension_cards.json` / `.md` — advisory cross-indicator screens that flag official-data tensions for M2 review without making conclusions
 - `market_pricing_watch.json` / `.md` — experimental fail-closed ADR, ETF, and Brent/oil pricing context for M2 review
 - `cooccurrence_bundles.json` / `.md` — neutral M2 context bundles that package related ingredients that co-occurred today without choosing a thesis
-- `m3_preflight_opportunities.json` / `.md` — advisory scheduled-event prompts that flag near-term clean M3 opportunities without creating forecasts, probabilities, or evidence packs
+- `m3_preflight_opportunities.json` / `.md` — advisory scheduled-event prompts across a 60-day research horizon; only the final seven days are M3-imminent, and no forecast, probability, or evidence pack is created
+- `agent_analysis.json` — authored, contract-validated LLM intelligence pass with the strongest changed signal, alternatives, falsifiers, tension-card reviews, relationships, one bounded official follow-up, and an explicit disposition
+- `agent_analysis.md` — deterministic human-readable rendering of `agent_analysis.json`
 - `legislative_reconciler.json` — one bill-status record per reconciled legislative identity, including M2 readiness and contradictions
 - `m2_ranked_questions.json` — advisory M2 legislative triage with transparent scores, buckets, review queue, and heuristic-risk audit
 - `m2_review_packet.json` — balanced, content-rich M2 review queue that attaches source excerpts, structured context, traceability, and advisory cross-impact hypotheses to M1/M2 candidates
@@ -31,6 +33,11 @@ folders. For what each section of the HTML review surface means, see
 - `run_trace.json` — diagnostic stage/source trace with durations, counts, metadata, and caught errors for debugging and AI-agent handoffs
 - `run_manifest.json` — run provenance, artifact inventory, schema versions, git context, and enabled capabilities for fair historical comparison
 - `review.html` — deterministic daily review surface rendered by `scripts/render_review.py` (gitignored; regenerate any time). A recent-runs `runs/review_index.html` is rendered alongside it.
+
+Repository-level experiment artifacts live outside the dated run folder:
+
+- `forecasts/shadow_forecast_log.jsonl` — protected internal ledger; at most one resolvable binary forecast may be appended per run, with a named baseline and no public-post authority
+- `forecasts/shadow_experiment_summary.json` / `.md` — deterministic progress and compliance summary for the configured 10 decision-grade-run experiment
 
 ## How the artifacts relate
 
@@ -62,13 +69,21 @@ fiscal/TES pressure, monetary/credit transmission, construction/housing costs,
 energy/tariff/subsidy context, and Colombia market-pricing context. They are
 neutral routing aids for M2: the agent must review cross-bundle links and
 unbundled items instead of treating the bundles as the only possible stories.
-`m3_preflight_opportunities.json` / `.md` flags near-term scheduled official
-events with clean resolution sources. BanRep policy decisions use the official
+`m3_preflight_opportunities.json` / `.md` flags scheduled official events with
+clean resolution sources across an early 60-day research horizon. BanRep
+policy decisions use the official
 Junta calendar as the primary schedule clock and parsed minutes as a fallback;
-missing calendar coverage is surfaced as a caveat instead of looking like a
+DANE economic releases use the official publication-calendar RSS and linked
+statistical-operation pages. Events eight to sixty days away are
+`research_only`; only the final seven days invite human M3-preflight review.
+Missing calendar coverage is surfaced as a caveat instead of looking like a
 quiet day. The artifact asks whether to scaffold M3; it does not create a
 forecast, assign probability, update `forecast_log.jsonl`, or mark a lead
 `ready_for_m3`.
+BanRep EME rows in `raw_items.json` are compact official consensus baselines,
+not conclusions. Their metadata includes release/fieldwork dates, participant
+counts, and explicit freshness. A stale EME row remains available for audit and
+historical comparison but is not exempted from normal cleaned-item age limits.
 The daily HTML also shows an `Active M3 research packs` section when the current
 `human_decisions.md` explicitly keeps an older validated evidence pack active.
 This is a display bridge across run folders, not a new promotion artifact: it
@@ -90,6 +105,17 @@ zone. These are not investment recommendations; they are prompts to verify the
 resolution text and local implications.
 `run_trace.json` is diagnostic only; it helps explain how a run executed, but it
 does not feed candidate ranking, acceptance gates, or M2 question selection.
+
+After a decision-grade run, the LLM authors `agent_analysis.json` from the
+content-first artifacts. The deterministic finalizer validates it, renders the
+Markdown, appends a selected internal forecast idempotently, refreshes the
+experiment summary, and rerenders HTML:
+
+```bash
+uv run python scripts/finalize_agent_analysis.py --date YYYY-MM-DD
+```
+
+This command never updates `forecasts/forecast_log.jsonl`.
 
 ## Validating and comparing run folders
 
