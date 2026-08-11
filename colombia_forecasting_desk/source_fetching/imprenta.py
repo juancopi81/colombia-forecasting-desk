@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import signal
+import threading
+
 from .common import *
 from .pdf import *
 from .senado import _normalize_senado_chamber
+
+DIARIO_PDF_PARSE_TIMEOUT_SECONDS = 30.0
 
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 _GACETA_PROJECT_RE = re.compile(
@@ -120,6 +125,43 @@ def _parse_diario_oficial_pdf_text(text: str) -> dict[str, Any] | None:
         if records
         else "parsed_no_legal_act_identities",
     }
+
+
+def _extract_diario_pdf_text_with_timeout(
+    content: bytes,
+    *,
+    max_chars: int,
+    timeout_seconds: float | None = None,
+) -> str:
+    """Bound pdfminer work so one malformed edition cannot stall the scan."""
+    if timeout_seconds is None:
+        timeout_seconds = DIARIO_PDF_PARSE_TIMEOUT_SECONDS
+    if (
+        timeout_seconds <= 0
+        or not hasattr(signal, "SIGALRM")
+        or threading.current_thread() is not threading.main_thread()
+    ):
+        return _extract_pdf_text_with_pdfplumber(content, max_chars=max_chars)
+
+    def _raise_timeout(_signum: int, _frame: Any) -> None:
+        raise PDFTextExtractionTimeout(
+            f"Diario Oficial PDF text extraction exceeded {timeout_seconds:g}s"
+        )
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_timer = signal.getitimer(signal.ITIMER_REAL)
+    started_at = time.monotonic()
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    try:
+        return _extract_pdf_text_with_pdfplumber(content, max_chars=max_chars)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer[0] > 0:
+            elapsed = time.monotonic() - started_at
+            remaining = max(previous_timer[0] - elapsed, 1e-6)
+            signal.setitimer(signal.ITIMER_REAL, remaining, previous_timer[1])
 
 
 def _imprenta_fragment(prefix: str, *parts: str) -> str:
@@ -278,7 +320,7 @@ def _enrich_diario_oficial_pdfs(
                 and not response.content.startswith(b"%PDF")
             ):
                 raise ValueError(f"download did not return a PDF: {content_type}")
-            text = _extract_pdf_text_with_pdfplumber(
+            text = _extract_diario_pdf_text_with_timeout(
                 response.content,
                 max_chars=IMPRENTA_PDF_TEXT_FULL_CHARS,
             )

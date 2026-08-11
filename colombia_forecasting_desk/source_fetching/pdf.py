@@ -29,6 +29,10 @@ _PDF_COMMON_SPANISH_TERMS = {
 }
 
 
+class PDFTextExtractionTimeout(TimeoutError):
+    """Raised when a source-specific PDF text extraction exceeds its deadline."""
+
+
 def _decode_pdf_literal(raw: bytes) -> str:
     body = raw[1:-1]
     out = bytearray()
@@ -447,6 +451,8 @@ def _extract_pdf_text_with_pdfplumber(
                 page_text = page.extract_text(layout=True) or page.extract_text() or ""
                 if page_text:
                     pages.append(page_text)
+    except PDFTextExtractionTimeout:
+        raise
     except Exception:  # noqa: BLE001 - keep best-effort PDF extraction fail-closed
         return _extract_pdf_text_objects_text(content, max_chars=max_chars)
     return "\n".join(pages)[:max_chars]

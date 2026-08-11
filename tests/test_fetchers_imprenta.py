@@ -223,6 +223,63 @@ def test_enrich_diario_oficial_pdfs_marks_no_identity_pdf_as_parsed(
     assert "PDF parsed; no legal-act identities found" in enriched[0].raw_text
 
 
+def test_enrich_diario_oficial_pdfs_fails_closed_when_text_extraction_times_out(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(sample_source, id="diario_oficial", type="legal")
+    html = """
+    <form id="frmConDiario" action="/diario/index.xhtml" method="post">
+      <input type="hidden" name="frmConDiario" value="frmConDiario" />
+      <input type="hidden" name="javax.faces.ViewState" value="view-state-2" />
+      <table>
+        <tr>
+          <td>53.493</td>
+          <td>Ordinaria</td>
+          <td>17/05/2026</td>
+          <td><button name="dtbDiariosOficiales:0:j_idt34">ui-button</button></td>
+        </tr>
+      </table>
+    </form>
+    """
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/diario/",
+        source,
+        "2026-05-18T00:00:00Z",
+        edition_label="Diario Oficial",
+        query_param="edicion",
+    )
+
+    def _slow_extraction(content, *, max_chars):
+        time.sleep(1)
+        return "unreachable"
+
+    monkeypatch.setattr(
+        imprenta_fetchers,
+        "_extract_pdf_text_with_pdfplumber",
+        _slow_extraction,
+    )
+    monkeypatch.setattr(
+        imprenta_fetchers,
+        "DIARIO_PDF_PARSE_TIMEOUT_SECONDS",
+        0.01,
+    )
+
+    enriched = _enrich_diario_oficial_pdfs(
+        items,
+        _FakeDiarioPdfClient(),
+        html,
+        "https://svrpubindc.imprenta.gov.co/diario/",
+        max_items=1,
+    )
+
+    assert enriched[0].metadata["content_extraction_error"] == (
+        "PDFTextExtractionTimeout: Diario Oficial PDF text extraction exceeded 0.01s"
+    )
+    assert "content_extraction" not in enriched[0].metadata
+
+
 def test_enrich_diario_oficial_pdfs_emits_one_row_per_published_act(
     sample_source,
     monkeypatch,
