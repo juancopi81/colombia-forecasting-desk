@@ -9,14 +9,37 @@ from typing import Any
 from .config_loader import load_metasources
 from .models import Metasource
 
-SCHEMA_VERSION = "m3_preflight_opportunities.v1"
+SCHEMA_VERSION = "m3_preflight_opportunities.v2"
 JSON_FILENAME = "m3_preflight_opportunities.json"
 MARKDOWN_FILENAME = "m3_preflight_opportunities.md"
-DEFAULT_WINDOW_DAYS = 7
+DEFAULT_WINDOW_DAYS = 60
+IMMINENT_WINDOW_DAYS = 7
 
 BANREP_RESOLVER_SOURCE_ID = "banrep_junta_comunicados"
 BANREP_CALENDAR_SOURCE_ID = "banrep_junta_calendar"
 BANREP_EVENT_TYPE = "banrep_policy_rate_decision"
+DANE_CALENDAR_SOURCE_ID = "dane_publication_calendar"
+DANE_EVENT_TYPE = "dane_economic_release"
+
+_DANE_RELEASE_LABELS = {
+    "ipc": "consumer inflation (IPC)",
+    "pib": "gross domestic product (PIB)",
+    "ise": "economic activity (ISE)",
+    "labor": "labor-market statistics (GEIH)",
+    "icoced": "building construction costs (ICOCED)",
+    "emmet": "manufacturing activity (EMMET)",
+    "retail": "retail activity (EMC)",
+    "imports": "imports",
+    "exports": "exports",
+    "construction_licenses": "construction licenses",
+}
+_DANE_TENSION_CARD_IDS = {
+    "ipc": {"real_policy_rate", "construction_cost_vs_ipc"},
+    "ise": {"activity_composition_divergence", "activity_labor_tension"},
+    "labor": {"activity_labor_tension"},
+    "icoced": {"construction_cost_vs_ipc"},
+    "construction_licenses": {"construction_cost_vs_ipc"},
+}
 
 _SPANISH_MONTHS = {
     "enero": 1,
@@ -55,7 +78,7 @@ def build_m3_preflight_opportunities(
     sources: list[Metasource] | None = None,
     source_health: list[Any] | None = None,
     generated_at: str | None = None,
-    window_days: int = DEFAULT_WINDOW_DAYS,
+    research_window_days: int = DEFAULT_WINDOW_DAYS,
     forecast_log_path: str | Path = "forecasts/forecast_log.jsonl",
 ) -> dict[str, Any]:
     """Build a deterministic preflight artifact from existing run evidence.
@@ -65,8 +88,8 @@ def build_m3_preflight_opportunities(
     probabilities, or forecast-log entries.
     """
     run_day = _parse_date(run_date, field_name="run_date")
-    if window_days < 0:
-        raise ValueError("window_days must be non-negative")
+    if research_window_days < 0:
+        raise ValueError("research_window_days must be non-negative")
 
     raw_records = [_record(item) for item in raw_items or []]
     health_records = [_record(item) for item in source_health or []]
@@ -112,9 +135,18 @@ def build_m3_preflight_opportunities(
             indicator_tension_cards=indicator_tension_cards or [],
             resolver_source=source_by_id[BANREP_RESOLVER_SOURCE_ID],
             source_health_by_id=health_by_id,
-            window_days=window_days,
+            window_days=research_window_days,
             forecast_log_path=forecast_log_path,
         )
+
+    opportunities.extend(
+        _dane_release_opportunities(
+            run_day=run_day,
+            raw_items=raw_records,
+            indicator_tension_cards=indicator_tension_cards or [],
+            window_days=research_window_days,
+        )
+    )
 
     opportunities = sorted(
         opportunities,
@@ -126,19 +158,31 @@ def build_m3_preflight_opportunities(
         "generated_at": generated_at or f"{run_date}T23:59:59Z",
         "status": "opportunities_found" if opportunities else "no_opportunities",
         "policy": (
-            "Preflight-only artifact. It flags scheduled opportunities for M3 "
-            "review, but does not write forecast_log.jsonl, create evidence "
+            "Preflight-only artifact. It exposes scheduled opportunities across "
+            "an early research horizon and labels only the final seven days as "
+            "imminent. It does not write forecast_log.jsonl, create evidence "
             "packs, set probabilities, or mark any opportunity ready_for_m3."
         ),
         "inputs": {
             "raw_items_artifact": "raw_items.json",
             "source_health_artifact": "source_health.json",
             "config_artifact": "config/metasources.yaml",
-            "window_days": window_days,
+            "research_window_days": research_window_days,
+            "imminent_window_days": IMMINENT_WINDOW_DAYS,
         },
         "summary": {
-            "detectors": [BANREP_EVENT_TYPE],
+            "detectors": [BANREP_EVENT_TYPE, DANE_EVENT_TYPE],
             "opportunity_count": len(opportunities),
+            "imminent_count": sum(
+                1
+                for item in opportunities
+                if item.get("urgency") in {"imminent", "nearby"}
+            ),
+            "research_horizon_count": sum(
+                1
+                for item in opportunities
+                if item.get("urgency") == "research_horizon"
+            ),
             "caveat_count": len(caveats),
         },
         "opportunities": opportunities,
@@ -150,13 +194,13 @@ def write_m3_preflight_opportunities(
     run_dir: str | Path,
     *,
     config_path: str | Path = "config/metasources.yaml",
-    window_days: int = DEFAULT_WINDOW_DAYS,
+    research_window_days: int = DEFAULT_WINDOW_DAYS,
 ) -> tuple[dict[str, Any], Path, Path]:
     run_path = Path(run_dir)
     artifact = build_m3_preflight_opportunities_from_run_dir(
         run_path,
         config_path=config_path,
-        window_days=window_days,
+        research_window_days=research_window_days,
     )
     json_path = run_path / JSON_FILENAME
     markdown_path = run_path / MARKDOWN_FILENAME
@@ -175,7 +219,7 @@ def build_m3_preflight_opportunities_from_run_dir(
     run_dir: str | Path,
     *,
     config_path: str | Path = "config/metasources.yaml",
-    window_days: int = DEFAULT_WINDOW_DAYS,
+    research_window_days: int = DEFAULT_WINDOW_DAYS,
 ) -> dict[str, Any]:
     run_path = Path(run_dir)
     if not run_path.is_dir():
@@ -208,7 +252,7 @@ def build_m3_preflight_opportunities_from_run_dir(
         sources=sources,
         source_health=source_health,
         generated_at=generated_at,
-        window_days=window_days,
+        research_window_days=research_window_days,
     )
 
 
@@ -222,8 +266,8 @@ def render_m3_preflight_opportunities(artifact: dict[str, Any]) -> str:
         f"Opportunity count: {artifact.get('summary', {}).get('opportunity_count', 0)}",
         "",
         (
-            "This artifact flags scheduled opportunities for M3 review only. "
-            "These are not forecasts. "
+            "This artifact flags scheduled opportunities for early M3 research. "
+            "Only events within seven days are imminent; these are not forecasts. "
             "It does not write `forecast_log.jsonl`, create evidence packs, "
             "assign probabilities, or mark items `ready_for_m3`."
         ),
@@ -252,6 +296,134 @@ def render_m3_preflight_opportunities(artifact: dict[str, Any]) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+def _dane_release_opportunities(
+    *,
+    run_day: date,
+    raw_items: list[dict[str, Any]],
+    indicator_tension_cards: list[dict[str, Any]],
+    window_days: int,
+) -> list[dict[str, Any]]:
+    opportunities: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in raw_items:
+        if item.get("source_id") != DANE_CALENDAR_SOURCE_ID:
+            continue
+        metadata = item.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        event_day = _parse_optional_date(str(metadata.get("scheduled_date") or ""))
+        release_family = str(metadata.get("release_family") or "").strip()
+        if event_day is None or release_family not in _DANE_RELEASE_LABELS:
+            continue
+        days_until = (event_day - run_day).days
+        if days_until < 0 or days_until > window_days:
+            continue
+        key = (event_day.isoformat(), release_family)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        is_imminent = days_until <= IMMINENT_WINDOW_DAYS
+        operation_url = str(metadata.get("operation_url") or item.get("url") or "")
+        release_label = _DANE_RELEASE_LABELS[release_family]
+        title = str(item.get("title") or release_label).strip()
+        linked_cards = _linked_tension_cards_for_ids(
+            indicator_tension_cards,
+            _DANE_TENSION_CARD_IDS.get(release_family, set()),
+        )
+        opportunities.append(
+            {
+                "opportunity_id": (
+                    f"dane_{release_family}_release_{event_day.isoformat()}"
+                ),
+                "event_type": DANE_EVENT_TYPE,
+                "status": "preflight_only",
+                "m3_gate": "needs_human_review" if is_imminent else "research_only",
+                "title": f"DANE {release_label} release on {event_day.isoformat()}",
+                "entity": "DANE",
+                "run_date": run_day.isoformat(),
+                "event_date": event_day.isoformat(),
+                "days_until_event": days_until,
+                "urgency": (
+                    "imminent"
+                    if days_until <= 1
+                    else "nearby"
+                    if is_imminent
+                    else "research_horizon"
+                ),
+                "disposition": (
+                    "consider_shadow_or_m3_preflight"
+                    if is_imminent
+                    else "shadow_research"
+                ),
+                "active_forecast_ids": [],
+                "question_seed": (
+                    "Before publication, define one bounded, thresholded outcome "
+                    f"for DANE's {release_label} release and estimate it internally "
+                    "against a named baseline."
+                ),
+                "why_now": (
+                    f"DANE scheduled {title} for {event_day.isoformat()}, giving "
+                    "the desk a clean official event clock and resolver."
+                ),
+                "resolution_source": {
+                    "source_id": DANE_CALENDAR_SOURCE_ID,
+                    "source_name": str(item.get("source_name") or "DANE"),
+                    "url": operation_url,
+                    "trust_role": "agenda_signal",
+                    "criteria": (
+                        "Resolve against the first official DANE release for the "
+                        "scheduled statistical operation and predeclared threshold."
+                    ),
+                },
+                "resolution_sources": [
+                    {
+                        "label": f"DANE {release_label} publication",
+                        "value": "Official scheduled release and operation page.",
+                        "source": str(item.get("source_name") or "DANE"),
+                        "url": operation_url,
+                    }
+                ],
+                "linked_tension_cards": linked_cards,
+                "checks": {
+                    "scheduled_date": {
+                        "passed": True,
+                        "value": event_day.isoformat(),
+                    },
+                    "official_resolver": {
+                        "passed": bool(operation_url),
+                        "value": operation_url,
+                    },
+                },
+                "source_evidence": [
+                    {
+                        "source_id": DANE_CALENDAR_SOURCE_ID,
+                        "url": str(item.get("url") or ""),
+                        "metadata_key": "scheduled_at_local",
+                        "value": str(metadata.get("scheduled_at_local") or ""),
+                    }
+                ],
+                "evidence": [
+                    {
+                        "label": "Scheduled release",
+                        "value": title,
+                        "source": str(item.get("source_name") or "DANE"),
+                        "url": str(item.get("url") or ""),
+                    }
+                ],
+                "missing_evidence": [
+                    "Choose the exact outcome and threshold before publication.",
+                    "Record a simple historical, consensus, or persistence baseline.",
+                ],
+                "guardrails": [
+                    "This prompt is not a forecast until the agent authors a valid shadow case.",
+                    "Do not infer the release value from the event calendar.",
+                ],
+            }
+        )
+    return opportunities
 
 
 def _banrep_policy_rate_opportunities(
@@ -427,18 +599,31 @@ def _banrep_opportunity(
         "Preflight opportunities are not forecasts.",
         "Do not write forecast_log.jsonl from this artifact alone.",
     ]
-    disposition = "already_tracked" if active_forecast_ids else "consider_m3_preflight"
+    is_imminent = days_until <= IMMINENT_WINDOW_DAYS
+    disposition = (
+        "already_tracked"
+        if active_forecast_ids
+        else "consider_m3_preflight"
+        if is_imminent
+        else "shadow_research"
+    )
     return {
         "opportunity_id": f"banrep_policy_rate_decision_{event_date}",
         "event_type": BANREP_EVENT_TYPE,
         "status": "preflight_only",
-        "m3_gate": "needs_human_review",
+        "m3_gate": "needs_human_review" if is_imminent else "research_only",
         "title": f"BanRep board policy-rate decision on {event_date}",
         "entity": "Banco de la Republica",
         "run_date": run_day.isoformat(),
         "event_date": event_date,
         "days_until_event": days_until,
-        "urgency": "imminent" if days_until <= 1 else "nearby",
+        "urgency": (
+            "imminent"
+            if days_until <= 1
+            else "nearby"
+            if days_until <= IMMINENT_WINDOW_DAYS
+            else "research_horizon"
+        ),
         "disposition": disposition,
         "active_forecast_ids": active_forecast_ids,
         "question_seed": question_seed,
@@ -738,6 +923,20 @@ def _linked_tension_cards(cards: list[dict[str, Any]]) -> list[dict[str, str]]:
             }
         )
     return linked
+
+
+def _linked_tension_cards_for_ids(
+    cards: list[dict[str, Any]], card_ids: set[str]
+) -> list[dict[str, str]]:
+    if not card_ids:
+        return []
+    return _linked_tension_cards(
+        [
+            card
+            for card in cards
+            if isinstance(card, dict) and str(card.get("card_id") or "") in card_ids
+        ]
+    )
 
 
 def _active_forecast_ids(

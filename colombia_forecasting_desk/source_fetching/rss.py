@@ -3,6 +3,185 @@ from __future__ import annotations
 from .common import *
 from .html import *
 
+
+DANE_PUBLICATION_CALENDAR_SOURCE_ID = "dane_publication_calendar"
+DANE_PUBLICATION_CALENDAR_TIMEZONE = "America/Bogota"
+DANE_PUBLICATION_CALENDAR_OFFSET = timezone(timedelta(hours=-5))
+DANE_PUBLICATION_CALENDAR_MONTHS = {
+    "ene": 1,
+    "feb": 2,
+    "mar": 3,
+    "abr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "sep": 9,
+    "sept": 9,
+    "oct": 10,
+    "nov": 11,
+    "dic": 12,
+}
+DANE_PUBLICATION_CALENDAR_TITLE_RE = re.compile(
+    r"^\s*(\d{1,2})\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(\d{4})\s+"
+    r"(\d{1,2}):(\d{2})\s*:\s*(.+?)\s*$"
+)
+DANE_PUBLICATION_CALENDAR_RELEASE_PATTERNS = (
+    ("ipc", r"\b(?:ipc|indice de precios al consumidor)\b"),
+    ("pib", r"\b(?:pib|producto interno bruto)\b"),
+    ("ise", r"\b(?:ise|indicador de seguimiento a la economia)\b"),
+    (
+        "labor",
+        r"\b(?:geih|mercado laboral|gran encuesta integrada de hogares)\b",
+    ),
+    (
+        "icoced",
+        r"\b(?:icoced|indice de costos de la construccion de edificaciones)\b",
+    ),
+    (
+        "emmet",
+        r"\b(?:emmet|encuesta mensual manufacturera con enfoque territorial)\b",
+    ),
+    (
+        "retail",
+        r"\b(?:emc|encuesta mensual de comercio|comercio minorista|"
+        r"ventas (?:reales )?del comercio minorista)\b",
+    ),
+    ("imports", r"\bimportaciones\b"),
+    ("exports", r"\bexportaciones\b"),
+    (
+        "construction_licenses",
+        r"\b(?:elic|licencias? de construccion|"
+        r"estadisticas de edificacion licencias de construccion)\b",
+    ),
+)
+
+
+def _parse_dane_calendar_title(title: str) -> tuple[datetime, str] | None:
+    match = DANE_PUBLICATION_CALENDAR_TITLE_RE.match(title)
+    if match is None:
+        return None
+    day_s, month_s, year_s, hour_s, minute_s, release_title = match.groups()
+    month = DANE_PUBLICATION_CALENDAR_MONTHS.get(fold_accents(month_s.lower()))
+    if month is None:
+        return None
+    try:
+        scheduled_at = datetime(
+            int(year_s),
+            month,
+            int(day_s),
+            int(hour_s),
+            int(minute_s),
+            tzinfo=DANE_PUBLICATION_CALENDAR_OFFSET,
+        )
+    except ValueError:
+        return None
+    return scheduled_at, normalize_whitespace(release_title)
+
+
+def _dane_calendar_release_family(release_title: str) -> str | None:
+    folded = fold_accents(release_title.lower())
+    for family, pattern in DANE_PUBLICATION_CALENDAR_RELEASE_PATTERNS:
+        if re.search(pattern, folded):
+            return family
+    return None
+
+
+def _parse_dane_calendar_reference_time(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _dane_calendar_operation_url(
+    description: str,
+    calendar_event_url: str,
+) -> str | None:
+    soup = BeautifulSoup(description, "html.parser")
+    for link in soup.find_all("a", href=True):
+        resolved = urljoin(calendar_event_url, str(link["href"]).strip())
+        parsed = urlsplit(resolved)
+        hostname = (parsed.hostname or "").lower()
+        if hostname != "dane.gov.co" and not hostname.endswith(".dane.gov.co"):
+            continue
+        label = fold_accents(
+            normalize_whitespace(
+                " ".join(
+                    [
+                        str(link.get("title") or ""),
+                        link.get_text(separator=" ", strip=True),
+                    ]
+                )
+            ).lower()
+        )
+        if (
+            "consultar operacion estadistica" in label
+            or "/estadisticas-por-tema/" in parsed.path.lower()
+        ):
+            return resolved
+    return None
+
+
+def _transform_dane_publication_calendar_items(
+    items: list[RawItem],
+    source: Metasource,
+    fetched_at: str,
+) -> list[RawItem]:
+    fetched_at_dt = _parse_dane_calendar_reference_time(fetched_at)
+    if fetched_at_dt is None:
+        return []
+
+    calendar_items: list[RawItem] = []
+    for item in items:
+        parsed_title = _parse_dane_calendar_title(item.title)
+        if parsed_title is None:
+            continue
+        scheduled_at, release_title = parsed_title
+        release_family = _dane_calendar_release_family(release_title)
+        if release_family is None or scheduled_at < fetched_at_dt:
+            continue
+
+        scheduled_at_iso = scheduled_at.isoformat()
+        metadata = {
+            **item.metadata,
+            "content_extraction": "dane_publication_calendar_rss",
+            "event_type": "dane_economic_release",
+            "calendar": DANE_PUBLICATION_CALENDAR_SOURCE_ID,
+            "calendar_event_url": item.url,
+            "release_family": release_family,
+            "scheduled_date": scheduled_at.date().isoformat(),
+            "scheduled_at_local": scheduled_at_iso,
+            "timezone": DANE_PUBLICATION_CALENDAR_TIMEZONE,
+            "feed_published_at": item.published_at,
+        }
+        operation_url = _dane_calendar_operation_url(item.raw_text, item.url)
+        if operation_url is not None:
+            metadata["operation_url"] = operation_url
+        calendar_items.append(
+            RawItem(
+                id=item.id,
+                source_id=item.source_id,
+                source_name=item.source_name,
+                source_type=item.source_type,
+                url=item.url,
+                title=item.title,
+                fetched_at=item.fetched_at,
+                published_at=scheduled_at_iso,
+                raw_text=item.raw_text,
+                metadata=metadata,
+            )
+        )
+
+    calendar_items.sort(key=lambda item: item.published_at or "")
+    if source.max_items is not None and source.max_items >= 0:
+        return calendar_items[: source.max_items]
+    return calendar_items
+
+
 def _parse_rss_entries(parsed: Any, source: Metasource, fetched_at: str) -> list[RawItem]:
     items: list[RawItem] = []
     for entry in parsed.entries or []:
@@ -213,6 +392,9 @@ def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
     items = _parse_rss_entries(parsed, source, fetched_at)
     if not items:
         items = _recover_rss_entries(response.text, source, fetched_at)
+
+    if source.id == DANE_PUBLICATION_CALENDAR_SOURCE_ID:
+        return _transform_dane_publication_calendar_items(items, source, fetched_at)
 
     if source.id == "eltiempo_colombia":
         augmented = _augment_eltiempo_colombia_rss_items(

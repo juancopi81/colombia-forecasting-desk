@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1"><c r="A1" t="inlineStr"><is><t>RESUMEN, RESULTADOS EME</t></is></c></row>
+    <row r="2"><c r="A2" t="inlineStr"><is><t>Fecha de realizacion: del 9 de junio al 11 de junio de 2026</t></is></c></row>
+    <row r="3"><c r="A3" t="inlineStr"><is><t>Expectativas de inflacion total</t></is></c></row>
+    <row r="4"><c r="A4" t="inlineStr"><is><t>Estadistica</t></is></c><c r="B4" t="inlineStr"><is><t>Promedio</t></is></c><c r="C4" t="inlineStr"><is><t>Minimo</t></is></c><c r="D4" t="inlineStr"><is><t>Maximo</t></is></c><c r="E4" t="inlineStr"><is><t>No. encuestados</t></is></c></row>
+    <row r="5"><c r="A5" t="inlineStr"><is><t>% anual en diciembre de 2026</t></is></c><c r="B5"><v>0.0651877</v></c><c r="C5"><v>0.0594</v></c><c r="D5"><v>0.0722</v></c><c r="E5"><v>41</v></c></row>
+    <row r="6"><c r="A6" t="inlineStr"><is><t>% anual en junio de 2027</t></is></c><c r="B6"><v>0.0552614</v></c><c r="C6"><v>0.0443</v></c><c r="D6"><v>0.0704</v></c><c r="E6"><v>39</v></c></row>
+    <row r="7"><c r="A7" t="inlineStr"><is><t>Expectativas de inflacion sin alimentos</t></is></c></row>
+  </sheetData>
+</worksheet>

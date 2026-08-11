@@ -57,6 +57,22 @@ metasources:
     max_items: 12
     notes: "Primary schedule clock for policy-rate decisions. The parser reads BanRep's embedded FullCalendar JSON and keeps only meetings explicitly marked as decisions on the intervention rate; it uses the shared BanRep browser fallback when Radware blocks direct HTTP, and comunicados remain the resolution source."
 
+  - id: banrep_eme_expectations
+    name: Banco de la Republica - Encuesta mensual de expectativas (EME)
+    url: https://www.banrep.gov.co/es/taxonomy/term/3996
+    type: economic_indicator
+    country_relevance: high
+    access_status: html_public
+    fetch_method: html
+    priority: high
+    update_frequency: monthly
+    trust_role: official_signal
+    parsing_difficulty: medium
+    enabled: true
+    onboarding_status: working
+    max_items: 1
+    notes: "Official analyst-consensus baseline for inflation, the policy rate, and TRM. The parser discovers the newest archive entry and XLSX, extracts compact label-based summaries, and records explicit staleness. Use as a baseline input, never as a conclusion."
+
   - id: dane_rss
     name: DANE — RSS Noticias
     url: http://www.dane.gov.co/index.php?option=com_rss&feed=RSS1.0&no_html=1
@@ -71,6 +87,22 @@ metasources:
     enabled: false
     onboarding_status: blocked
     notes: "Official DANE subscription page still documents this RSS URL, but the live endpoint returns 404 as of 2026-04-28. Use dane_comunicados_prensa until a working feed is found."
+
+  - id: dane_publication_calendar
+    name: DANE — Calendario de publicaciones
+    url: https://www.dane.gov.co/index.php?option=com_jevents&task=modlatest.rss&format=feed&type=rss&Itemid=1626&modid=0
+    type: calendar
+    country_relevance: high
+    access_status: rss_public
+    fetch_method: rss
+    priority: high
+    update_frequency: daily
+    trust_role: agenda_signal
+    parsing_difficulty: easy
+    enabled: true
+    onboarding_status: working
+    max_items: 20
+    notes: "Official DANE publication clock. The RSS parser reads the scheduled Bogotá timestamp from each title rather than the historical feed pubDate, keeps only current/future high-value economic releases, and preserves both the calendar-event URL and the linked operation page for resolver research."
 
   - id: dane_comunicados_prensa
     name: DANE — Comunicados de prensa y presentaciones

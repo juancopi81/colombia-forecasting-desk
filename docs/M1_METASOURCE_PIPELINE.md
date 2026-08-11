@@ -768,12 +768,23 @@ runs/YYYY-MM-DD/m3_preflight_opportunities.json
 runs/YYYY-MM-DD/m3_preflight_opportunities.md
 ```
 
-These artifacts flag near-term scheduled official events with clean resolution
-sources, such as a BanRep board policy-rate decision named in the official
-Junta calendar (with parsed minutes as a fallback).
+These artifacts flag scheduled official events with clean resolution sources
+across a 60-day research horizon, such as a BanRep board policy-rate decision
+named in the official Junta calendar (with parsed minutes as a fallback) or a
+high-value DANE release from its official publication-calendar RSS. Events
+eight to sixty days away remain `research_only`; only the final seven days are
+eligible for human M3-preflight consideration.
 They are preflight prompts only: they can tell a human/LLM to consider
 scaffolding an M3 case file, but they do not create forecasts, assign
 probabilities, update `forecast_log.jsonl`, or mark anything `ready_for_m3`.
+
+The `banrep_eme_expectations` source separately parses BanRep's official
+monthly analyst-expectations workbook into a compact consensus baseline for
+inflation, the policy rate, and TRM. It records fieldwork dates, participant
+counts, release age, and `freshness_status`. It is baseline context, not an
+indicator tension trigger or desk conclusion. Old rows remain visible in raw
+intake but continue through the normal freshness filter instead of receiving a
+special ranking exception.
 
 ## Analyst Leads
 
@@ -1053,6 +1064,7 @@ Links:
 - [x] Save `indicator_tension_cards.json` and `.md`.
 - [x] Save `cooccurrence_bundles.json` and `.md`.
 - [x] Save `m3_preflight_opportunities.json` and `.md`.
+- [x] Add official DANE publication clocks for selected economic releases.
 - [x] Save `analyst_leads.json` and `.md`.
 
 ### Step 6 — Rank clusters

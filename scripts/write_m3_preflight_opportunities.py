@@ -40,7 +40,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to metasources YAML config.",
     )
     parser.add_argument(
+        "--research-window-days",
         "--window-days",
+        dest="research_window_days",
         type=int,
         default=DEFAULT_WINDOW_DAYS,
         help=(
@@ -55,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         artifact, json_path, markdown_path = write_m3_preflight_opportunities(
             run_dir,
             config_path=args.config,
-            window_days=args.window_days,
+            research_window_days=args.research_window_days,
         )
     except (PreflightInputError, ValueError) as exc:
         print(f"Failed to write M3 preflight opportunities: {exc}", file=sys.stderr)

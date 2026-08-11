@@ -1,6 +1,189 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import colombia_forecasting_desk.source_fetching.rss as rss_fetchers
+from colombia_forecasting_desk.config_loader import load_metasources
+
 from tests.fetcher_helpers import *  # noqa: F403
+
+
+DANE_PUBLICATION_CALENDAR_URL = (
+    "https://www.dane.gov.co/index.php?option=com_jevents&task=modlatest.rss"
+    "&format=feed&type=rss&Itemid=1626&modid=0"
+)
+DANE_PUBLICATION_CALENDAR_FIXTURE = (
+    Path(__file__).parent
+    / "fixtures"
+    / "dane_publication_calendar"
+    / "2026-08-11.xml"
+)
+
+
+def _dane_publication_calendar_source(sample_source, **overrides):
+    values = {
+        "id": "dane_publication_calendar",
+        "name": "DANE — Calendario de publicaciones",
+        "url": DANE_PUBLICATION_CALENDAR_URL,
+        "type": "calendar",
+        "trust_role": "agenda_signal",
+        "max_items": 10,
+    }
+    values.update(overrides)
+    return replace(sample_source, **values)
+
+
+def _rss_with_titles(*titles: str) -> str:
+    items = "".join(
+        f"""
+        <item>
+          <title>{title}</title>
+          <link>https://www.dane.gov.co/index.php/calendario/evento-{index}</link>
+          <description>Publicación programada por DANE.</description>
+          <pubDate>Mon, 10 Aug 2026 08:00:00 -0500</pubDate>
+        </item>
+        """
+        for index, title in enumerate(titles, start=1)
+    )
+    return f"<rss><channel>{items}</channel></rss>"
+
+
+def _fetch_dane_calendar(source, feed: str, monkeypatch, fetched_at: str):
+    monkeypatch.setattr(rss_fetchers, "_now_iso", lambda: fetched_at)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=feed, request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        return fetch_rss(source, client)
+
+
+def test_fetch_dane_calendar_uses_scheduled_title_timestamp(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _dane_publication_calendar_source(sample_source)
+    items = _fetch_dane_calendar(
+        source,
+        DANE_PUBLICATION_CALENDAR_FIXTURE.read_text(encoding="utf-8"),
+        monkeypatch,
+        "2026-08-11T16:00:00Z",
+    )
+
+    assert [item.title for item in items] == [
+        "13 Ago 2026 14:00 : GEIH - Población fuera de la fuerza laboral"
+    ]
+    assert items[0].published_at == "2026-08-13T14:00:00-05:00"
+    assert items[0].metadata["feed_published_at"] == "2025-11-18T16:54:14Z"
+    assert items[0].metadata["event_type"] == "dane_economic_release"
+    assert items[0].metadata["calendar"] == "dane_publication_calendar"
+
+
+def test_fetch_dane_calendar_extracts_operation_url(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _dane_publication_calendar_source(sample_source)
+    [item] = _fetch_dane_calendar(
+        source,
+        DANE_PUBLICATION_CALENDAR_FIXTURE.read_text(encoding="utf-8"),
+        monkeypatch,
+        "2026-08-11T16:00:00Z",
+    )
+
+    assert item.metadata["operation_url"] == (
+        "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+        "mercado-laboral/poblacion-fuera-de-la-fuerza-laboral"
+    )
+    assert item.metadata["calendar_event_url"] == item.url
+
+
+def test_fetch_dane_calendar_keeps_supported_economic_release_families(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _dane_publication_calendar_source(sample_source, max_items=20)
+    feed = _rss_with_titles(
+        "18 Ago 2026 10:00 : Índice de Precios al Consumidor (IPC)",
+        "18 Ago 2026 10:30 : Producto Interno Bruto (PIB)",
+        "18 Ago 2026 11:00 : Indicador de Seguimiento a la Economía (ISE)",
+        "18 Ago 2026 11:30 : Gran Encuesta Integrada de Hogares (GEIH)",
+        "18 Ago 2026 12:00 : Índice de Costos de la Construcción de Edificaciones (ICOCED)",
+        "18 Ago 2026 12:30 : Encuesta Mensual Manufacturera con Enfoque Territorial (EMMET)",
+        "18 Ago 2026 13:00 : Encuesta Mensual de Comercio (EMC)",
+        "18 Ago 2026 13:30 : Importaciones",
+        "18 Ago 2026 14:00 : Exportaciones",
+        "18 Ago 2026 14:30 : Estadísticas de Edificación Licencias de Construcción (ELIC)",
+        "18 Ago 2026 15:00 : Pobreza Monetaria Departamental",
+    )
+    items = _fetch_dane_calendar(
+        source, feed, monkeypatch, "2026-08-11T16:00:00Z"
+    )
+
+    assert [item.metadata["release_family"] for item in items] == [
+        "ipc",
+        "pib",
+        "ise",
+        "labor",
+        "icoced",
+        "emmet",
+        "retail",
+        "imports",
+        "exports",
+        "construction_licenses",
+    ]
+
+
+def test_fetch_dane_calendar_fails_closed_on_non_current_release_titles(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _dane_publication_calendar_source(sample_source, max_items=20)
+    feed = _rss_with_titles(
+        "18 Ago 2026 09:59 : Producto Interno Bruto (PIB)",
+        "18 Ago 2026 10:00 : Índice de Precios al Consumidor (IPC)",
+        "32 Ago 2026 11:00 : Indicador de Seguimiento a la Economía (ISE)",
+        "Próxima publicación: Encuesta Mensual de Comercio (EMC)",
+        "18 Ago 2026 12:00 : Boletín diario de Precios de Alimentos (SIPSA)",
+    )
+    items = _fetch_dane_calendar(
+        source, feed, monkeypatch, "2026-08-18T15:00:00Z"
+    )
+
+    assert [item.metadata["release_family"] for item in items] == ["ipc"]
+    assert items[0].metadata["scheduled_at_local"] == "2026-08-18T10:00:00-05:00"
+
+
+def test_fetch_dane_calendar_caps_nearest_events_through_source_max_items(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _dane_publication_calendar_source(sample_source, max_items=2)
+    feed = _rss_with_titles(
+        "20 Ago 2026 10:00 : Exportaciones",
+        "18 Ago 2026 10:00 : Producto Interno Bruto (PIB)",
+        "19 Ago 2026 10:00 : Importaciones",
+    )
+    items = _fetch_dane_calendar(
+        source, feed, monkeypatch, "2026-08-11T16:00:00Z"
+    )
+
+    assert [item.metadata["release_family"] for item in items] == ["pib", "imports"]
+
+
+def test_real_config_enables_dane_publication_calendar() -> None:
+    config_path = Path(__file__).resolve().parents[1] / "config" / "metasources.yaml"
+    sources = load_metasources(config_path)
+
+    source = next(item for item in sources if item.id == "dane_publication_calendar")
+
+    assert source.url == DANE_PUBLICATION_CALENDAR_URL
+    assert source.fetch_method == "rss"
+    assert source.type == "calendar"
+    assert source.trust_role == "agenda_signal"
+    assert source.priority == "high"
+    assert source.onboarding_status == "working"
+    assert source.max_items == 20
 
 
 def test_parse_rss_entries(sample_source) -> None:

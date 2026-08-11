@@ -140,7 +140,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert isinstance(result.market_pricing_watch, list)
     assert isinstance(result.cooccurrence_bundles, list)
     assert result.m3_preflight_opportunities["schema_version"] == (
-        "m3_preflight_opportunities.v1"
+        "m3_preflight_opportunities.v2"
     )
     assert result.run_trace["schema_version"] == "run_trace.v1"
     assert result.run_trace["mode"] == "daily"
@@ -172,7 +172,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     )
     assert (
         result.run_manifest["artifact_schemas"]["m3_preflight_opportunities.json"]
-        == "m3_preflight_opportunities.v1"
+        == "m3_preflight_opportunities.v2"
     )
     assert (
         result.run_manifest["artifact_schemas"]["analyst_leads.json"]

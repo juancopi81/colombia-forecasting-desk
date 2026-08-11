@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Captured from the official DANE JEvents RSS feed on 2026-08-11. -->
+<rss version="2.0">
+  <channel>
+    <title>DANE - JEvents RSS Feed for Joomla</title>
+    <link>https://www.dane.gov.co</link>
+    <item>
+      <title>11 Ago 2026 12:00 : Boletín diario de Precios de Alimentos (SIPSA)</title>
+      <link>https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/08/11/10896/-/boletin-diario-de-precios-de-alimentos-sipsa</link>
+      <description>Boletín diario del SIPSA.</description>
+      <pubDate>Wed, 10 Dec 2025 05:39:12 -0500</pubDate>
+    </item>
+    <item>
+      <title>13 Ago 2026 14:00 : GEIH - Población fuera de la fuerza laboral</title>
+      <link>https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/08/13/10616/-/geih-poblacion-fuera-de-la-fuerza-laboral</link>
+      <description><![CDATA[
+        <p>
+          <a title="Consultar operación estadística"
+             href="https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/poblacion-fuera-de-la-fuerza-laboral">
+            Consultar operación estadística
+          </a>
+        </p>
+      ]]></description>
+      <pubDate>Tue, 18 Nov 2025 11:54:14 -0500</pubDate>
+    </item>
+  </channel>
+</rss>

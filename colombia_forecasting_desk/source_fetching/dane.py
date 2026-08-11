@@ -85,6 +85,14 @@ _ICOCED_METRIC_SHEETS = {
     "residential": "Anexo 2.1",
     "non_residential": "Anexo 2.2",
 }
+_BANREP_EME_REQUIRED_SHEETS = ("RESUMEN", "TRM", "TASA_INTERV")
+_BANREP_EME_MAX_XLSX_BYTES = 5_000_000
+_BANREP_EME_STALE_AFTER_DAYS = 45
+_BANREP_EME_OFFICIAL_HOSTS = {
+    "www.banrep.gov.co",
+    "banrep.gov.co",
+    "d1b4gd4m8561gs.cloudfront.net",
+}
 
 
 def _xlsx_shared_strings(zf: zipfile.ZipFile) -> list[str]:
@@ -464,6 +472,545 @@ def _banrep_calendar_scheduled_at(value: str, timezone_name: str) -> str | None:
     return parsed.isoformat()
 
 
+def _banrep_eme_period(title: str) -> tuple[int, int] | None:
+    folded = fold_accents(title.lower())
+    month_names = "|".join(MONTHS_ES)
+    match = re.search(rf"\b({month_names})\s+de\s+(\d{{4}})\b", folded)
+    if not match:
+        return None
+    month_name, year_text = match.groups()
+    return int(year_text), MONTHS_ES[month_name]
+
+
+def _extract_banrep_eme_archive_entries(
+    html_text: str,
+    base_url: str,
+) -> list[dict[str, Any]]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    entries: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for link in soup.find_all("a", href=True):
+        title = normalize_whitespace(link.get_text(separator=" ", strip=True))
+        folded = fold_accents(title.lower())
+        if (
+            "resultado de la encuesta mensual de expectativas" not in folded
+            or "eme" not in folded
+        ):
+            continue
+        period = _banrep_eme_period(title)
+        if period is None:
+            continue
+        resolved = urljoin(base_url, link["href"])
+        canon = canonicalize_url(resolved)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        container = (
+            link.find_parent("article")
+            or link.find_parent("li")
+            or link.find_parent(class_=re.compile(r"views-row|node", re.IGNORECASE))
+            or link.parent
+        )
+        context = normalize_whitespace(
+            container.get_text(separator=" ", strip=True) if container else title
+        )
+        entries.append(
+            {
+                "title": title,
+                "url": resolved,
+                "period_year": period[0],
+                "period_month": period[1],
+                "published_at": _parse_date_text_to_iso(context),
+            }
+        )
+    entries.sort(
+        key=lambda entry: (
+            entry["period_year"],
+            entry["period_month"],
+            entry.get("published_at") or "",
+        ),
+        reverse=True,
+    )
+    return entries
+
+
+def _extract_banrep_eme_detail(
+    html_text: str,
+    base_url: str,
+) -> dict[str, str | None]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    workbook_url: str | None = None
+    for link in soup.find_all("a", href=True):
+        resolved = urljoin(base_url, link["href"].strip())
+        parsed = urlsplit(resolved)
+        if parsed.scheme not in {"http", "https"}:
+            continue
+        if parsed.hostname not in _BANREP_EME_OFFICIAL_HOSTS:
+            continue
+        if parsed.path.lower().endswith(".xlsx"):
+            workbook_url = resolved
+            break
+
+    text = normalize_whitespace(soup.get_text(separator=" ", strip=True))
+    release_date: str | None = None
+    modified_match = re.search(
+        r"[ÚU]ltima modificaci[oó]n\s+(.{0,90}?\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if modified_match:
+        release_date = _parse_date_text_to_iso(modified_match.group(1))
+    return {"workbook_url": workbook_url, "release_date": release_date}
+
+
+def _eme_number(value: str | None, *, percent: bool = False) -> float | None:
+    if value is None:
+        return None
+    try:
+        number = float(value.strip().replace(",", "."))
+    except ValueError:
+        return None
+    if percent and abs(number) <= 1:
+        number *= 100
+    return round(number, 2)
+
+
+def _eme_excel_date(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        serial = int(float(value))
+    except ValueError:
+        return None
+    if serial < 1:
+        return None
+    return (datetime(1899, 12, 30) + timedelta(days=serial)).date().isoformat()
+
+
+def _eme_month_horizon(label: str | None) -> tuple[int, int] | None:
+    if not label:
+        return None
+    folded = fold_accents(label.lower())
+    month_tokens = {
+        **MONTHS_ES,
+        "ene": 1,
+        "feb": 2,
+        "mar": 3,
+        "abr": 4,
+        "may": 5,
+        "jun": 6,
+        "jul": 7,
+        "ago": 8,
+        "sep": 9,
+        "oct": 10,
+        "nov": 11,
+        "dic": 12,
+    }
+    month_names = "|".join(sorted(month_tokens, key=len, reverse=True))
+    match = re.search(rf"\b({month_names})\.?/?\s*(?:de\s+)?(\d{{4}})\b", folded)
+    if not match:
+        return None
+    month_name, year_text = match.groups()
+    return int(year_text), month_tokens[month_name]
+
+
+def _eme_group_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    start: int | None = None
+    for index, row in enumerate(rows):
+        label = fold_accents((row.get("A") or "").strip().lower())
+        if label == "todas las entidades participantes":
+            start = index + 1
+            break
+    if start is None:
+        return []
+    result: list[dict[str, str]] = []
+    for row in rows[start:]:
+        label = fold_accents((row.get("A") or "").strip().lower())
+        if label in {
+            "bancos",
+            "sociedades comisionistas de bolsa",
+            "corporaciones, fondos de pensiones y cesantias, universidades y otros",
+        }:
+            break
+        result.append(row)
+    return result
+
+
+def _eme_stat_rows(rows: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+    aliases = {
+        "media": "mean",
+        "promedio": "mean",
+        "mediana": "median",
+        "moda": "mode",
+        "minimo": "min",
+        "maximo": "max",
+        "numero de participantes": "participants",
+    }
+    result: dict[str, dict[str, str]] = {}
+    for row in rows:
+        label = fold_accents((row.get("A") or "").strip().lower())
+        key = aliases.get(label)
+        if key:
+            result[key] = row
+    return result
+
+
+def _parse_banrep_eme_policy_rate(
+    rows: list[dict[str, str]],
+    release_date: str,
+) -> dict[str, Any] | None:
+    header = next(
+        (
+            row
+            for row in rows
+            if fold_accents((row.get("A") or "").strip().lower())
+            == "medidas estadisticas"
+        ),
+        None,
+    )
+    stats = _eme_stat_rows(_eme_group_rows(rows))
+    if header is None or not stats:
+        return None
+    release_day = release_date[:10]
+    horizons = [
+        (column, _eme_excel_date(value))
+        for column, value in header.items()
+        if column != "A"
+    ]
+    valid_horizons = [
+        (column, horizon)
+        for column, horizon in horizons
+        if horizon is not None and horizon >= release_day
+    ]
+    if not valid_horizons:
+        return None
+    column, horizon = valid_horizons[0]
+    result: dict[str, Any] = {"horizon_date": horizon}
+    for field in ("mean", "median", "mode", "min", "max"):
+        value = _eme_number(stats.get(field, {}).get(column), percent=True)
+        if value is not None:
+            result[f"{field}_pct"] = value
+    participants = _eme_number(stats.get("participants", {}).get(column))
+    if participants is not None:
+        result["participants"] = int(participants)
+    if "median_pct" not in result:
+        return None
+    return result
+
+
+def _parse_banrep_eme_trm(
+    rows: list[dict[str, str]],
+    release_date: str,
+) -> dict[str, Any] | None:
+    header = next(
+        (
+            row
+            for row in rows
+            if fold_accents((row.get("A") or "").strip().lower())
+            == "medidas estadisticas"
+        ),
+        None,
+    )
+    stats = _eme_stat_rows(_eme_group_rows(rows))
+    if header is None or not stats:
+        return None
+    release_year = int(release_date[:4])
+    horizons: list[tuple[str, tuple[int, int]]] = []
+    for column, label in header.items():
+        if column == "A":
+            continue
+        horizon = _eme_month_horizon(label)
+        if horizon is not None:
+            horizons.append((column, horizon))
+    if not horizons:
+        return None
+
+    def build(column: str, horizon: tuple[int, int]) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "horizon_period": f"{horizon[0]:04d}-{horizon[1]:02d}"
+        }
+        for field in ("mean", "median", "mode", "min", "max"):
+            value = _eme_number(stats.get(field, {}).get(column))
+            if value is not None:
+                result[f"{field}_cop_per_usd"] = value
+        participants = _eme_number(stats.get("participants", {}).get(column))
+        if participants is not None:
+            result["participants"] = int(participants)
+        return result
+
+    nearest_column, nearest_horizon = horizons[0]
+    year_end = next(
+        (
+            (column, horizon)
+            for column, horizon in horizons
+            if horizon == (release_year, 12)
+        ),
+        None,
+    )
+    result = {"nearest": build(nearest_column, nearest_horizon)}
+    if year_end is not None:
+        result["year_end"] = build(*year_end)
+    if "median_cop_per_usd" not in result["nearest"]:
+        return None
+    return result
+
+
+def _parse_banrep_eme_inflation(
+    rows: list[dict[str, str]],
+    release_date: str,
+) -> dict[str, Any] | None:
+    start: int | None = None
+    for index, row in enumerate(rows):
+        label = fold_accents((row.get("A") or "").strip().lower())
+        if label == "expectativas de inflacion total":
+            start = index + 1
+            break
+    if start is None:
+        return None
+    section: list[dict[str, str]] = []
+    for row in rows[start:]:
+        label = fold_accents((row.get("A") or "").strip().lower())
+        if label.startswith("expectativas de inflacion") and section:
+            break
+        section.append(row)
+
+    release_year = int(release_date[:4])
+    release_month = int(release_date[5:7])
+
+    def build(row: dict[str, str], horizon: tuple[int, int]) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "horizon_period": f"{horizon[0]:04d}-{horizon[1]:02d}"
+        }
+        for column, field in (("B", "mean"), ("C", "min"), ("D", "max")):
+            value = _eme_number(row.get(column), percent=True)
+            if value is not None:
+                result[f"{field}_pct"] = value
+        participants = _eme_number(row.get("E"))
+        if participants is not None:
+            result["participants"] = int(participants)
+        return result
+
+    annual_rows: list[tuple[dict[str, str], tuple[int, int]]] = []
+    for row in section:
+        label = fold_accents((row.get("A") or "").strip().lower())
+        if "% anual" not in label:
+            continue
+        horizon = _eme_month_horizon(label)
+        if horizon is not None:
+            annual_rows.append((row, horizon))
+    year_end = next(
+        (
+            (row, horizon)
+            for row, horizon in annual_rows
+            if horizon == (release_year, 12)
+        ),
+        None,
+    )
+    twelve_month = next(
+        (
+            (row, horizon)
+            for row, horizon in annual_rows
+            if horizon == (release_year + 1, release_month)
+        ),
+        None,
+    )
+    result: dict[str, Any] = {}
+    if year_end is not None:
+        result["year_end"] = build(*year_end)
+    if twelve_month is not None:
+        result["twelve_month"] = build(*twelve_month)
+    if not result:
+        return None
+    return result
+
+
+def _parse_banrep_eme_fieldwork(
+    rows: list[dict[str, str]],
+) -> tuple[str | None, str | None]:
+    text = " ".join(row.get("A", "") for row in rows[:10])
+    folded = fold_accents(text.lower())
+    month_names = "|".join(MONTHS_ES)
+    match = re.search(
+        rf"del\s+(\d{{1,2}})\s+de\s+({month_names})\s+al\s+"
+        rf"(\d{{1,2}})\s+de\s+({month_names})\s+de\s+(\d{{4}})",
+        folded,
+    )
+    if not match:
+        return None, None
+    start_day, start_month, end_day, end_month, year = match.groups()
+    return (
+        _date_to_iso(int(year), MONTHS_ES[start_month], int(start_day))[:10],
+        _date_to_iso(int(year), MONTHS_ES[end_month], int(end_day))[:10],
+    )
+
+
+def _parse_banrep_eme_xlsx(
+    content: bytes,
+    *,
+    release_date: str,
+) -> dict[str, Any] | None:
+    if not content or len(content) > _BANREP_EME_MAX_XLSX_BYTES:
+        return None
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            shared_strings = _xlsx_shared_strings(zf)
+            sheet_paths = _xlsx_sheet_paths(zf)
+            if any(name not in sheet_paths for name in _BANREP_EME_REQUIRED_SHEETS):
+                return None
+            rows = {
+                name: _xlsx_rows(zf, sheet_paths[name], shared_strings)
+                for name in _BANREP_EME_REQUIRED_SHEETS
+            }
+    except (KeyError, ET.ParseError, zipfile.BadZipFile, OSError):
+        return None
+
+    policy_rate = _parse_banrep_eme_policy_rate(
+        rows["TASA_INTERV"], release_date
+    )
+    trm = _parse_banrep_eme_trm(rows["TRM"], release_date)
+    inflation = _parse_banrep_eme_inflation(rows["RESUMEN"], release_date)
+    if policy_rate is None or trm is None or inflation is None:
+        return None
+    fieldwork_start, fieldwork_end = _parse_banrep_eme_fieldwork(rows["RESUMEN"])
+    return {
+        "fieldwork_start": fieldwork_start,
+        "fieldwork_end": fieldwork_end,
+        "expectations": {
+            "policy_rate": policy_rate,
+            "trm": trm,
+            "inflation": inflation,
+        },
+    }
+
+
+def _banrep_eme_freshness(release_date: str, fetched_at: str) -> dict[str, Any]:
+    try:
+        released = datetime.fromisoformat(release_date.replace("Z", "+00:00"))
+        fetched = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+    except ValueError:
+        return {"freshness_status": "unknown", "days_stale": None, "is_stale": True}
+    if released.tzinfo is None:
+        released = released.replace(tzinfo=timezone.utc)
+    if fetched.tzinfo is None:
+        fetched = fetched.replace(tzinfo=timezone.utc)
+    days_stale = max(0, (fetched.date() - released.date()).days)
+    return {
+        "freshness_status": (
+            "current" if days_stale <= _BANREP_EME_STALE_AFTER_DAYS else "stale"
+        ),
+        "days_stale": days_stale,
+        "is_stale": days_stale > _BANREP_EME_STALE_AFTER_DAYS,
+    }
+
+
+def _fetch_banrep_eme_expectations(
+    source: Metasource,
+    client: httpx.Client,
+    listing_html: str,
+    fetched_at: str,
+) -> list[RawItem]:
+    entries = _extract_banrep_eme_archive_entries(listing_html, source.url)
+    if not entries:
+        raise ValueError("BanRep EME archive contained no result entries")
+    latest = entries[0]
+    detail_html: str
+    detail_url: str
+    try:
+        detail_response = _http_get(client, latest["url"])
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code not in {403, 429, 503}:
+            raise
+        detail_html, detail_url = _fetch_banrep_eme_detail_with_browser(
+            latest["url"]
+        )
+    else:
+        marker = _detect_bot_block(detail_response.text)
+        if marker:
+            detail_html, detail_url = _fetch_banrep_eme_detail_with_browser(
+                latest["url"]
+            )
+        else:
+            detail_html = detail_response.text
+            detail_url = str(detail_response.url)
+    detail = _extract_banrep_eme_detail(
+        detail_html,
+        detail_url,
+    )
+    workbook_url = detail.get("workbook_url")
+    if not workbook_url:
+        raise ValueError("BanRep EME detail did not expose an official XLSX workbook")
+    # Prefer the archive's publication clock. A detail page may be edited later,
+    # and its "ultima modificacion" date must not make an old survey look fresh.
+    release_date = latest.get("published_at") or detail.get("release_date")
+    if not isinstance(release_date, str):
+        raise ValueError("BanRep EME result has no parseable release date")
+    workbook_response = _http_get(client, workbook_url)
+    if len(workbook_response.content) > _BANREP_EME_MAX_XLSX_BYTES:
+        raise ValueError("BanRep EME workbook exceeds the bounded XLSX size limit")
+    parsed = _parse_banrep_eme_xlsx(
+        workbook_response.content,
+        release_date=release_date,
+    )
+    if parsed is None:
+        raise ValueError("BanRep EME workbook is missing required consensus fields")
+
+    year = latest["period_year"]
+    month = latest["period_month"]
+    period = f"{year:04d}-{month:02d}"
+    freshness = _banrep_eme_freshness(release_date, fetched_at)
+    expectations = parsed["expectations"]
+    policy = expectations["policy_rate"]
+    trm = expectations["trm"]["nearest"]
+    inflation = expectations["inflation"].get("year_end") or next(
+        iter(expectations["inflation"].values())
+    )
+    title = f"BanRep EME consensus baseline - {_MONTH_NAME_ES[month]} {year}"
+    raw_text = (
+        f"{title}. Official consensus baseline, not a conclusion. "
+        f"Policy-rate median for {policy['horizon_date']}: "
+        f"{policy['median_pct']:.2f}%. "
+        f"TRM median for {trm['horizon_period']}: "
+        f"{trm['median_cop_per_usd']:.2f} COP/USD. "
+        f"Inflation mean for {inflation['horizon_period']}: "
+        f"{inflation['mean_pct']:.2f}%. "
+        f"Freshness: {freshness['freshness_status']} "
+        f"({freshness['days_stale']} days since release)."
+    )
+    metadata = {
+        "content_extraction": "banrep_eme_xlsx",
+        "event_type": "consensus_baseline",
+        "baseline_role": "consensus_only",
+        "survey_period": period,
+        "release_date": release_date[:10],
+        "fieldwork_start": parsed["fieldwork_start"],
+        "fieldwork_end": parsed["fieldwork_end"],
+        "archive_url": source.url,
+        "detail_url": latest["url"],
+        "workbook_url": workbook_url,
+        "expectations": expectations,
+        "participant_counts": {
+            "policy_rate": policy.get("participants"),
+            "trm": trm.get("participants"),
+            "inflation": inflation.get("participants"),
+        },
+        **freshness,
+    }
+    return [
+        RawItem(
+            id=_make_id(source.id, latest["url"], title),
+            source_id=source.id,
+            source_name=source.name,
+            source_type=source.type,
+            url=latest["url"],
+            title=title,
+            fetched_at=fetched_at,
+            published_at=release_date,
+            raw_text=raw_text,
+            metadata=metadata,
+        )
+    ]
+
+
 def _extract_banrep_minutas_links(
     soup: BeautifulSoup,
     base_url: str,
@@ -785,6 +1332,27 @@ def _banrep_browser_page() -> Any:
         raise
     page = context.new_page()
     return playwright, browser, page
+
+
+def _fetch_banrep_eme_detail_with_browser(url: str) -> tuple[str, str]:
+    playwright, browser, page = _banrep_browser_page()
+    try:
+        page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=BANREP_JUNTA_BROWSER_TIMEOUT_MS,
+        )
+        _wait_for_browser_network_idle(page)
+        html_text = page.content()
+        marker = _detect_bot_block(html_text)
+        if marker:
+            raise BotBlockError(
+                f"browser fetch still bot-blocked for BanRep EME detail: {marker}"
+            )
+        return html_text, page.url
+    finally:
+        browser.close()
+        playwright.stop()
 
 
 def _wait_for_browser_network_idle(page: Any) -> None:

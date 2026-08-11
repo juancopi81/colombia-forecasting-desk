@@ -178,6 +178,13 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
             source,
             fetched_at,
         )
+    if source.id == "banrep_eme_expectations":
+        return _fetch_banrep_eme_expectations(
+            source,
+            client,
+            response.text,
+            fetched_at,
+        )
     if source.id == "diario_oficial":
         items = _extract_imprenta_jsf_table(
             response.text,

@@ -1,8 +1,239 @@
 from __future__ import annotations
 
+import io
 import json
+from pathlib import Path
+import zipfile
 
+from colombia_forecasting_desk.config_loader import load_metasources
 from tests.fetcher_helpers import *  # noqa: F403
+
+
+BANREP_EME_FIXTURE_DIR = (
+    Path(__file__).resolve().parent / "fixtures" / "banrep_eme"
+)
+
+
+def _banrep_eme_fixture_xlsx() -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as zf:
+        zf.writestr(
+            "xl/workbook.xml",
+            (BANREP_EME_FIXTURE_DIR / "workbook.xml").read_text(encoding="utf-8"),
+        )
+        zf.writestr(
+            "xl/_rels/workbook.xml.rels",
+            (BANREP_EME_FIXTURE_DIR / "workbook.xml.rels").read_text(
+                encoding="utf-8"
+            ),
+        )
+        for sheet in ("resumen", "trm", "tasa_interv"):
+            zf.writestr(
+                f"xl/worksheets/{sheet}.xml",
+                (BANREP_EME_FIXTURE_DIR / f"{sheet}.xml").read_text(
+                    encoding="utf-8"
+                ),
+            )
+    return out.getvalue()
+
+
+def _banrep_eme_source(sample_source):
+    return replace(
+        sample_source,
+        id="banrep_eme_expectations",
+        name="BanRep EME",
+        type="economic_indicator",
+        url="https://www.banrep.gov.co/es/taxonomy/term/3996",
+        fetch_method="html",
+        update_frequency="monthly",
+        trust_role="official_signal",
+        max_items=1,
+    )
+
+
+def _banrep_eme_transport(*, detail_html: str | None = None, workbook: bytes | None = None):
+    listing = (BANREP_EME_FIXTURE_DIR / "listing.html").read_text(encoding="utf-8")
+    detail = detail_html or (BANREP_EME_FIXTURE_DIR / "detail.html").read_text(
+        encoding="utf-8"
+    )
+    workbook_bytes = workbook if workbook is not None else _banrep_eme_fixture_xlsx()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/es/taxonomy/term/3996":
+            return httpx.Response(200, text=listing, request=request)
+        if "resultado-encuesta-mensual" in request.url.path:
+            return httpx.Response(200, text=detail, request=request)
+        if request.url.path.endswith("res_inf_jun2026.xlsx"):
+            return httpx.Response(
+                200,
+                content=workbook_bytes,
+                headers={
+                    "content-type": (
+                        "application/vnd.openxmlformats-officedocument."
+                        "spreadsheetml.sheet"
+                    )
+                },
+                request=request,
+            )
+        return httpx.Response(404, request=request)
+
+    return httpx.MockTransport(handler)
+
+
+def test_extract_banrep_eme_archive_and_detail_discovers_latest_official_xlsx() -> None:
+    listing = (BANREP_EME_FIXTURE_DIR / "listing.html").read_text(encoding="utf-8")
+    entries = fetchers._extract_banrep_eme_archive_entries(
+        listing,
+        "https://www.banrep.gov.co/es/taxonomy/term/3996",
+    )
+
+    assert [entry["period_month"] for entry in entries] == [6, 5]
+    assert entries[0]["published_at"] == "2026-06-17T00:00:00Z"
+    assert entries[0]["url"].endswith("eme-junio-2026")
+
+    detail = fetchers._extract_banrep_eme_detail(
+        (BANREP_EME_FIXTURE_DIR / "detail.html").read_text(encoding="utf-8"),
+        entries[0]["url"],
+    )
+    assert detail["release_date"] == "2026-06-17T00:00:00Z"
+    assert detail["workbook_url"].endswith("res_inf_jun2026.xlsx")
+
+
+def test_parse_banrep_eme_xlsx_extracts_compact_consensus_fields() -> None:
+    parsed = fetchers._parse_banrep_eme_xlsx(
+        _banrep_eme_fixture_xlsx(),
+        release_date="2026-06-17T00:00:00Z",
+    )
+
+    assert parsed is not None
+    assert parsed["fieldwork_start"] == "2026-06-09"
+    assert parsed["fieldwork_end"] == "2026-06-11"
+    expectations = parsed["expectations"]
+    assert expectations["policy_rate"] == {
+        "horizon_date": "2026-06-30",
+        "mean_pct": 11.76,
+        "median_pct": 11.75,
+        "mode_pct": 11.75,
+        "min_pct": 11.25,
+        "max_pct": 13.0,
+        "participants": 40,
+    }
+    assert expectations["trm"]["nearest"]["median_cop_per_usd"] == 3514.9
+    assert expectations["trm"]["year_end"]["median_cop_per_usd"] == 3663.0
+    assert expectations["inflation"]["year_end"]["mean_pct"] == 6.52
+    assert expectations["inflation"]["twelve_month"]["mean_pct"] == 5.53
+
+
+def test_fetch_banrep_eme_emits_one_stale_baseline_not_a_conclusion(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _banrep_eme_source(sample_source)
+    monkeypatch.setattr(fetchers, "_now_iso", lambda: "2026-08-11T15:00:00Z")
+
+    with httpx.Client(
+        transport=_banrep_eme_transport(),
+        follow_redirects=True,
+    ) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.source_type == "economic_indicator"
+    assert item.published_at == "2026-06-17T00:00:00Z"
+    assert "baseline, not a conclusion" in item.raw_text
+    assert item.metadata["baseline_role"] == "consensus_only"
+    assert item.metadata["freshness_status"] == "stale"
+    assert item.metadata["days_stale"] == 55
+    assert item.metadata["is_stale"] is True
+    assert item.metadata["participant_counts"] == {
+        "policy_rate": 40,
+        "trm": 38,
+        "inflation": 41,
+    }
+
+
+def test_fetch_banrep_eme_uses_browser_for_bot_blocked_detail(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = _banrep_eme_source(sample_source)
+    listing = (BANREP_EME_FIXTURE_DIR / "listing.html").read_text(encoding="utf-8")
+    detail = (BANREP_EME_FIXTURE_DIR / "detail.html").read_text(encoding="utf-8")
+    workbook = _banrep_eme_fixture_xlsx()
+    browser_calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/es/taxonomy/term/3996":
+            return httpx.Response(200, text=listing, request=request)
+        if "resultado-encuesta-mensual" in request.url.path:
+            return httpx.Response(
+                200,
+                text="<html>Radware Bot Manager</html>",
+                request=request,
+            )
+        if request.url.path.endswith("res_inf_jun2026.xlsx"):
+            return httpx.Response(200, content=workbook, request=request)
+        return httpx.Response(404, request=request)
+
+    def fake_browser_detail(url: str) -> tuple[str, str]:
+        browser_calls.append(url)
+        return detail, url
+
+    monkeypatch.setattr(
+        dane_fetchers,
+        "_fetch_banrep_eme_detail_with_browser",
+        fake_browser_detail,
+    )
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        follow_redirects=True,
+    ) as client:
+        items = fetch_html(source, client)
+
+    assert len(items) == 1
+    assert browser_calls == [
+        "https://www.banrep.gov.co/es/"
+        "resultado-encuesta-mensual-expectativas-analistas-economicos-eme-junio-2026"
+    ]
+
+
+def test_fetch_banrep_eme_missing_workbook_fails_closed(sample_source) -> None:
+    source = _banrep_eme_source(sample_source)
+    transport = _banrep_eme_transport(detail_html="<html><body>No XLSX</body></html>")
+
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items, failures = fetchers.fetch_all([source], client=client)
+
+    assert items == []
+    assert len(failures) == 1
+    assert failures[0].source_id == "banrep_eme_expectations"
+    assert "did not expose an official XLSX" in failures[0].error_message
+
+
+def test_fetch_banrep_eme_malformed_workbook_fails_closed(sample_source) -> None:
+    source = _banrep_eme_source(sample_source)
+    transport = _banrep_eme_transport(workbook=b"not an xlsx archive")
+
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        items, failures = fetchers.fetch_all([source], client=client)
+
+    assert items == []
+    assert len(failures) == 1
+    assert "missing required consensus fields" in failures[0].error_message
+
+
+def test_banrep_eme_metasource_is_enabled_monthly_official_baseline() -> None:
+    sources = load_metasources(
+        Path(__file__).resolve().parents[1] / "config" / "metasources.yaml"
+    )
+    source = next(item for item in sources if item.id == "banrep_eme_expectations")
+
+    assert source.enabled is True
+    assert source.priority == "high"
+    assert source.update_frequency == "monthly"
+    assert source.trust_role == "official_signal"
+    assert source.max_items == 1
 
 
 def _banrep_calendar_html() -> str:

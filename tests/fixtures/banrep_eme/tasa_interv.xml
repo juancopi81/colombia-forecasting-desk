@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1"><c r="A1" t="inlineStr"><is><t>RESULTADOS EME</t></is></c></row>
+    <row r="2"><c r="A2" t="inlineStr"><is><t>Fecha de realizacion: del 9 de junio al 11 de junio de 2026</t></is></c></row>
+    <row r="3"><c r="A3" t="inlineStr"><is><t>Medidas estadisticas</t></is></c><c r="B3"><v>46203</v></c><c r="C3"><v>46234</v></c></row>
+    <row r="4"><c r="A4" t="inlineStr"><is><t>TODAS LAS ENTIDADES PARTICIPANTES</t></is></c></row>
+    <row r="5"><c r="A5" t="inlineStr"><is><t>Media</t></is></c><c r="B5"><v>0.117625</v></c><c r="C5"><v>0.1203125</v></c></row>
+    <row r="6"><c r="A6" t="inlineStr"><is><t>Mediana</t></is></c><c r="B6"><v>0.1175</v></c><c r="C6"><v>0.12</v></c></row>
+    <row r="7"><c r="A7" t="inlineStr"><is><t>Moda</t></is></c><c r="B7"><v>0.1175</v></c></row>
+    <row r="8"><c r="A8" t="inlineStr"><is><t>Minimo</t></is></c><c r="B8"><v>0.1125</v></c></row>
+    <row r="9"><c r="A9" t="inlineStr"><is><t>Maximo</t></is></c><c r="B9"><v>0.13</v></c></row>
+    <row r="10"><c r="A10" t="inlineStr"><is><t>Numero de participantes</t></is></c><c r="B10"><v>40</v></c></row>
+    <row r="11"><c r="A11" t="inlineStr"><is><t>BANCOS</t></is></c></row>
+  </sheetData>
+</worksheet>
