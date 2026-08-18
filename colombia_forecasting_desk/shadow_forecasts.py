@@ -327,6 +327,10 @@ def resolve_shadow_forecast(
             )
 
         resolved = dict(current)
+        model_brier = _brier_score(current["probability"], outcome)
+        baseline_brier = _brier_score(
+            current["baseline"]["probability"], outcome
+        )
         resolved.update(
             {
                 "status": "resolved",
@@ -334,7 +338,11 @@ def resolve_shadow_forecast(
                 "resolved_at": resolved_at,
                 "resolution_value": resolution_value,
                 "resolution_url": resolution_url,
-                "brier_score": _brier_score(current["probability"], outcome),
+                "brier_score": model_brier,
+                "baseline_brier_score": baseline_brier,
+                "brier_improvement_vs_baseline": _brier_improvement(
+                    model_brier, baseline_brier
+                ),
             }
         )
         issues = validate_shadow_forecast(resolved)
@@ -495,6 +503,45 @@ def _resolved_row_issues(row: dict[str, Any]) -> list[ShadowForecastIssue]:
                 "`brier_score` must match probability and outcome.",
             )
         )
+    has_baseline_brier = "baseline_brier_score" in row
+    has_improvement = "brier_improvement_vs_baseline" in row
+    if has_baseline_brier != has_improvement:
+        issues.append(
+            ShadowForecastIssue(
+                "incomplete_brier_comparison",
+                "Resolved rows must record both baseline Brier score and "
+                "improvement when either comparison field is present.",
+            )
+        )
+    elif has_baseline_brier:
+        baseline = row.get("baseline")
+        baseline_probability = (
+            baseline.get("probability") if isinstance(baseline, dict) else None
+        )
+        expected_baseline = _brier_score(baseline_probability, row.get("outcome"))
+        if (
+            not _is_probability(row.get("baseline_brier_score"))
+            or row.get("baseline_brier_score") != expected_baseline
+        ):
+            issues.append(
+                ShadowForecastIssue(
+                    "invalid_baseline_brier_score",
+                    "`baseline_brier_score` must match the named baseline "
+                    "probability and outcome.",
+                )
+            )
+        expected_improvement = _brier_improvement(expected, expected_baseline)
+        if (
+            not _is_score_difference(row.get("brier_improvement_vs_baseline"))
+            or row.get("brier_improvement_vs_baseline") != expected_improvement
+        ):
+            issues.append(
+                ShadowForecastIssue(
+                    "invalid_brier_improvement",
+                    "`brier_improvement_vs_baseline` must equal baseline Brier "
+                    "minus model Brier; positive values mean the model scored better.",
+                )
+            )
     return issues
 
 
@@ -503,6 +550,22 @@ def _brier_score(probability: Any, outcome: Any) -> float | None:
         return None
     observed = 1.0 if outcome == "YES" else 0.0
     return round((float(probability) - observed) ** 2, 4)
+
+
+def _brier_improvement(
+    model_brier: Any, baseline_brier: Any
+) -> float | None:
+    if not _is_probability(model_brier) or not _is_probability(baseline_brier):
+        return None
+    return round(float(baseline_brier) - float(model_brier), 4)
+
+
+def _is_score_difference(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and -1 <= value <= 1
+    )
 
 
 def _is_https_url(value: Any) -> bool:

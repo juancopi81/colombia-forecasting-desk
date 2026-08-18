@@ -408,6 +408,8 @@ def test_summarizes_shadow_forecasts_for_counted_runs(tmp_path: Path) -> None:
             "status": "resolved",
             "baseline": complete_baseline,
             "brier_score": 0.16,
+            "baseline_brier_score": 0.25,
+            "brier_improvement_vs_baseline": 0.09,
         },
         {
             "schema_version": "shadow_forecast.v1",
@@ -443,6 +445,10 @@ def test_summarizes_shadow_forecasts_for_counted_runs(tmp_path: Path) -> None:
         "baseline_fields_missing": 1,
         "resolved_with_brier": 1,
         "brier_mean_resolved": 0.16,
+        "resolved_with_comparable_brier": 1,
+        "model_brier_mean_comparable": 0.16,
+        "baseline_brier_mean_resolved": 0.25,
+        "brier_improvement_mean_resolved": 0.09,
         "invalid_log_rows_ignored": 1,
     }
 
@@ -487,6 +493,7 @@ def test_writes_deterministic_json_and_descriptive_markdown_without_mutating_log
     assert "**Status:** `collecting`" in markdown
     assert "**Decision-grade runs:** 1 / 10" in markdown
     assert "does not establish model quality" in markdown
+    assert "Mean baseline Brier score" in markdown
     assert log_path.read_bytes() == original_log
 
     first_json = json_path.read_bytes()

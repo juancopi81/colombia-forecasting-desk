@@ -1630,7 +1630,15 @@ def test_daily_review_surfaces_agent_analysis_and_internal_shadow_forecast() -> 
             "counted_decision_grade_runs": 1,
             "target_decision_grade_runs": 10,
         },
-        "shadow_forecasts": {"created": 1, "resolved": 0, "overdue": 0},
+        "shadow_forecasts": {
+            "created": 1,
+            "resolved": 1,
+            "overdue": 0,
+            "brier_mean_resolved": 0.1764,
+            "model_brier_mean_comparable": 0.1764,
+            "baseline_brier_mean_resolved": 0.25,
+            "brier_improvement_mean_resolved": 0.0736,
+        },
     }
     art = _art(
         **{
@@ -1650,6 +1658,9 @@ def test_daily_review_surfaces_agent_analysis_and_internal_shadow_forecast() -> 
     assert "Internal shadow forecasting" in html_out
     assert "Model 58.0%" in html_out
     assert "1 / 10 decision-grade runs" in html_out
+    assert "model 0.1764" in html_out
+    assert "baseline 0.2500" in html_out
+    assert "+0.0736" in html_out
     assert "Monitoring — no new forecast" in html_out
 
 

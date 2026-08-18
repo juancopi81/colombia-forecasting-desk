@@ -36,8 +36,8 @@ folders. For what each section of the HTML review surface means, see
 
 Repository-level experiment artifacts live outside the dated run folder:
 
-- `forecasts/shadow_forecast_log.jsonl` — protected internal ledger; at most one resolvable binary forecast may be appended per run, with a named baseline and no public-post authority
-- `forecasts/shadow_experiment_summary.json` / `.md` — deterministic progress and compliance summary for the configured 10 decision-grade-run experiment
+- `forecasts/shadow_forecast_log.jsonl` — protected internal ledger; at most one resolvable binary forecast may be appended per run, with a named baseline, paired model/baseline Brier scores after resolution, and no public-post authority
+- `forecasts/shadow_experiment_summary.json` / `.md` — deterministic progress, compliance, and paired model-versus-baseline scoring summary for the configured 10 decision-grade-run experiment
 
 ## How the artifacts relate
 

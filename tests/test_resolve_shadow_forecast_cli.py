@@ -84,6 +84,8 @@ def test_resolve_cli_requires_explicit_evidence_and_updates_open_row(
     assert row["resolution_value"] == "Annual IPC was 5.95%."
     assert row["resolution_url"].startswith("https://www.dane.gov.co/")
     assert row["brier_score"] == 0.36
+    assert row["baseline_brier_score"] == 0.25
+    assert row["brier_improvement_vs_baseline"] == -0.11
 
 
 def test_resolve_cli_refuses_to_change_resolved_row(tmp_path: Path) -> None:

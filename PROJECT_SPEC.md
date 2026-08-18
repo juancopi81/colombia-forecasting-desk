@@ -463,8 +463,8 @@ one clean bill-status record before M2 ranks them.
       pass with competing explanations, falsifiers, all triggered tension-card
       reviews, cross/unbundled reasoning, and one bounded official follow-up.
 - [x] Add a protected internal shadow-forecast ledger with named baselines,
-      explicit official resolution, Brier scoring, and no authority to publish
-      or update `forecasts/forecast_log.jsonl`.
+      explicit official resolution, paired model/baseline Brier scoring, and no
+      authority to publish or update `forecasts/forecast_log.jsonl`.
 - [x] Run a deterministic 10 decision-grade-run shadow experiment beginning
       2026-08-12 before deciding whether the lane improves useful forecast
       formation.

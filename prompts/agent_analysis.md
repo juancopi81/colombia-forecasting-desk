@@ -68,6 +68,13 @@ has an exact official resolver, explicit YES/NO criteria, and a resolution
 date. Include a probability, a simple baseline probability, evidence for and
 against, and a falsifier.
 
+Name the baseline according to how its probability was obtained. Use an
+empirical frequency, current consensus, or a genuinely computed persistence
+rate when available. If no informative baseline exists, use
+`uninformative_50_50` at 0.50 and say why. Do not call a 0.50 baseline
+"persistence" merely because the latest observation lies on the forecast
+threshold.
+
 The shadow forecast is internal. Do not publish it, write an X post, create a
 public recommendation, or change `forecasts/forecast_log.jsonl`.
 

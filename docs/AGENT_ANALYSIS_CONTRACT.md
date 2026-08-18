@@ -161,6 +161,17 @@ The prediction date must equal the analysis run date, and the resolver date may
 not precede it. Shadow forecasts remain outside `forecasts/forecast_log.jsonl`;
 only a separate validated shadow-ledger step may persist or resolve them.
 
+The baseline name must describe how its probability was obtained. Prefer an
+empirical frequency, official consensus, or computed persistence rate. When no
+informative comparator exists, use `uninformative_50_50` with probability 0.50
+and an explicit rationale. A threshold matching the latest observation does not
+by itself justify calling a 0.50 comparator a persistence baseline.
+
+Resolution persists the model Brier score, baseline Brier score, and baseline
+minus model improvement. Positive improvement means the model scored better.
+These are descriptive experiment outputs, not evidence of calibration from a
+small sample.
+
 ## Validation And Rendering
 
 Validate one or more authored JSON files:

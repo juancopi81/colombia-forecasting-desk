@@ -1,16 +1,24 @@
 {
-  "disposition_counts": {},
+  "disposition_counts": {
+    "insight_only": 2,
+    "shadow_track": 2
+  },
   "interpretation_guardrail": "Descriptive only. This small sample does not establish model quality.",
   "official_source_follow_up": {
-    "completed_runs": 0,
-    "completion_rate": null,
+    "completed_runs": 4,
+    "completion_rate": 1.0,
     "incomplete_runs": 0
   },
   "runs": {
-    "counted_decision_grade_runs": 0,
-    "latest_run_date": null,
-    "remaining_decision_grade_runs": 10,
-    "run_dates": [],
+    "counted_decision_grade_runs": 4,
+    "latest_run_date": "2026-08-17",
+    "remaining_decision_grade_runs": 6,
+    "run_dates": [
+      "2026-08-12",
+      "2026-08-13",
+      "2026-08-14",
+      "2026-08-17"
+    ],
     "skipped_runs": {
       "invalid_agent_analysis": {
         "count": 0,
@@ -29,23 +37,27 @@
     "start_date": "2026-08-12",
     "target_decision_grade_runs": 10
   },
-  "schema_version": "shadow_experiment_summary.v1",
+  "schema_version": "shadow_experiment_summary.v2",
   "shadow_forecasts": {
+    "baseline_brier_mean_resolved": 0.25,
     "baseline_fields_missing": 0,
-    "baseline_fields_present": 0,
-    "brier_mean_resolved": null,
-    "created": 0,
+    "baseline_fields_present": 2,
+    "brier_improvement_mean_resolved": 0.0736,
+    "brier_mean_resolved": 0.1764,
+    "created": 2,
     "invalid_log_rows_ignored": 0,
-    "open": 0,
+    "model_brier_mean_comparable": 0.1764,
+    "open": 1,
     "overdue": 0,
-    "resolved": 0,
-    "resolved_with_brier": 0
+    "resolved": 1,
+    "resolved_with_brier": 1,
+    "resolved_with_comparable_brier": 1
   },
   "status": "collecting",
   "tension_card_review": {
-    "coverage_rate": null,
-    "reviewed_cards": 0,
-    "triggered_cards": 0,
+    "coverage_rate": 1.0,
+    "reviewed_cards": 7,
+    "triggered_cards": 7,
     "unreviewed_cards": 0
   }
 }

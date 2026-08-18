@@ -370,8 +370,40 @@ def test_explicit_resolution_is_atomic_and_computes_brier_score(
     assert resolved["status"] == "resolved"
     assert resolved["outcome"] == "YES"
     assert resolved["brier_score"] == 0.2025
+    assert resolved["baseline_brier_score"] == 0.25
+    assert resolved["brier_improvement_vs_baseline"] == 0.0475
     assert validate_shadow_forecast_ledger(ledger) == []
     assert list(tmp_path.glob(".shadow_forecast_log.jsonl.*.tmp")) == []
+
+
+def test_resolved_score_comparison_must_match_probability_and_outcome() -> None:
+    row = _valid_forecast(
+        status="resolved",
+        outcome="YES",
+        resolved_at="2026-08-18T16:00:00-05:00",
+        resolution_value="Official TRM was 3,130 COP/USD.",
+        resolution_url="https://www.datos.gov.co/resource/32sa-8pi3.json",
+        brier_score=0.2025,
+        baseline_brier_score=0.25,
+        brier_improvement_vs_baseline=0.99,
+    )
+
+    issues = validate_shadow_forecast(row)
+
+    assert any(issue.code == "invalid_brier_improvement" for issue in issues)
+
+
+def test_legacy_resolved_row_without_comparison_fields_remains_valid() -> None:
+    row = _valid_forecast(
+        status="resolved",
+        outcome="YES",
+        resolved_at="2026-08-18T16:00:00-05:00",
+        resolution_value="Official TRM was 3,130 COP/USD.",
+        resolution_url="https://www.datos.gov.co/resource/32sa-8pi3.json",
+        brier_score=0.2025,
+    )
+
+    assert validate_shadow_forecast(row) == []
 
 
 def test_resolution_refuses_to_overwrite_resolved_row(tmp_path: Path) -> None:

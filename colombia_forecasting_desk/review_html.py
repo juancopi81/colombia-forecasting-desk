@@ -1377,6 +1377,12 @@ def _percent(value: Any) -> str:
     return f"{float(value) * 100:.1f}%"
 
 
+def _score(value: Any, *, signed: bool = False) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "n/a"
+    return f"{float(value):+.4f}" if signed else f"{float(value):.4f}"
+
+
 def _render_evidence_refs(refs: Any) -> str:
     if not isinstance(refs, list):
         return ""
@@ -1591,6 +1597,22 @@ def _render_shadow_forecasts(art: dict[str, Any], index: int) -> str:
             if isinstance(summary.get("shadow_forecasts"), dict)
             else {}
         )
+        score_comparison = ""
+        if forecasts.get("resolved_with_comparable_brier") or all(
+            forecasts.get(field) is not None
+            for field in (
+                "model_brier_mean_comparable",
+                "baseline_brier_mean_resolved",
+                "brier_improvement_mean_resolved",
+            )
+        ):
+            score_comparison = (
+                '<p class="indicator__meta">Brier: model '
+                f'{_score(forecasts.get("model_brier_mean_comparable"))} · baseline '
+                f'{_score(forecasts.get("baseline_brier_mean_resolved"))} · '
+                'improvement '
+                f'{_score(forecasts.get("brier_improvement_mean_resolved"), signed=True)}</p>'
+            )
         experiment_html = (
             '<article class="card">'
             f'<div class="tags">{_pill(str(summary.get("status") or "collecting").replace("_", " "), "ok")}</div>'
@@ -1600,6 +1622,7 @@ def _render_shadow_forecasts(art: dict[str, Any], index: int) -> str:
             f'<p class="card__why">{_esc(forecasts.get("created") or 0)} created · '
             f'{_esc(forecasts.get("resolved") or 0)} resolved · '
             f'{_esc(forecasts.get("overdue") or 0)} overdue</p>'
+            f'{score_comparison}'
             "</article>"
         )
         cards.append(experiment_html)

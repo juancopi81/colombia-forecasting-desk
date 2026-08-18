@@ -20,7 +20,7 @@ from colombia_forecasting_desk.shadow_forecasts import (
     SCHEMA_VERSION as SHADOW_FORECAST_SCHEMA_VERSION,
 )
 
-SUMMARY_SCHEMA_VERSION = "shadow_experiment_summary.v1"
+SUMMARY_SCHEMA_VERSION = "shadow_experiment_summary.v2"
 RUN_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 INTERPRETATION_GUARDRAIL = (
     "Descriptive only. This small sample does not establish model quality."
@@ -322,6 +322,23 @@ def _shadow_forecast_summary(
         and isinstance(row.get("brier_score"), (int, float))
         and 0 <= row["brier_score"] <= 1
     ]
+    comparable_scores: list[tuple[float, float, float]] = []
+    for row in resolved_forecasts:
+        model_brier = row.get("brier_score")
+        baseline_brier = row.get("baseline_brier_score")
+        improvement = row.get("brier_improvement_vs_baseline")
+        if not (
+            _valid_brier_score(model_brier)
+            and _valid_brier_score(baseline_brier)
+            and _valid_brier_improvement(improvement)
+        ):
+            continue
+        expected_improvement = round(float(baseline_brier) - float(model_brier), 4)
+        if improvement != expected_improvement:
+            continue
+        comparable_scores.append(
+            (float(model_brier), float(baseline_brier), float(improvement))
+        )
     return {
         "created": len(forecasts),
         "open": len(open_forecasts),
@@ -335,8 +352,38 @@ def _shadow_forecast_summary(
             if brier_scores
             else None
         ),
+        "resolved_with_comparable_brier": len(comparable_scores),
+        "model_brier_mean_comparable": _mean_or_none(
+            [model for model, _, _ in comparable_scores]
+        ),
+        "baseline_brier_mean_resolved": _mean_or_none(
+            [baseline for _, baseline, _ in comparable_scores]
+        ),
+        "brier_improvement_mean_resolved": _mean_or_none(
+            [improvement for _, _, improvement in comparable_scores]
+        ),
         "invalid_log_rows_ignored": invalid_rows,
     }
+
+
+def _valid_brier_score(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and 0 <= value <= 1
+    )
+
+
+def _valid_brier_improvement(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and -1 <= value <= 1
+    )
+
+
+def _mean_or_none(values: list[float]) -> float | None:
+    return round(sum(values) / len(values), 4) if values else None
 
 
 def build_shadow_experiment_summary(
@@ -417,6 +464,20 @@ def render_shadow_experiment_markdown(summary: dict[str, Any]) -> str:
     )
     brier = forecasts["brier_mean_resolved"]
     brier_text = "not available" if brier is None else f"{brier:.4f}"
+    baseline_brier = forecasts["baseline_brier_mean_resolved"]
+    baseline_brier_text = (
+        "not available" if baseline_brier is None else f"{baseline_brier:.4f}"
+    )
+    improvement = forecasts["brier_improvement_mean_resolved"]
+    improvement_text = (
+        "not available" if improvement is None else f"{improvement:+.4f}"
+    )
+    comparable_model_brier = forecasts["model_brier_mean_comparable"]
+    comparable_model_brier_text = (
+        "not available"
+        if comparable_model_brier is None
+        else f"{comparable_model_brier:.4f}"
+    )
 
     return "\n".join(
         (
@@ -467,7 +528,14 @@ def render_shadow_experiment_markdown(summary: dict[str, Any]) -> str:
             f"{forecasts['baseline_fields_present']} / {forecasts['created']}",
             "- Resolved forecasts with Brier score: "
             f"{forecasts['resolved_with_brier']}",
-            f"- Mean Brier score (resolved rows only): {brier_text}",
+            "- Resolved forecasts with comparable model/baseline scores: "
+            f"{forecasts['resolved_with_comparable_brier']}",
+            f"- Mean model Brier score (all scored resolved rows): {brier_text}",
+            "- Mean model Brier score (paired rows only): "
+            f"{comparable_model_brier_text}",
+            f"- Mean baseline Brier score (paired rows only): {baseline_brier_text}",
+            "- Mean Brier improvement vs baseline (positive is better): "
+            f"{improvement_text}",
             "",
         )
     )
