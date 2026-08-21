@@ -8,10 +8,13 @@ from .pdf import *
 from .senado import _normalize_senado_chamber
 
 DIARIO_PDF_PARSE_TIMEOUT_SECONDS = 30.0
+GACETA_LAYOUT_FALLBACK_MIN_PDF_BYTES = 1_000_000
+GACETA_FAST_TEXT_MIN_CHARS = 4_000
 
 _DATE_DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 _GACETA_PROJECT_RE = re.compile(
-    r"\bPROYECTO\s+DE\s+(?P<kind>LEY|ACTO\s+LEGISLATIVO)\s+"
+    r"\bPROYECTO\s+DE\s+"
+    r"(?P<kind>LEY(?:\s+ORG[ÁA]NICA)?|ACTO\s+LEGISLATIVO)\s+"
     r"N[ÚU]MERO\s+(?P<label>.{5,180}?)(?=\s+por\s+(?:la|el|medio)|"
     r"\s+P[aá]gina|\s+Gaceta|\.|$)",
     re.IGNORECASE,
@@ -22,8 +25,8 @@ _GACETA_PROJECT_RECORD_RE = re.compile(
     re.IGNORECASE,
 )
 _GACETA_PROJECT_START_RE = re.compile(
-    r"\b(?:AL\s+)?PROYECTO\s+DE\s+(?:LEY|ACTO\s+LEGISLATIVO)\b",
-    re.IGNORECASE,
+    r"^[ \t]*(?:AL\s+)?PROYECTO\s+DE\s+(?:LEY|ACTO\s+LEGISLATIVO)\b",
+    re.IGNORECASE | re.MULTILINE,
 )
 _GACETA_TITLE_RE = re.compile(
     r"\b(por\s+(?:la|el|medio)\s+(?:cual\s+)?(?:se\s+)?"
@@ -671,8 +674,7 @@ def _parse_gaceta_pdf_documents(item: RawItem, text: str) -> list[dict[str, Any]
     if parsed is None:
         return []
 
-    clean_text = _normalize_gaceta_identity_text(text)
-    starts = list(_GACETA_PROJECT_START_RE.finditer(clean_text))
+    starts = list(_GACETA_PROJECT_START_RE.finditer(text))
     if len(starts) <= 1:
         return [parsed]
 
@@ -681,8 +683,8 @@ def _parse_gaceta_pdf_documents(item: RawItem, text: str) -> list[dict[str, Any]
         dict[str, Any],
     ] = {}
     for index, start in enumerate(starts):
-        end = starts[index + 1].start() if index + 1 < len(starts) else len(clean_text)
-        section = _parse_gaceta_pdf_text(item, clean_text[start.start() : end])
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(text)
+        section = _parse_gaceta_pdf_text(item, text[start.start() : end])
         if section is None:
             continue
         keys = _project_record_keys(section)
@@ -701,6 +703,27 @@ def _parse_gaceta_pdf_documents(item: RawItem, text: str) -> list[dict[str, Any]
     if len(sections) < 2:
         return [parsed]
     return sections
+
+
+def _extract_gaceta_pdf_text(content: bytes) -> tuple[str, str]:
+    fast_text = _extract_pdf_text(
+        content,
+        max_chars=IMPRENTA_PDF_TEXT_FULL_CHARS,
+    )
+    needs_layout_fallback = not fast_text or (
+        len(content) >= GACETA_LAYOUT_FALLBACK_MIN_PDF_BYTES
+        and len(fast_text) < GACETA_FAST_TEXT_MIN_CHARS
+    )
+    if not needs_layout_fallback:
+        return fast_text, "stdlib_fast"
+
+    layout_text = _extract_pdf_text_with_pdfplumber(
+        content,
+        max_chars=IMPRENTA_PDF_TEXT_FULL_CHARS,
+    )
+    if len(layout_text) > len(fast_text):
+        return layout_text, "pdfplumber_layout_fallback"
+    return fast_text, "stdlib_fast"
 
 
 def _enrich_gaceta_pdfs(
@@ -735,7 +758,8 @@ def _enrich_gaceta_pdfs(
                 and not response.content.startswith(b"%PDF")
             ):
                 raise ValueError(f"download did not return a PDF: {content_type}")
-            text = _extract_pdf_text(response.content, max_chars=PDF_TEXT_FULL_CHARS)
+            text, pdf_text_extractor = _extract_gaceta_pdf_text(response.content)
+            metadata["pdf_text_extractor"] = pdf_text_extractor
         except Exception as exc:  # noqa: BLE001 - preserve link-level row
             metadata["content_extraction_error"] = f"{exc.__class__.__name__}: {exc}"
             enriched.append(

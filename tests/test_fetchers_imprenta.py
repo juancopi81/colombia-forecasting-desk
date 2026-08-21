@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from tests.fetcher_helpers import *  # noqa: F403
 from colombia_forecasting_desk.legislative_reconciler import (
     build_legislative_reconciliations,
@@ -514,6 +516,102 @@ def test_enrich_gaceta_pdfs_marks_pdf_as_parsed_followup(sample_source) -> None:
     )
 
 
+def test_large_gaceta_pdf_uses_layout_fallback_and_avoids_phantom_identity(
+    sample_source,
+    monkeypatch,
+) -> None:
+    source = replace(sample_source, id="gacetas_congreso", type="legal")
+    html = """
+    <form id="formResumen" action="/gacetas/index.xhtml" method="post">
+      <input type="hidden" name="formResumen" value="formResumen" />
+      <input type="hidden" name="javax.faces.ViewState" value="view-state-1056" />
+      <table>
+        <tr>
+          <td>1056</td>
+          <td>Cámara de Representantes</td>
+          <td>18/08/2026</td>
+          <td></td>
+          <td><button name="formResumen:dataTableResumen:0:btnDescargarPdf">
+            ui-button
+          </button></td>
+        </tr>
+      </table>
+    </form>
+    """
+    items = _extract_imprenta_jsf_table(
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        source,
+        "2026-08-21T00:00:00Z",
+        edition_label="Gaceta del Congreso",
+        query_param="gaceta",
+    )
+    fixture_dir = Path(__file__).parent / "fixtures" / "gacetas_congreso"
+    fast_text = (fixture_dir / "gaceta_1056_fast_excerpt.txt").read_text()
+    layout_text = (fixture_dir / "gaceta_1056_layout_excerpt.txt").read_text()
+    monkeypatch.setattr(
+        imprenta_fetchers,
+        "_extract_pdf_text",
+        lambda *_args, **_kwargs: fast_text,
+    )
+    monkeypatch.setattr(
+        imprenta_fetchers,
+        "_extract_pdf_text_with_pdfplumber",
+        lambda *_args, **_kwargs: layout_text,
+    )
+
+    class LargePdfClient:
+        def post(self, _url, data=None):  # noqa: ANN001 - mirrors httpx client
+            del data
+            return _FakeBinaryResponse(
+                b"%PDF-" + (b"0" * 1_100_000),
+                headers={"content-type": "application/pdf"},
+            )
+
+    enriched = _enrich_gaceta_pdfs(
+        items,
+        LargePdfClient(),
+        html,
+        "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml",
+        max_items=1,
+    )
+
+    assert len(enriched) == 1
+    gaceta = enriched[0]
+    assert gaceta.metadata["project_records"] == [
+        {"number": "211", "year": "2026", "chamber": "Cámara"}
+    ]
+    assert gaceta.metadata["pdf_text_extractor"] == "pdfplumber_layout_fallback"
+
+    registry = RawItem(
+        id="camara-211",
+        source_id="camara_proyectos_ley_registry",
+        source_name="Cámara de Representantes — Proyectos de Ley",
+        source_type="legal",
+        url="https://www.camara.gov.co/presupuesto-y-sostenibilidad-fiscal-territorial",
+        title="Cámara registry — Proyecto de Ley 211 de 2026 Cámara",
+        fetched_at="2026-08-21T00:00:00Z",
+        published_at="2026-08-12T00:00:00Z",
+        raw_text="Proyecto de Ley 211 de 2026 Cámara.",
+        metadata={
+            "project_records": [
+                {"number": "211", "year": "2026", "chamber": "Cámara"}
+            ],
+            "has_clean_project_identity": True,
+            "bill_title": (
+                "Por la cual se dictan disposiciones orgánicas en materia de "
+                "presupuesto y sostenibilidad fiscal para las entidades territoriales"
+            ),
+            "status": "Trámite en Comisión",
+        },
+    )
+    records = build_legislative_reconciliations([registry, gaceta])
+
+    assert [record["canonical_bill_id"] for record in records] == [
+        "bill:2026:camara:211"
+    ]
+
+
 def test_enrich_gaceta_pdfs_splits_unrelated_projects_without_evidence_leak(
     sample_source,
     monkeypatch,
@@ -545,11 +643,11 @@ def test_enrich_gaceta_pdfs_splits_unrelated_projects_without_evidence_leak(
         query_param="gaceta",
     )
     pdf_text = (
-        "Gaceta del Congreso 816. "
-        "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA "
+        "Gaceta del Congreso 816.\n"
+        "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA\n"
         "pormediodelacualsemodificalaLey 2123 de 2021 y se dictan otras "
-        "disposiciones. "
-        "PROYECTO DE LEY NÚMERO 320 DE 2025 CÁMARA por medio de la cual "
+        "disposiciones.\n"
+        "PROYECTO DE LEY NÚMERO 320 DE 2025 CÁMARA\npor medio de la cual "
         "se crean incentivos tributarios para las Empresas que patrocinen "
         "equipos profesionales de fútbol femenino colombiano. Página 1"
     )
@@ -619,12 +717,13 @@ def test_parse_gaceta_pdf_documents_splits_descriptive_project_title(
     parsed = imprenta_fetchers._parse_gaceta_pdf_documents(
         item,
         (
-            "PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA, Estampilla Pro "
-            "Universidad Nacional de Colombia, sede Amazonía "
-            "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA por medio de la cual "
+            "PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA, Estampilla Pro\n"
+            "Universidad Nacional de Colombia, sede Amazonía\n"
+            "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA por medio de la cual\n"
             "se modifica el artículo del Estatuto Tributario y demás normas "
-            "relacionadas con la devolución de saldos a favor. Página 1. "
-            "PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA con el voto "
+            "relacionadas con la devolución de saldos a favor. Página 1.\n"
+            "En el debate, el PROYECTO DE LEY NÚMERO 126 DE 2025 CÁMARA "
+            "recibió el voto "
             "afirmativo de la comisión. Articulado, señor Presidente. "
             "PROYECTO DE LEY NÚMERO 150 DE 2025 CÁMARA quedó anunciado "
             "para una sesión posterior."

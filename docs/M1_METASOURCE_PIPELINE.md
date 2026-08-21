@@ -411,6 +411,13 @@ the downloaded PDF yields `content_extraction: gaceta_pdf_text` plus a project
 label, document title, or body snippet. Rows that do not yield usable PDF text
 stay link-level with `content_extraction_error`.
 
+For large Gaceta PDFs whose fast extraction yields implausibly little text, the
+fetcher retries with the layout-preserving extractor and records the selected
+path in `metadata.pdf_text_extractor`. Multi-project splitting treats only
+line-start project headings as document boundaries; inline references to older
+bills remain evidence inside the current document instead of creating phantom
+legislative identities.
+
 M1.19 adds the deterministic decision-record bridge. Raw metadata now survives
 cleaning and clustering, and `decision_records.link_legislative_followups`
 attaches parsed Gaceta follow-up matches to clean Senado agenda records when
