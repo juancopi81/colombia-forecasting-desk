@@ -1454,20 +1454,20 @@ def external_trade_observation_from_components(
         or not isinstance(imports.values.get("imports_usd_millions_cif"), float)
     ):
         return observation
-    trade_balance = round(
-        exports.values["exports_usd_millions_fob"]
-        - imports.values["imports_usd_millions_cif"],
-        2,
+    caveat = (
+        "Exports are valued FOB while imports are valued CIF; a comparable "
+        "goods trade balance is unavailable."
     )
     values = {
         **observation.values,
-        "goods_trade_balance_usd_millions": trade_balance,
+        "goods_trade_balance_status": "unavailable_mixed_valuation",
+        "goods_trade_balance_caveat": caveat,
     }
     headline = (
         f"DANE external trade {exports.period}: exports "
         f"US${exports.values['exports_usd_millions_fob']:,.1f}m FOB, imports "
         f"US${imports.values['imports_usd_millions_cif']:,.1f}m CIF, "
-        f"balance {trade_balance:+,.1f}m."
+        "comparable balance unavailable (mixed FOB/CIF valuations)."
     )
     return replace(observation, period=exports.period, headline=headline, values=values)
 

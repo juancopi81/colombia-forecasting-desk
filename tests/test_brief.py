@@ -228,6 +228,7 @@ def test_brief_renders_cross_indicator_alerts_and_source_actions(make_cleaned) -
                 source_name="DANE",
                 source_url="https://example.com/exports",
                 period="2026-03",
+                values={"exports_usd_millions_fob": 5315.9},
             ),
             IndicatorComponent(
                 component_id="imports",
@@ -236,6 +237,7 @@ def test_brief_renders_cross_indicator_alerts_and_source_actions(make_cleaned) -
                 source_name="DANE",
                 source_url="https://example.com/imports",
                 period="2026-02",
+                values={"imports_usd_millions_cif": 5100.0},
             ),
         ],
     )
@@ -280,6 +282,7 @@ def test_brief_renders_cross_indicator_alerts_and_source_actions(make_cleaned) -
     )
     assert "`real_terms_warning`" in out
     assert "`mixed_period_components`" in out
+    assert "`mixed_valuation_components`" in out
     assert "document links but no parsed content" in out
     assert out.index("is failing") < out.index("document links but no parsed content")
 

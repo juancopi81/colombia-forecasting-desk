@@ -556,6 +556,13 @@ def _indicator_alerts(
             )
 
     if indicator.indicator_id == "external_trade":
+        by_component = {
+            component.component_id: component
+            for component in indicator.components
+            if component.status == "observed"
+        }
+        exports = by_component.get("exports")
+        imports = by_component.get("imports")
         periods = {
             component.period
             for component in indicator.components
@@ -565,6 +572,20 @@ def _indicator_alerts(
             alerts.append(
                 "`mixed_period_components`: exports/imports are observed for "
                 "different periods, so the trade balance should not be forced."
+            )
+        if (
+            exports
+            and imports
+            and isinstance(
+                exports.values.get("exports_usd_millions_fob"), int | float
+            )
+            and isinstance(
+                imports.values.get("imports_usd_millions_cif"), int | float
+            )
+        ):
+            alerts.append(
+                "`mixed_valuation_components`: exports are FOB and imports are "
+                "CIF, so a comparable trade balance is unavailable."
             )
 
     if indicator.indicator_id == "fiscal_tax_pulse":

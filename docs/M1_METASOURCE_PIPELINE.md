@@ -637,7 +637,8 @@ Current observed cards:
 - `policy_rate_ibr`: BanRep SUAMECA latest policy rate and IBR overnight
   nominal series, including the IBR-policy spread.
 - `external_trade`: DANE / DIAN headline exports and imports, including sector
-  shares and same-period goods balance when available.
+  shares. FOB exports and CIF imports remain separate until an official
+  comparable balance is available.
 - `oil_gas_production`: ANH / datos.gov.co consolidated crude and fiscalized
   gas production aggregates, including top departments by volume.
 - `fiscal_tax_pulse`: DIAN monthly gross tax collection by broad bucket from
@@ -659,6 +660,8 @@ M1.13 adds deterministic alert rendering for known high-value conditions:
 - `liquidity_spread`: a large IBR-policy spread.
 - `mixed_period_components`: bundle components should not be combined because
   they refer to different periods, currently used for external trade.
+- `mixed_valuation_components`: bundle components use incompatible valuations,
+  currently FOB exports and CIF imports, so a balance should not be calculated.
 - `real_terms_warning`: nominal tax collection growth is below annual IPC.
 - `activity_acceleration`: monthly ISE annual growth is strong enough to merit
   a next-release follow-up question.

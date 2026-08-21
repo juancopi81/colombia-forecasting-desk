@@ -802,7 +802,14 @@ def test_external_trade_components_from_dane_html_build_bundle() -> None:
     assert bundle.status == "observed"
     assert bundle.period == "2026-03"
     assert bundle.values["observed_components"] == 2
-    assert bundle.values["goods_trade_balance_usd_millions"] == 215.9
+    assert "goods_trade_balance_usd_millions" not in bundle.values
+    assert (
+        bundle.values["goods_trade_balance_status"]
+        == "unavailable_mixed_valuation"
+    )
+    assert "FOB" in bundle.values["goods_trade_balance_caveat"]
+    assert "CIF" in bundle.values["goods_trade_balance_caveat"]
+    assert "comparable balance unavailable" in bundle.headline
 
 
 def test_energy_components_from_xm_responses_build_bundle() -> None:
