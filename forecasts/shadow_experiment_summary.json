@@ -1,18 +1,18 @@
 {
   "disposition_counts": {
-    "insight_only": 6,
+    "insight_only": 8,
     "shadow_track": 2
   },
   "interpretation_guardrail": "Descriptive only. This small sample does not establish model quality.",
   "official_source_follow_up": {
-    "completed_runs": 8,
+    "completed_runs": 10,
     "completion_rate": 1.0,
     "incomplete_runs": 0
   },
   "runs": {
-    "counted_decision_grade_runs": 8,
-    "latest_run_date": "2026-08-21",
-    "remaining_decision_grade_runs": 2,
+    "counted_decision_grade_runs": 10,
+    "latest_run_date": "2026-08-25",
+    "remaining_decision_grade_runs": 0,
     "run_dates": [
       "2026-08-12",
       "2026-08-13",
@@ -21,7 +21,9 @@
       "2026-08-18",
       "2026-08-19",
       "2026-08-20",
-      "2026-08-21"
+      "2026-08-21",
+      "2026-08-24",
+      "2026-08-25"
     ],
     "skipped_runs": {
       "invalid_agent_analysis": {
@@ -57,11 +59,11 @@
     "resolved_with_brier": 2,
     "resolved_with_comparable_brier": 2
   },
-  "status": "collecting",
+  "status": "ready_for_review",
   "tension_card_review": {
     "coverage_rate": 1.0,
-    "reviewed_cards": 14,
-    "triggered_cards": 14,
+    "reviewed_cards": 18,
+    "triggered_cards": 18,
     "unreviewed_cards": 0
   }
 }

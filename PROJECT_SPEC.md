@@ -201,6 +201,7 @@ colombia-forecasting-desk/
     shadow_forecast_log.jsonl
     shadow_experiment_summary.json
     shadow_experiment_summary.md
+    shadow_experiment_retrospective.md
     resolved/
 ```
 
@@ -467,7 +468,13 @@ one clean bill-status record before M2 ranks them.
       authority to publish or update `forecasts/forecast_log.jsonl`.
 - [x] Run a deterministic 10 decision-grade-run shadow experiment beginning
       2026-08-12 before deciding whether the lane improves useful forecast
-      formation.
+      formation. The
+      [retrospective](forecasts/shadow_experiment_retrospective.md) retains the
+      intelligence pass and protected shadow lane for process value while
+      explicitly rejecting calibration claims from two similar outcomes.
+- [ ] Continue shadow collection opportunistically and run the next qualitative
+      review after 10 additional resolved, more diverse cases; do not create a
+      quota or lower the public M3 gate.
 - [ ] Generate final candidate questions.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.

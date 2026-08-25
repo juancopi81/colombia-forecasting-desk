@@ -1,15 +1,15 @@
 # Shadow Forecast Experiment
 
-**Status:** `collecting`
-**Decision-grade runs:** 8 / 10
+**Status:** `ready_for_review`
+**Decision-grade runs:** 10 / 10
 **Start date:** `2026-08-12`
 
 > Descriptive only. This small sample does not establish model quality.
 
 ## Run Collection
 
-- Remaining decision-grade runs: 2
-- Latest counted run: 2026-08-21
+- Remaining decision-grade runs: 0
+- Latest counted run: 2026-08-25
 - Missing agent analysis: 0
 - Invalid agent analysis: 0
 - Non-decision-grade runs skipped: 0
@@ -18,13 +18,13 @@
 
 | Disposition | Runs |
 | --- | ---: |
-| `insight_only` | 6 |
+| `insight_only` | 8 |
 | `shadow_track` | 2 |
 
 ## Review Compliance
 
-- Bounded follow-ups completed: 8 / 8 (100.00%)
-- Triggered tension cards reviewed: 14 / 14 (100.00%)
+- Bounded follow-ups completed: 10 / 10 (100.00%)
+- Triggered tension cards reviewed: 18 / 18 (100.00%)
 
 ## Shadow Forecasts
 

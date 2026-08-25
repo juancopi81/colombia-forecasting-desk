@@ -114,8 +114,8 @@ selected runtime summaries before catalog edits.
 
 ## Status
 
-Currently at **M2.8 — accountable intelligence pass and internal shadow-forecast
-experiment**, building on M2.7 experimental market-pricing context and the
+Currently at **M2.8 — accountable intelligence pass and protected internal
+shadow forecasting**, building on M2.7 experimental market-pricing context and the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
@@ -149,8 +149,12 @@ them silently. The `agent_analysis.v1` contract then requires the reviewing
 model to form an interpretation, challenge it, review every triggered tension
 card, reason across and outside bundles, and complete one bounded official
 follow-up. At most one clean case may enter the separate internal shadow
-ledger; a 10 decision-grade-run experiment begins on 2026-08-12 without
-lowering the public M3 or posting threshold. See
+ledger. The initial 10 decision-grade-run experiment completed on 2026-08-25:
+it supported retaining the intelligence pass and shadow lane for their review
+discipline and quality control, but two similar resolved forecasts do not
+establish calibration. Shadow collection now continues opportunistically
+without lowering the public M3 or posting threshold. See the
+[`experiment retrospective`](forecasts/shadow_experiment_retrospective.md),
 [`docs/M1_METASOURCE_PIPELINE.md`](docs/M1_METASOURCE_PIPELINE.md) for the
 detailed plan, the
 [`Legislative Reconciler Contract`](docs/LEGISLATIVE_RECONCILER_CONTRACT.md)

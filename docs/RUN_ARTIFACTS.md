@@ -38,6 +38,7 @@ Repository-level experiment artifacts live outside the dated run folder:
 
 - `forecasts/shadow_forecast_log.jsonl` — protected internal ledger; at most one resolvable binary forecast may be appended per run, with a named baseline, paired model/baseline Brier scores after resolution, and no public-post authority
 - `forecasts/shadow_experiment_summary.json` / `.md` — deterministic progress, compliance, and paired model-versus-baseline scoring summary for the configured 10 decision-grade-run experiment
+- `forecasts/shadow_experiment_retrospective.md` — human-authored closeout of the initial 10-run experiment, separating established process value from unresolved calibration questions and recording the operating decision for continued shadow collection
 
 ## How the artifacts relate
 
