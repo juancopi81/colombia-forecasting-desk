@@ -61,6 +61,7 @@ from colombia_forecasting_desk.fetchers import (
     _socrata_params,
     _socrata_row_to_item,
     _struct_time_to_iso,
+    _fetch_corte_comunicados_api,
     _fetch_dian_regulatory_projects_api,
     fetch_api,
     fetch_html,

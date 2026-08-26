@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..observability import RunTrace
 from .common import *
 from .camara import *
+from .corte import *
 from .dane import *
 from .html import *
 from .imprenta import *
@@ -18,6 +19,8 @@ from .socrata import *
 
 def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
+    if source.id == "corte_constitucional_comunicados":
+        return _fetch_corte_comunicados_api(source, client, fetched_at)
     if source.id == "dian_proyectos_normas":
         return _fetch_dian_regulatory_projects_api(source, client, fetched_at)
     if source.id == "registraduria_noticias":
@@ -132,12 +135,6 @@ def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
                 client,
                 max_items=source.max_items,
             )
-    if source.id == "corte_constitucional_comunicados":
-        items = _extract_corte_comunicados(
-            response.text, str(response.url), source, fetched_at
-        )
-        if items:
-            return items
     if source.id == "minhacienda_tes_reports":
         items = _extract_minhacienda_tes_reports(
             response.text, str(response.url), source, fetched_at

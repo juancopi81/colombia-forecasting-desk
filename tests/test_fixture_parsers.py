@@ -83,9 +83,10 @@ def test_banrep_junta_comunicados_yields_dated_items(sample_source) -> None:
 
 
 def test_corte_comunicados_fragment_is_search_only(sample_source) -> None:
-    """`/comunicados/` returns an empty search form with no embedded list.
+    """The legacy HTML fragment remains empty even though production uses the API.
+
     `_extract_corte_comunicados` correctly returns []. Test pins this so we
-    notice if the page starts shipping data inline.
+    notice if the page starts shipping data inline and a fallback becomes viable.
     """
     source = replace(
         sample_source, id="corte_constitucional_comunicados", type="legal"

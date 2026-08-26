@@ -220,8 +220,8 @@ metasources:
     trust_role: resolution_source
     parsing_difficulty: medium
     enabled: true
-    onboarding_status: needs_parser
-    notes: "High-impact constitutional rulings. M1.4 investigation: /comunicados/ returns a 1.6KB search-only fragment, and the supposed alternative /relatoria/comunicados.aspx is the same Angular SPA shell (~8KB, <app-root>) with no static data. Both URLs require a headless renderer; postpone until we have one."
+    onboarding_status: working
+    notes: "High-impact constitutional rulings. The fetcher bypasses the Angular shell through the site's public Eventos/ObtenerComunicado date-range API, then parses a bounded set of official communication PDFs for decision text."
 
   - id: presidencia_noticias
     name: Presidencia — Noticias
