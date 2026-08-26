@@ -196,7 +196,7 @@ def test_counts_only_valid_looking_decision_grade_analyses_after_start_date(
 def test_acceptance_requires_pass_without_error_level_failures(tmp_path: Path) -> None:
     config_path = tmp_path / "shadow_experiment.yaml"
     runs_dir = tmp_path / "runs"
-    _write_config(config_path, start_date="2026-08-12", target_runs=1)
+    _write_config(config_path, start_date="2026-08-12", target_runs=2)
 
     _write_json(
         runs_dir / "2026-08-12" / "agent_analysis.json",
@@ -276,6 +276,63 @@ def test_summarizes_dispositions_across_counted_runs(tmp_path: Path) -> None:
     assert summary["disposition_counts"] == {
         "insight_only": 1,
         "shadow_track": 2,
+    }
+
+
+def test_stops_counting_after_configured_decision_grade_target(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "shadow_experiment.yaml"
+    runs_dir = tmp_path / "runs"
+    _write_config(config_path, start_date="2026-08-12", target_runs=2)
+    for run_date, disposition in (
+        ("2026-08-12", "shadow_track"),
+        ("2026-08-13", "insight_only"),
+        ("2026-08-14", "insight_only"),
+    ):
+        _write_decision_grade_run(
+            runs_dir,
+            run_date,
+            _agent_analysis(run_date, overall_disposition=disposition),
+        )
+    _write_json(
+        runs_dir / "2026-08-15" / "acceptance_report.json",
+        _acceptance_report("2026-08-15"),
+    )
+    _write_json(
+        runs_dir / "2026-08-16" / "agent_analysis.json",
+        {**_agent_analysis("2026-08-16"), "overall_disposition": ""},
+    )
+    _write_json(
+        runs_dir / "2026-08-16" / "acceptance_report.json",
+        _acceptance_report("2026-08-16"),
+    )
+    _write_json(
+        runs_dir / "2026-08-17" / "agent_analysis.json",
+        _agent_analysis("2026-08-17"),
+    )
+    _write_json(
+        runs_dir / "2026-08-17" / "acceptance_report.json",
+        _acceptance_report("2026-08-17", strict_pass=False),
+    )
+
+    summary = build_shadow_experiment_summary(
+        config_path=config_path,
+        runs_dir=runs_dir,
+        shadow_log_path=tmp_path / "missing.jsonl",
+    )
+
+    assert summary["runs"]["counted_decision_grade_runs"] == 2
+    assert summary["runs"]["run_dates"] == ["2026-08-12", "2026-08-13"]
+    assert summary["runs"]["latest_run_date"] == "2026-08-13"
+    assert summary["disposition_counts"] == {
+        "insight_only": 1,
+        "shadow_track": 1,
+    }
+    assert summary["runs"]["skipped_runs"] == {
+        "missing_agent_analysis": {"count": 0, "run_dates": []},
+        "invalid_agent_analysis": {"count": 0, "run_dates": []},
+        "non_decision_grade": {"count": 0, "run_dates": [], "reasons": {}},
     }
 
 

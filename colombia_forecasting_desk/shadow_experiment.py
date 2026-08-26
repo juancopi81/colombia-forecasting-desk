@@ -103,7 +103,7 @@ def _acceptance_failure_reason(path: Path, expected_run_date: str) -> str | None
 
 
 def _collect_analyses(
-    runs_dir: Path, start_date: date
+    runs_dir: Path, start_date: date, target_decision_grade_runs: int
 ) -> tuple[list[tuple[str, dict[str, Any]]], dict[str, Any]]:
     analyses: list[tuple[str, dict[str, Any]]] = []
     missing_analysis_dates: list[str] = []
@@ -143,6 +143,8 @@ def _collect_analyses(
             non_decision_grade_reasons[acceptance_reason] += 1
             continue
         analyses.append((run_dir.name, analysis))
+        if len(analyses) == target_decision_grade_runs:
+            break
     return analyses, _skipped_runs_summary(
         missing_analysis_dates,
         invalid_analysis_dates,
@@ -393,7 +395,9 @@ def build_shadow_experiment_summary(
     shadow_log_path: Path,
 ) -> dict[str, Any]:
     config = load_shadow_experiment_config(config_path)
-    analyses, skipped_runs = _collect_analyses(runs_dir, config.start_date)
+    analyses, skipped_runs = _collect_analyses(
+        runs_dir, config.start_date, config.target_decision_grade_runs
+    )
     run_dates = [run_date for run_date, _ in analyses]
     counted_runs = len(analyses)
     remaining_runs = max(config.target_decision_grade_runs - counted_runs, 0)
