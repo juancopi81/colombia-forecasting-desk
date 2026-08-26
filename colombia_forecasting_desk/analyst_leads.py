@@ -5,6 +5,11 @@ import re
 from typing import Any
 
 from .cleaner import normalize_whitespace
+from .court_rulings import (
+    COURT_DEADLINE_PENDING_STATUS,
+    court_text_signals,
+    is_corte_source_id,
+)
 from .models import RunSummary
 
 SCHEMA_VERSION = "analyst_leads.v1"
@@ -99,12 +104,21 @@ def build_analyst_leads(
     ]
 
     forecast_questions = _forecast_question_leads(review_items)
+    court_ruling_insights = _court_ruling_insight_leads(review_items)
     analyst_insights = _analyst_insight_leads(
+        court_ruling_insights,
         tension_cards,
         procurement_leads,
         land_use_leads,
     )
-    investigation_leads = _investigation_leads(review_items)
+    court_insight_origins = {
+        str((lead.get("review_context") or {}).get("origin_id") or "")
+        for lead in court_ruling_insights
+    }
+    investigation_leads = _investigation_leads(
+        review_items,
+        excluded_origins=court_insight_origins,
+    )
     leads = [*forecast_questions, *analyst_insights, *investigation_leads]
 
     return {
@@ -120,6 +134,10 @@ def build_analyst_leads(
                 "Do not add analyst_insight or investigation_lead items to the forecast log.",
                 "Do not assign probabilities outside an M3 Case File.",
                 "Do not treat deterministic tension cards as conclusions.",
+                (
+                    "Do not assert an exact Corte implementation or correction "
+                    "deadline until the complete written ruling is available."
+                ),
             ],
             "output_contract": OUTPUT_CONTRACT,
         },
@@ -139,6 +157,7 @@ def build_analyst_leads(
             "investigation_lead_count": len(investigation_leads),
             "review_item_count": len(review_items),
             "indicator_tension_card_count": len(tension_cards),
+            "court_ruling_insight_count": len(court_ruling_insights),
             "procurement_concentration_lead_count": len(procurement_leads),
             "zona_franca_land_use_lead_count": len(land_use_leads),
         },
@@ -216,11 +235,12 @@ def _forecast_question_leads(review_items: list[dict[str, Any]]) -> list[dict[st
 
 
 def _analyst_insight_leads(
+    court_ruling_insights: list[dict[str, Any]],
     tension_cards: list[dict[str, Any]],
     procurement_leads: list[dict[str, Any]],
     land_use_leads: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    leads: list[dict[str, Any]] = []
+    leads = list(court_ruling_insights[:MAX_ANALYST_INSIGHTS])
     for card in tension_cards:
         if len(leads) >= MAX_ANALYST_INSIGHTS:
             break
@@ -232,13 +252,19 @@ def _analyst_insight_leads(
     return leads
 
 
-def _investigation_leads(review_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _investigation_leads(
+    review_items: list[dict[str, Any]],
+    *,
+    excluded_origins: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    excluded_origins = excluded_origins or set()
     leads: list[dict[str, Any]] = []
     seen_origins = {
         _core_origin(str(item.get("origin_id") or ""))
         for item in review_items
         if _ready_for_forecast_question(item)
     }
+    seen_origins.update(_core_origin(origin) for origin in excluded_origins if origin)
     candidates = sorted(
         (
             (priority, index, item)
@@ -259,6 +285,157 @@ def _investigation_leads(review_items: list[dict[str, Any]]) -> list[dict[str, A
         if origin_id:
             seen_origins.add(origin_id)
     return leads
+
+
+def _court_ruling_insight_leads(
+    review_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    leads: list[dict[str, Any]] = []
+    seen_origins: set[str] = set()
+    for item in review_items:
+        if _ready_for_forecast_question(item):
+            continue
+        excerpts = [
+            excerpt
+            for excerpt in item.get("source_excerpts") or []
+            if isinstance(excerpt, dict)
+            and is_corte_source_id(excerpt.get("source_id"))
+            and excerpt.get("content_kind") == "parsed_content"
+        ]
+        matched_excerpts = _court_order_clock_excerpts(excerpts)
+        if not matched_excerpts:
+            continue
+        origin_id = _core_origin(str(item.get("origin_id") or ""))
+        if origin_id and origin_id in seen_origins:
+            continue
+        leads.append(_lead_from_court_ruling(item, matched_excerpts))
+        if origin_id:
+            seen_origins.add(origin_id)
+    return leads
+
+
+def _court_order_clock_excerpts(
+    excerpts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    matched: list[dict[str, Any]] = []
+    for excerpt in excerpts:
+        metadata = (
+            excerpt.get("metadata_hints")
+            if isinstance(excerpt.get("metadata_hints"), dict)
+            else {}
+        )
+        inferred = court_text_signals(str(excerpt.get("excerpt") or ""))
+        implementation_signal = bool(
+            metadata.get("implementation_or_correction_signal")
+            or inferred["implementation_or_correction_signal"]
+        )
+        clock_signal = bool(
+            metadata.get("clock_language_signal")
+            or inferred["clock_language_signal"]
+        )
+        if implementation_signal and clock_signal:
+            matched.append(excerpt)
+    return matched
+
+
+def _lead_from_court_ruling(
+    item: dict[str, Any],
+    excerpts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    references: list[str] = []
+    for excerpt in excerpts:
+        metadata = (
+            excerpt.get("metadata_hints")
+            if isinstance(excerpt.get("metadata_hints"), dict)
+            else {}
+        )
+        references.extend(
+            str(value)
+            for value in metadata.get("decision_references") or []
+            if value
+        )
+        references.extend(
+            court_text_signals(str(excerpt.get("excerpt") or ""))[
+                "decision_references"
+            ]
+        )
+    references = _unique_preserve_order(references)
+    first_excerpt = excerpts[0]
+    subject = (
+        references[0]
+        if len(references) == 1
+        else str(first_excerpt.get("title") or "")
+    )
+    subject = _trim(_clean_text(subject), 100) or "a constitutional ruling"
+    origin_id = str(item.get("origin_id") or item.get("packet_item_id") or subject)
+    traceability = (
+        item.get("traceability") if isinstance(item.get("traceability"), dict) else {}
+    )
+    if len(references) == 1:
+        claim = (
+            "An official Corte Constitucional communication reports that "
+            f"{subject} includes implementation or correction timing that may "
+            "matter publicly. The exact operative deadline is not verified "
+            "until the complete written ruling is available."
+        )
+    else:
+        claim = (
+            "An official Corte Constitucional communication contains "
+            "implementation or correction timing affecting one or more reported "
+            "rulings. The exact affected order and operative deadline are not "
+            "verified until the complete written ruling is available."
+        )
+    return {
+        "lead_id": _lead_id("analyst_insight", f"court:{origin_id}"),
+        "lead_type": "analyst_insight",
+        "title": f"Corte implementation-clock signal - {subject}",
+        "claim_or_question": claim,
+        "disposition": "monitor_or_research",
+        "evidence": _evidence_from_excerpts(excerpts),
+        "caveats": _compact_strings(
+            [
+                (
+                    "The parsed source is an official communication, not the "
+                    "complete written sentencia/auto and operative orders."
+                ),
+                (
+                    "Do not convert timing language into an exact deadline or "
+                    "forecast window before verifying the written ruling."
+                ),
+                *[str(value) for value in item.get("missing_evidence") or [] if value],
+            ],
+            MAX_CAVEATS,
+        ),
+        "next_check": (
+            "Obtain the complete written sentencia/auto; quote the operative "
+            "order, responsible actor, triggering event, and exact deadline, "
+            "then assess the public consequence and M3 suitability."
+        ),
+        "source_refs": {
+            "artifact_refs": list(traceability.get("artifact_refs") or []),
+            "source_item_ids": [
+                str(excerpt.get("item_id") or "")
+                for excerpt in excerpts
+                if excerpt.get("item_id")
+            ],
+            "source_urls": _unique_preserve_order(
+                [
+                    str(excerpt.get("url") or "")
+                    for excerpt in excerpts
+                    if excerpt.get("url")
+                ]
+            ),
+        },
+        "review_context": {
+            "family": "constitutional_court_ruling",
+            "pattern": "implementation_or_correction_clock",
+            "origin_id": str(item.get("origin_id") or ""),
+            "court_document_kind": "official_communication",
+            "deadline_status": COURT_DEADLINE_PENDING_STATUS,
+            "written_ruling_available": False,
+            "decision_references": references,
+        },
+    }
 
 
 def _ready_for_forecast_question(item: dict[str, Any]) -> bool:

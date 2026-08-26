@@ -140,6 +140,13 @@ silence is not negative evidence.
 The authoring prompt currently recommends no more than three official sources
 or ten minutes. That is an execution budget, not a validation rule.
 
+For Corte Constitucional cases, distinguish an official communication from the
+complete written sentencia/auto. A communication may support an
+`insight_only` public-interest candidate when it reports consequential
+implementation or correction timing. It cannot support an exact compliance
+deadline, `promote_to_m3`, or a Court-implementation shadow forecast until the
+written ruling and operative order are cited.
+
 ## Shadow Forecast Contract
 
 `shadow_forecast` must be `null` unless `overall_disposition` is

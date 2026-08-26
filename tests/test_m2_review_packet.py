@@ -236,6 +236,88 @@ def test_m2_review_packet_packages_source_excerpts_for_llm_review() -> None:
     assert "Will Proyecto de Ley 560" in rendered
 
 
+def test_m2_review_packet_carries_court_deadline_provenance() -> None:
+    court_metadata = {
+        "content_extraction": "corte_comunicado_pdf",
+        "court_document_kind": "official_communication",
+        "written_ruling_available": False,
+        "deadline_status": "pending_written_ruling",
+        "decision_references": ["Sentencia C-259 de 2026"],
+        "implementation_or_correction_signal": True,
+        "clock_language_signal": True,
+    }
+    court_raw = replace(
+        _raw_item(),
+        id="corte-comunicado-26",
+        source_id="corte_constitucional_comunicados",
+        source_name="Corte Constitucional - Comunicados",
+        source_type="legal",
+        url="https://www.corteconstitucional.gov.co/comunicados/26.pdf",
+        title="Comunicado 26 - Agosto 13 de 2026",
+        raw_text=(
+            "Sentencia C-259 de 2026. La Corte ordeno corregir la norma "
+            "dentro de treinta dias."
+        ),
+        metadata=court_metadata,
+    )
+    court_cleaned = replace(
+        _cleaned_item(),
+        id=court_raw.id,
+        source_id=court_raw.source_id,
+        source_name=court_raw.source_name,
+        source_type=court_raw.source_type,
+        url=court_raw.url,
+        title=court_raw.title,
+        clean_text=court_raw.raw_text,
+        metadata=court_metadata,
+    )
+    candidate = {
+        "candidate_id": "m1c_court_c259",
+        "candidate_type": "event_signal",
+        "origin_id": "cluster:corte:c259",
+        "question_seed": "What correction obligations apply?",
+        "decision_hint": "candidate",
+        "m1_scores": {"forecastability_score": 0.8},
+        "reasons": ["Primary Court communication."],
+        "noise_reasons": [],
+        "missing_evidence": ["Complete written ruling."],
+        "source_ids": ["corte_constitucional_comunicados"],
+        "evidence": {"item_ids": [court_raw.id], "links": []},
+    }
+
+    packet = build_m2_review_packet(
+        _summary(),
+        [court_raw],
+        [court_cleaned],
+        {"candidates": [candidate]},
+        {"ranked_questions": [], "heuristic_audit": {}},
+        [],
+        [
+            SourceHealth(
+                source_id=court_raw.source_id,
+                source_name=court_raw.source_name,
+                url=court_raw.url,
+                raw_count=1,
+                cleaned_count=1,
+                dated_count=1,
+                rankable_count=1,
+                failure_count=0,
+                content_mode="parsed_content",
+                parsed_content_count=1,
+            )
+        ],
+        [],
+    )
+
+    excerpt = packet["review_items"][0]["source_excerpts"][0]
+    assert excerpt["content_kind"] == "parsed_content"
+    assert excerpt["metadata_hints"]["court_document_kind"] == "official_communication"
+    assert excerpt["metadata_hints"]["written_ruling_available"] is False
+    assert excerpt["metadata_hints"]["deadline_status"] == "pending_written_ruling"
+    assert excerpt["metadata_hints"]["implementation_or_correction_signal"] is True
+    assert excerpt["metadata_hints"]["clock_language_signal"] is True
+
+
 def test_m2_review_packet_keeps_exact_gaceta_project_evidence_isolated() -> None:
     parent_url = "https://example.com/gaceta-817"
     pl320_url = f"{parent_url}#project-pl-320"

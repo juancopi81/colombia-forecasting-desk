@@ -820,6 +820,13 @@ analyst insights, and advisory cross-impact or incomplete M2 items remain
 investigation leads. This keeps civic/economic discoveries visible without
 turning every finding into a forecast or forecast-log entry.
 
+Parsed Corte Constitucional communications can also become analyst insights
+when they contain both implementation/correction language and timing language.
+Their metadata records `court_document_kind=official_communication` and
+`deadline_status=pending_written_ruling`. The insight must not repeat an exact
+deadline as established fact; the complete written sentencia/auto and operative
+order are required before M3 or shadow promotion.
+
 ## M2 Review Packet Balance
 
 `m2_review_packet.json` and `.md` are the content-first M2 review surface. The

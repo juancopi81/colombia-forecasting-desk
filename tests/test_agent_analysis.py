@@ -368,6 +368,29 @@ def test_shadow_track_requires_a_clean_resolvable_internal_forecast() -> None:
     assert "shadow_missing_falsifier" in codes
 
 
+def test_court_implementation_shadow_requires_written_ruling_resolver() -> None:
+    analysis = _valid_analysis()
+    analysis["shadow_forecast"].update(
+        {
+            "question": "Will Congress correct the pension rule by 2026-09-30?",
+            "official_resolver": {
+                "source_name": "Corte Constitucional - Comunicados",
+                "source_url": (
+                    "https://www.corteconstitucional.gov.co/comunicados/26.pdf"
+                ),
+            },
+            "resolution_criteria": {
+                "yes": "Congress corrects the rule within the Court deadline.",
+                "no": "Congress does not correct the rule within the deadline.",
+            },
+        }
+    )
+
+    codes = {issue.code for issue in validate_agent_analysis(analysis)}
+
+    assert "shadow_court_deadline_unverified_without_written_ruling" in codes
+
+
 def test_research_more_public_candidate_names_what_is_missing() -> None:
     analysis = _valid_analysis()
     analysis["public_interest_candidate"]["missing_evidence"] = []

@@ -426,6 +426,10 @@ Detailed plan in [M1 Metasource Pipeline](docs/M1_METASOURCE_PIPELINE.md)
 - [x] Surface SECOP procurement concentration and MinCIT zona-franca land-use
       screens as conservative analyst insights, not fraud claims or investment
       recommendations.
+- [x] Fetch Corte Constitucional communications through the official API,
+      parse bounded recent PDFs, and surface implementation/correction-clock
+      signals as fail-closed analyst insights while requiring the complete
+      written ruling before asserting an exact deadline or M3 readiness.
 - [x] Parse MinCIT's approved zonas francas PDF into structured registry rows
       and promote only new/changed rows across snapshots as fresh decision
       signals.

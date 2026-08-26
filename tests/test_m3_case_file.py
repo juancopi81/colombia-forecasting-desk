@@ -118,6 +118,57 @@ def test_ready_m3_case_file_requires_clear_duplicate_check() -> None:
     assert any(issue.code == "ready_duplicate_check_not_clear" for issue in issues)
 
 
+def test_court_implementation_case_requires_written_ruling_for_ready_gate() -> None:
+    case_file = _valid_case_file(
+        question="Will Congress correct the pension rule by 2026-09-30?",
+        resolution_source="Corte Constitucional communication and follow-up.",
+        resolution_criteria=[
+            "Resolve YES if Congress corrects the rule within the Court deadline.",
+            "Resolve NO otherwise.",
+        ],
+        deadline_or_window="2026-09-30",
+        source_excerpts=[
+            {
+                "source_id": "corte_constitucional_comunicados",
+                "source_name": "Corte Constitucional - Comunicados",
+                "url": "https://www.corteconstitucional.gov.co/comunicados/26.pdf",
+                "date": "2026-08-14",
+                "excerpt": "La Corte ordeno corregir la norma dentro de treinta dias.",
+            }
+        ],
+    )
+
+    codes = {issue.code for issue in validate_m3_case_file(case_file)}
+
+    assert "court_deadline_unverified_without_written_ruling" in codes
+
+
+def test_court_implementation_case_accepts_cited_written_ruling() -> None:
+    case_file = _valid_case_file(
+        question="Will Congress correct the pension rule by 2026-09-30?",
+        resolution_source="Corte Constitucional Sentencia C-259 de 2026.",
+        resolution_criteria=[
+            "Resolve YES if Congress corrects the rule within the Court deadline.",
+            "Resolve NO otherwise.",
+        ],
+        deadline_or_window="2026-09-30",
+        source_excerpts=[
+            {
+                "source_id": "corte_constitucional_relatoria",
+                "source_name": "Corte Constitucional - Relatoria",
+                "url": (
+                    "https://www.corteconstitucional.gov.co/relatoria/2026/"
+                    "C-259-26.htm"
+                ),
+                "date": "2026-08-20",
+                "excerpt": "La parte resolutiva ordena corregir la norma.",
+            }
+        ],
+    )
+
+    assert validate_m3_case_file(case_file) == []
+
+
 def test_extract_and_validate_case_file_from_evidence_pack_markdown() -> None:
     markdown = _pack_markdown(
         """

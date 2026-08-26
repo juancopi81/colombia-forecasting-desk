@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import json
 
+from ..court_rulings import (
+    COURT_COMMUNICATION_KIND,
+    COURT_DEADLINE_PENDING_STATUS,
+    court_text_signals,
+)
 from .common import *
 from .pdf import _extract_pdf_text_with_pdfplumber, _looks_like_pdf_excerpt
 
@@ -130,6 +135,9 @@ def _corte_link_item(
         "document_date": document_date,
         "source_published_at": row.get("FechaIniPub"),
         "parser_status": "document_link",
+        "court_document_kind": COURT_COMMUNICATION_KIND,
+        "written_ruling_available": False,
+        "deadline_status": COURT_DEADLINE_PENDING_STATUS,
     }
     return RawItem(
         id=_make_id(source.id, url, title),
@@ -200,6 +208,7 @@ def _enrich_corte_comunicado_pdfs(
                 "content_extraction": "corte_comunicado_pdf",
                 "parser_status": "parsed_content",
                 "pdf_text_chars": len(text),
+                **court_text_signals(text),
             }
         )
         enriched.append(

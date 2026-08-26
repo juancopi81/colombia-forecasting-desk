@@ -9,6 +9,7 @@ from .forecastability import (
     deadline_hint,
     forecastability_reasons,
     forecastability_score,
+    is_court_cluster,
     is_forecastable_candidate,
     noise_reasons,
     question_seed,
@@ -380,7 +381,15 @@ def _event_candidate(
     run_summary: RunSummary, cluster: Cluster, topic_keywords: list[str]
 ) -> dict[str, Any]:
     question = question_seed(cluster)
-    missing = cluster.missing_evidence or DEFAULT_MISSING_EVIDENCE
+    missing = list(cluster.missing_evidence or DEFAULT_MISSING_EVIDENCE)
+    if is_court_cluster(cluster):
+        missing.extend(
+            [
+                "complete written Corte ruling (sentencia/auto), including operative orders",
+                "exact implementation or correction deadline quoted from the written ruling",
+            ]
+        )
+        missing = _unique_preserve_order(missing)
     source_ids = _unique_preserve_order(cluster.member_source_ids)
     source_names = _unique_preserve_order(cluster.member_source_names)
     links = _cluster_links(cluster)

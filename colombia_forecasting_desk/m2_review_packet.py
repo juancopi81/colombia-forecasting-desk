@@ -914,8 +914,16 @@ def _metadata_hints(metadata: dict[str, Any]) -> dict[str, Any]:
         "project_label",
         "status",
         "edition_number",
+        "court_document_kind",
+        "deadline_status",
+        "decision_references",
+        "implementation_or_correction_signal",
+        "clock_language_signal",
     ]
-    return {key: metadata[key] for key in keys if key in metadata and metadata[key]}
+    hints = {key: metadata[key] for key in keys if key in metadata and metadata[key]}
+    if "written_ruling_available" in metadata:
+        hints["written_ruling_available"] = bool(metadata["written_ruling_available"])
+    return hints
 
 
 def _source_caveats(source_health: list[SourceHealth]) -> list[dict[str, str]]:

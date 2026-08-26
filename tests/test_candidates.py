@@ -116,6 +116,60 @@ def test_event_candidate_shape_uses_forecastability_helpers() -> None:
     ]
 
 
+def test_court_candidate_fails_closed_on_deadline_until_written_ruling() -> None:
+    cluster = _cluster(
+        cluster_id="c-corte-pension-correction",
+        title="Corte Constitucional ordena corregir reglas pensionales",
+        summary=(
+            "La Sentencia C-259 de 2026 ordena ajustar la implementacion "
+            "dentro de treinta dias."
+        ),
+        source_types=["legal"],
+        signal_types=["court_or_regulatory_movement"],
+        member_source_ids=["corte_constitucional_comunicados"],
+        member_source_names=["Corte Constitucional - Comunicados"],
+        member_titles=["Comunicado 26 - Agosto 13 de 2026"],
+        member_urls=[
+            "https://www.corteconstitucional.gov.co/comunicados/comunicado-26.pdf"
+        ],
+        member_metadata=[
+            {
+                "court_document_kind": "official_communication",
+                "deadline_status": "pending_written_ruling",
+            }
+        ],
+    )
+
+    out = build_m1_candidates(
+        _summary(),
+        [cluster],
+        [],
+        topic_keywords=["corte", "pension"],
+        generated_at="2026-05-06T12:00:31Z",
+    )
+
+    candidate = out["candidates"][0]
+    assert candidate["question_seed"] == (
+        "What implementation or correction obligations does the written "
+        "Corte Constitucional ruling establish?"
+    )
+    assert candidate["resolution_source"].startswith(
+        "Complete Corte Constitucional sentencia/auto"
+    )
+    assert candidate["deadline_or_window"].startswith(
+        "Unknown until the written Corte Constitucional ruling"
+    )
+    assert "treinta" not in candidate["deadline_or_window"].lower()
+    assert any(
+        "complete written Corte ruling" in evidence
+        for evidence in candidate["missing_evidence"]
+    )
+    assert any(
+        "deadline quoted from the written ruling" in evidence
+        for evidence in candidate["missing_evidence"]
+    )
+
+
 def test_legislative_reconciler_promotes_substantive_movement_only() -> None:
     registry_only = {
         "canonical_bill_id": "bill:2026:camara:550",

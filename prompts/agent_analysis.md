@@ -33,6 +33,15 @@ Inspect the available content-first artifacts for the run, including:
 Treat failed, stale, link-only, or unparsed sources as coverage caveats. Their
 silence is not evidence that nothing happened.
 
+Treat an official Corte Constitucional communication as evidence that the
+reported decision occurred, not as the complete written ruling. When a parsed
+communication reports an implementation or correction order with timing
+language, consider it for `analyst_insight` / `insight_only` if the public
+consequence is material. Do not assert an exact deadline, promote the case to
+M3, or create a Court-implementation shadow until the complete written
+sentencia/auto and its operative order are cited. If that ruling is unavailable,
+record the deadline as unknown and name the written ruling as missing evidence.
+
 When `banrep_eme_expectations` is available, treat it only as an official
 analyst-consensus baseline for inflation, policy-rate, or TRM questions. Check
 its release date and `freshness_status`; a stale survey may explain what the

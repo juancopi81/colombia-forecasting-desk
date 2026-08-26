@@ -103,7 +103,8 @@ the pipeline, tests, and workflow snippets. Its implementation is staged under
 can be moved behind clearer boundaries without changing the daily command. The
 current split keeps shared helpers in `common.py`, dispatcher functions in
 `core.py`, and source-family logic in modules such as `dane.py`, `imprenta.py`,
-`minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, and `socrata.py`.
+`minhacienda.py`, `mincit.py`, `registries.py`, `rss.py`, `socrata.py`, and
+`corte.py`.
 Fetcher parser tests mirror that boundary: generic dispatcher/facade coverage
 stays in `tests/test_fetchers.py`, while source-family parser cases live in
 `tests/test_fetchers_*.py` files.
@@ -117,7 +118,8 @@ selected runtime summaries before catalog edits.
 Currently at **M2.8 — accountable intelligence pass and protected internal
 shadow forecasting**, building on M2.7 experimental market-pricing context and the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
-official legal-resolution bridge, and M1.23 GDP/ISE Indicator Watch coverage. The
+official legal-resolution bridge, M1.23 GDP/ISE Indicator Watch coverage, and
+M1.24 Corte communications coverage with fail-closed deadline provenance. The
 official Senado Sección de Leyes and Cámara Proyectos de Ley registries now
 provide primary structured bill identity/status records; Senado agenda PDFs and
 Gacetas remain fallback/follow-up evidence. The MinCIT zonas francas source
@@ -126,6 +128,10 @@ location, declaratory/prórroga resolutions, and legal follow-up sources, while
 promoting only future new/changed snapshot rows as current decision signals.
 Those registry changes now feed `analyst_leads` as conservative zona-franca
 land-use insights before any M3 forecast decision.
+Corte Constitucional communications now come from the Court's official search
+API with bounded PDF parsing. Communications that report implementation or
+correction timing can surface as analyst insights, but their exact operative
+deadline remains unknown until the complete written sentencia/auto is cited.
 Diario Oficial PDFs, SUIN/Gestor legal rows, and MinCIT rows now share
 normalized legal-act identities so official resolution matches can be attached
 only when the act number/year and MinCIT or zone-name context agree. DIAN

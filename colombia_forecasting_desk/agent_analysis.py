@@ -6,6 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .court_rulings import (
+    is_corte_source,
+    is_court_implementation_case,
+    is_written_court_ruling_url,
+)
+
 
 SCHEMA_VERSION = "agent_analysis.v1"
 ALLOWED_OVERALL_DISPOSITIONS = {
@@ -748,6 +754,22 @@ def _validate_shadow_forecast(
             AgentAnalysisIssue(
                 "shadow_incomplete_official_resolver",
                 "Shadow forecast requires official_resolver source_name and source_url.",
+            )
+        )
+    elif (
+        is_corte_source("", resolver.get("source_name"), resolver.get("source_url"))
+        and is_court_implementation_case(
+            value.get("question"),
+            value.get("resolution_criteria"),
+        )
+        and not is_written_court_ruling_url(resolver.get("source_url"))
+    ):
+        issues.append(
+            AgentAnalysisIssue(
+                "shadow_court_deadline_unverified_without_written_ruling",
+                "A Corte implementation/correction shadow requires the complete "
+                "written sentencia/auto as its official resolver; a communication "
+                "cannot establish the exact deadline.",
             )
         )
 

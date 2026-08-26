@@ -104,6 +104,11 @@ MinCIT zona-franca registry diffs can also contribute land-use/economic
 development insights when the approved-zones registry adds or changes a named
 zone. These are not investment recommendations; they are prompts to verify the
 resolution text and local implications.
+Corte Constitucional communications with parsed implementation/correction and
+clock language can contribute fail-closed analyst insights. The communication
+proves the reported decision, while the exact operative deadline remains
+unknown until the complete written sentencia/auto is cited; such leads do not
+become M3-ready or shadow forecasts from the communication alone.
 `run_trace.json` is diagnostic only; it helps explain how a run executed, but it
 does not feed candidate ranking, acceptance gates, or M2 question selection.
 

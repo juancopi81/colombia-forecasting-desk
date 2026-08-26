@@ -45,6 +45,9 @@ Examples:
   municipality, resolution, and official follow-up path.
 - A regulatory or land-use document that changes the public map but has no
   natural probability question yet.
+- An official Corte Constitucional communication reporting an implementation
+  or correction order with timing language, while the exact operative deadline
+  remains pending verification in the complete written sentencia/auto.
 
 Promotion rule: an `analyst_insight` may cite deterministic screens or
 source-backed patterns, but it must not receive a probability or forecast-log
@@ -53,6 +56,10 @@ separate legal, audit, or investigative evidence.
 Zona-franca land-use screens must not be framed as investment recommendations;
 they are prompts to verify the legal act, local planning context, and public
 impact.
+Corte communications may establish that a consequential decision occurred and
+may therefore support an `analyst_insight`. They must not establish an exact
+implementation/correction deadline, M3 window, or probability until the
+complete written ruling and operative order are cited.
 
 ### `investigation_lead`
 

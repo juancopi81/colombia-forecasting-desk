@@ -177,6 +177,123 @@ def test_tension_cards_become_analyst_insights_not_forecasts() -> None:
     assert "Real tax revenue squeeze" in rendered
 
 
+def test_court_order_clock_becomes_fail_closed_analyst_insight() -> None:
+    court_excerpt = {
+        "item_id": "corte-comunicado-26",
+        "source_id": "corte_constitucional_comunicados",
+        "source_name": "Corte Constitucional - Comunicados",
+        "source_type": "legal",
+        "title": "Comunicado 26 - Agosto 13 de 2026",
+        "url": (
+            "https://www.corteconstitucional.gov.co/comunicados/"
+            "comunicado-26-agosto-13-de-2026.pdf"
+        ),
+        "published_at": "2026-08-14T21:04:34Z",
+        "content_kind": "parsed_content",
+        "metadata_hints": {
+            "court_document_kind": "official_communication",
+            "written_ruling_available": False,
+            "deadline_status": "pending_written_ruling",
+            "decision_references": [
+                "Sentencia C-259 de 2026",
+                "Sentencia SU-261/26",
+            ],
+            "implementation_or_correction_signal": True,
+            "clock_language_signal": True,
+        },
+        "excerpt": (
+            "Sentencia C-259 de 2026. La Corte ordeno al Congreso corregir "
+            "la norma dentro de treinta dias. Sentencia SU-261/26 protege "
+            "otros derechos."
+        ),
+    }
+    packet = {
+        "review_items": [
+            {
+                "packet_item_id": "court-pension-correction",
+                "item_type": "event_signal",
+                "origin_id": "cluster:corte:pension-correction",
+                "question_seed": "What correction obligations apply?",
+                "recommendation": "candidate",
+                "bucket": "m1_candidate",
+                "missing_evidence": ["Complete written ruling."],
+                "heuristic_penalties": [],
+                "heuristic_risk_flags": [
+                    "possible_false_negative_public_interest"
+                ],
+                "source_excerpts": [court_excerpt],
+                "traceability": {
+                    "artifact_refs": [
+                        {
+                            "artifact": "m1_candidates.json",
+                            "key": "candidate_id",
+                            "value": "court-pension-correction",
+                        }
+                    ],
+                    "source_item_ids": ["corte-comunicado-26"],
+                    "source_urls": [court_excerpt["url"]],
+                },
+            }
+        ]
+    }
+
+    payload = build_analyst_leads(_summary(), packet, [])
+
+    assert payload["summary"]["forecast_question_count"] == 0
+    assert payload["summary"]["court_ruling_insight_count"] == 1
+    assert payload["summary"]["analyst_insight_count"] == 1
+    assert payload["summary"]["investigation_lead_count"] == 0
+    lead = payload["leads"][0]
+    assert lead["lead_type"] == "analyst_insight"
+    assert lead["review_context"]["family"] == "constitutional_court_ruling"
+    assert lead["review_context"]["deadline_status"] == "pending_written_ruling"
+    assert lead["review_context"]["written_ruling_available"] is False
+    assert lead["title"].endswith("Comunicado 26 - Agosto 13 de 2026")
+    assert "C-259" not in lead["claim_or_question"]
+    assert "treinta dias" not in lead["claim_or_question"].lower()
+    assert any("not the complete written" in caveat for caveat in lead["caveats"])
+    assert "complete written sentencia/auto" in lead["next_check"]
+
+
+def test_court_communication_without_clock_stays_out_of_analyst_insights() -> None:
+    packet = {
+        "review_items": [
+            {
+                "packet_item_id": "court-no-clock",
+                "item_type": "event_signal",
+                "origin_id": "cluster:corte:no-clock",
+                "question_seed": "What did the Court decide?",
+                "recommendation": "candidate",
+                "bucket": "m1_candidate",
+                "missing_evidence": ["Written ruling and operative orders."],
+                "heuristic_penalties": [],
+                "heuristic_risk_flags": [],
+                "source_excerpts": [
+                    {
+                        "item_id": "corte-comunicado-27",
+                        "source_id": "corte_constitucional_comunicados",
+                        "source_name": "Corte Constitucional - Comunicados",
+                        "title": "Comunicado 27",
+                        "url": "https://www.corteconstitucional.gov.co/comunicados/27.pdf",
+                        "content_kind": "parsed_content",
+                        "metadata_hints": {
+                            "implementation_or_correction_signal": True,
+                            "clock_language_signal": False,
+                        },
+                        "excerpt": "La Corte ordeno ajustar la implementacion.",
+                    }
+                ],
+                "traceability": {},
+            }
+        ]
+    }
+
+    payload = build_analyst_leads(_summary(), packet, [])
+
+    assert payload["summary"]["court_ruling_insight_count"] == 0
+    assert payload["summary"]["analyst_insight_count"] == 0
+
+
 def test_procurement_concentration_leads_render_as_analyst_insights() -> None:
     procurement_lead = {
         "lead_id": "analyst_insight:procurement:abc123",

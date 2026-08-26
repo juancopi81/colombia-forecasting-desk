@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from .cleaner import fold_accents
+from .court_rulings import CORTE_COMUNICADOS_SOURCE_ID
 from .models import Cluster
 
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
@@ -338,6 +339,13 @@ def cluster_terms(cluster: Cluster) -> set[str]:
     return _terms(" ".join([cluster.title, cluster.summary]))
 
 
+def is_court_cluster(cluster: Cluster) -> bool:
+    terms = cluster_terms(cluster)
+    return CORTE_COMUNICADOS_SOURCE_ID in set(cluster.member_source_ids) or bool(
+        {"corte", "fallo", "sentencia"} & terms
+    )
+
+
 def forecastability_reasons(cluster: Cluster) -> list[str]:
     terms = cluster_terms(cluster)
     reasons: list[str] = []
@@ -427,6 +435,11 @@ def is_forecastable_candidate(cluster: Cluster) -> bool:
 
 def resolution_hint(cluster: Cluster) -> str:
     terms = cluster_terms(cluster)
+    if is_court_cluster(cluster):
+        return (
+            "Complete Corte Constitucional sentencia/auto and its operative "
+            "orders; a communication alone does not verify compliance deadlines."
+        )
     if {"banrep", "tasa", "junta"} & terms:
         return "Banco de la Republica board statement, minutes, and rate series."
     if {"gaceta", "congreso", "ponencia", "proyecto", "reforma", "ley"} & terms:
@@ -446,6 +459,11 @@ def resolution_hint(cluster: Cluster) -> str:
 
 def deadline_hint(cluster: Cluster) -> str:
     terms = cluster_terms(cluster)
+    if is_court_cluster(cluster):
+        return (
+            "Unknown until the written Corte Constitucional ruling "
+            "(sentencia/auto) and its operative orders are available."
+        )
     if {"banrep", "tasa", "junta"} & terms:
         return "Next scheduled BanRep board decision."
     if {"gaceta", "congreso", "ponencia", "proyecto", "reforma", "ley"} & terms:
@@ -461,6 +479,11 @@ def deadline_hint(cluster: Cluster) -> str:
 
 def question_seed(cluster: Cluster) -> str:
     terms = cluster_terms(cluster)
+    if is_court_cluster(cluster):
+        return (
+            "What implementation or correction obligations does the written "
+            "Corte Constitucional ruling establish?"
+        )
     if {"banrep", "tasa", "junta"} & terms:
         return "Will Banco de la Republica change the policy rate at its next board decision?"
     if {"gaceta", "congreso", "ponencia", "proyecto", "reforma", "ley"} & terms:

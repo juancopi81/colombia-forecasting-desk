@@ -65,6 +65,13 @@ artifact_refs:
 
 Probability and draft-post work should only happen after `ready_for_m3`.
 
+For Corte Constitucional implementation or correction cases, an official
+communication is evidence that a decision occurred but is not sufficient
+deadline provenance. `ready_for_m3` requires a cited complete written
+sentencia/auto, including the operative order that establishes the responsible
+actor, triggering event, and exact deadline. Otherwise keep the case at
+`research_more` with `deadline_or_window` unknown.
+
 ## Validation
 
 Validate evidence packs with:
@@ -77,6 +84,8 @@ The validator prints the detected gate and exits nonzero when the pack is
 missing the first-section case file, has invalid YAML, or claims
 `ready_for_m3` without the required resolution, source, deadline, excerpt, or
 duplicate-check fields.
+It also rejects a Corte implementation/correction case that claims
+`ready_for_m3` from a communication without a cited written ruling.
 
 ## Why This Exists
 

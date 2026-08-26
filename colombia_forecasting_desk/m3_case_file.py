@@ -6,6 +6,12 @@ from typing import Any
 
 import yaml
 
+from .court_rulings import (
+    is_corte_source,
+    is_court_implementation_case,
+    is_written_court_ruling_url,
+)
+
 SCHEMA_VERSION = "m3_case_file.v1"
 ALLOWED_GATES = {"ready_for_m3", "research_more", "reject"}
 ALLOWED_DUPLICATE_STATUSES = {
@@ -169,12 +175,57 @@ def _ready_gate_issues(
             )
         )
 
+    issues.extend(_court_deadline_provenance_issues(case_file))
+
     source_excerpts = case_file.get("source_excerpts")
     if isinstance(source_excerpts, list):
         for index, excerpt in enumerate(source_excerpts, 1):
             issues.extend(_source_excerpt_issues(excerpt, index))
 
     return issues
+
+
+def _court_deadline_provenance_issues(
+    case_file: dict[str, Any],
+) -> list[M3CaseIssue]:
+    excerpts = [
+        excerpt
+        for excerpt in case_file.get("source_excerpts") or []
+        if isinstance(excerpt, dict)
+    ]
+    resolution_source = case_file.get("resolution_source")
+    court_case = is_corte_source("", resolution_source, "") or any(
+        is_corte_source(
+            excerpt.get("source_id"),
+            excerpt.get("source_name"),
+            excerpt.get("url"),
+        )
+        for excerpt in excerpts
+    )
+    implementation_case = is_court_implementation_case(
+        case_file.get("question"),
+        case_file.get("resolution_criteria"),
+        [excerpt.get("excerpt") for excerpt in excerpts],
+    )
+    if not court_case or not implementation_case:
+        return []
+
+    has_written_ruling = any(
+        is_written_court_ruling_url(excerpt.get("url"))
+        or str(excerpt.get("document_kind") or "")
+        in {"written_ruling", "sentencia", "auto"}
+        for excerpt in excerpts
+    )
+    if has_written_ruling:
+        return []
+    return [
+        M3CaseIssue(
+            "court_deadline_unverified_without_written_ruling",
+            "A Corte implementation/correction case cannot be ready_for_m3 "
+            "with an exact deadline until a complete written sentencia/auto "
+            "and its operative order are cited.",
+        )
+    ]
 
 
 def _source_excerpt_issues(value: Any, index: int) -> list[M3CaseIssue]:

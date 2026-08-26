@@ -58,7 +58,8 @@ def test_fetch_corte_comunicados_api_parses_rows_and_enriches_newest_pdf(
     pdf = _minimal_text_pdf(
         "COMUNICADO 26. Sentencia C-259 de 2026. La Corte Constitucional "
         "declaro que las medidas adoptadas por el Gobierno son exequibles, "
-        "condicionadas e inexequibles y ordeno ajustar su implementacion."
+        "condicionadas e inexequibles y ordeno ajustar su implementacion "
+        "dentro de treinta dias."
     )
     seen: list[tuple[str, str]] = []
 
@@ -92,6 +93,12 @@ def test_fetch_corte_comunicados_api_parses_rows_and_enriches_newest_pdf(
     assert items[0].metadata["extraction"] == "corte_comunicados_api"
     assert items[0].metadata["source_record_id"] == 38191
     assert items[0].metadata["content_extraction"] == "corte_comunicado_pdf"
+    assert items[0].metadata["court_document_kind"] == "official_communication"
+    assert items[0].metadata["written_ruling_available"] is False
+    assert items[0].metadata["deadline_status"] == "pending_written_ruling"
+    assert items[0].metadata["decision_references"] == ["Sentencia C-259 de 2026"]
+    assert items[0].metadata["implementation_or_correction_signal"] is True
+    assert items[0].metadata["clock_language_signal"] is True
     assert "Sentencia C-259 de 2026" in items[0].raw_text
     assert "content_extraction" not in items[1].metadata
     assert seen == [
