@@ -108,6 +108,8 @@ def test_extract_camara_agenda_entries_from_pdf_text(sample_source) -> None:
     assert entry.metadata["extraction"] == "camara_agenda_pdf_entry"
     assert entry.metadata["agenda_source_url"] == CAMARA_AGENDA_URL
     assert entry.metadata["source_pdf_url"] == EXPECTED_PDF_URL
+    assert entry.metadata["agenda_window_start"] == "2026-04-27T00:00:00Z"
+    assert entry.metadata["agenda_window_end"] == "2026-04-30T00:00:00Z"
     assert entry.metadata["scheduled_date"] == "2026-04-29T00:00:00Z"
     assert entry.metadata["agenda_action_type"] == "votacion"
     assert entry.metadata["project_records"] == [
@@ -127,6 +129,92 @@ def test_extract_camara_agenda_entries_from_pdf_text(sample_source) -> None:
         "camara_proyectos_ley_registry"
     )
     assert "pdf_parse_status" not in entry.metadata
+
+
+def test_extract_camara_agenda_uses_short_section_date_inside_weekly_window(
+    sample_source,
+) -> None:
+    source = _camara_source(sample_source)
+    item = _extract_camara_agenda_pdf_links(
+        (
+            FIXTURE_DIR / "camara_agenda_consolidada" / "2026-04-29.html"
+        ).read_text(encoding="utf-8"),
+        CAMARA_AGENDA_URL,
+        source,
+        "2026-08-31T00:00:00Z",
+    )[0]
+    item = replace(
+        item,
+        title=(
+            "Cámara agenda PDF — AGENDA LEGISLATIVA DEL 31 DE AGOSTO "
+            "AL 4 DE SEPTIEMBRE DE 2026"
+        ),
+        published_at="2026-09-04T00:00:00Z",
+        metadata={
+            **item.metadata,
+            "agenda_title": (
+                "AGENDA LEGISLATIVA DEL 31 DE AGOSTO "
+                "AL 4 DE SEPTIEMBRE DE 2026"
+            ),
+        },
+    )
+    text = (
+        FIXTURE_DIR
+        / "camara_agenda_consolidada"
+        / "2026-08-31_short_day_excerpt.txt"
+    ).read_text(encoding="utf-8")
+
+    entries = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.published_at == "2026-09-02T00:00:00Z"
+    assert entry.metadata["agenda_window_start"] == "2026-08-31T00:00:00Z"
+    assert entry.metadata["agenda_window_end"] == "2026-09-04T00:00:00Z"
+    assert entry.metadata["scheduled_date"] == "2026-09-02T00:00:00Z"
+    assert entry.title.startswith("Cámara agenda 2026-09-02")
+
+
+def test_extract_camara_agenda_rejects_short_date_outside_weekday_match(
+    sample_source,
+) -> None:
+    source = _camara_source(sample_source)
+    item = _extract_camara_agenda_pdf_links(
+        (
+            FIXTURE_DIR / "camara_agenda_consolidada" / "2026-04-29.html"
+        ).read_text(encoding="utf-8"),
+        CAMARA_AGENDA_URL,
+        source,
+        "2026-08-31T00:00:00Z",
+    )[0]
+    item = replace(
+        item,
+        title=(
+            "Cámara agenda PDF — AGENDA LEGISLATIVA DEL 31 DE AGOSTO "
+            "AL 4 DE SEPTIEMBRE DE 2026"
+        ),
+        published_at="2026-09-04T00:00:00Z",
+        metadata={
+            **item.metadata,
+            "agenda_title": (
+                "AGENDA LEGISLATIVA DEL 31 DE AGOSTO "
+                "AL 4 DE SEPTIEMBRE DE 2026"
+            ),
+        },
+    )
+    text = (
+        FIXTURE_DIR
+        / "camara_agenda_consolidada"
+        / "2026-08-31_short_day_excerpt.txt"
+    ).read_text(encoding="utf-8").replace("MIERCOLES 02", "MIERCOLES 03")
+
+    entries = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.metadata["scheduled_date"] is None
+    assert entry.published_at == "2026-08-31T00:00:00Z"
+    assert entry.title.startswith("Cámara agenda 2026-08-31")
 
 
 def test_extract_camara_agenda_entries_from_live_plenary_text_shape(

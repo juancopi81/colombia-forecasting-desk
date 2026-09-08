@@ -24,6 +24,7 @@ def build_run_manifest(
     m2_review_packet: dict[str, Any],
     indicator_tension_cards: list[dict[str, Any]] | None = None,
     market_pricing_watch: list[Any] | None = None,
+    spending_execution_audit: dict[str, Any] | None = None,
     cooccurrence_bundles: list[dict[str, Any]] | None = None,
     m3_preflight_opportunities: dict[str, Any] | None = None,
     analyst_leads: dict[str, Any] | None = None,
@@ -54,6 +55,9 @@ def build_run_manifest(
             "m2_review_items": len(m2_review_packet.get("review_items") or []),
             "indicator_tension_cards": len(indicator_tension_cards or []),
             "market_pricing_observations": len(market_pricing_watch or []),
+            "spending_execution_sources": len(
+                (spending_execution_audit or {}).get("sources") or {}
+            ),
             "cooccurrence_bundles": len(cooccurrence_bundles or []),
             "m3_preflight_opportunities": len(
                 m3_preflight_opportunities.get("opportunities") or []
@@ -70,6 +74,7 @@ def build_run_manifest(
             "m2_review_packet": True,
             "indicator_tension_cards": True,
             "market_pricing_watch": True,
+            "spending_execution_audit": spending_execution_audit is not None,
             "cooccurrence_bundles": True,
             "m3_preflight_opportunities": True,
             "analyst_leads": True,
@@ -92,6 +97,9 @@ def build_run_manifest(
             ),
             "market_pricing_watch.json": _schema_from_market_pricing(
                 market_pricing_watch or []
+            ),
+            "spending_execution_audit.json": str(
+                (spending_execution_audit or {}).get("schema_version") or "unknown"
             ),
             "cooccurrence_bundles.json": _schema_from_bundles(
                 cooccurrence_bundles or []
@@ -184,6 +192,8 @@ def _artifact_inventory(run_dir: Path) -> list[dict[str, Any]]:
         "indicator_tension_cards.md",
         "market_pricing_watch.json",
         "market_pricing_watch.md",
+        "spending_execution_audit.json",
+        "spending_execution_audit.md",
         "cooccurrence_bundles.json",
         "cooccurrence_bundles.md",
         "m3_preflight_opportunities.json",

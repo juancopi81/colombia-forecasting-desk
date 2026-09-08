@@ -13,6 +13,7 @@ folders. For what each section of the HTML review surface means, see
 - `indicator_watch.json` — curated latest-known indicator cards for durable economic, fiscal, energy, and activity signals
 - `indicator_tension_cards.json` / `.md` — advisory cross-indicator screens that flag official-data tensions for M2 review without making conclusions
 - `market_pricing_watch.json` / `.md` — experimental fail-closed ADR, ETF, and Brent/oil pricing context for M2 review
+- `spending_execution_audit.json` / `.md` — bounded shadow-only SECOP II payment and CUIPO territorial-execution diagnostics; excluded from M2/M3, ranking, probabilities, and strict acceptance during the trial
 - `cooccurrence_bundles.json` / `.md` — neutral M2 context bundles that package related ingredients that co-occurred today without choosing a thesis
 - `m3_preflight_opportunities.json` / `.md` — advisory scheduled-event prompts across a 60-day research horizon; only the final seven days are M3-imminent, and no forecast, probability, or evidence pack is created
 - `agent_analysis.json` — authored, contract-validated LLM intelligence pass with the strongest changed signal, alternatives, falsifiers, tension-card reviews, relationships, one bounded official follow-up, and an explicit disposition
@@ -65,6 +66,14 @@ rates, and construction-cost pressure versus headline IPC.
 for EC, CIB, COLO, and Brent spot. It is not investment advice, a ranking
 signal, or a probability input; endpoint failures and stale closes are surfaced
 as source-health caveats so silence is not mistaken for no market movement.
+`spending_execution_audit.json` / `.md` is a separate shadow diagnostic. The
+daily command collects one bounded latest-day SECOP II payment snapshot and the
+latest CUIPO territorial-execution aggregate, but does not attach either source
+to the M2 packet, co-occurrence bundles, analyst leads, acceptance report, or
+agent-analysis prompt. Truncated or quality-warning SECOP days withhold totals;
+CUIPO reuses the previous aggregate only when the official dataset revision
+timestamp is unchanged. See [`SPENDING_EXECUTION_AUDIT.md`](SPENDING_EXECUTION_AUDIT.md)
+for source and promotion policy.
 `cooccurrence_bundles.json` / `.md` group related active ingredients such as
 fiscal/TES pressure, monetary/credit transmission, construction/housing costs,
 energy/tariff/subsidy context, and Colombia market-pricing context. They are

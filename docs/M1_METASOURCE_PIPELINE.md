@@ -403,6 +403,13 @@ parser remains fail-closed: if text extraction or entry extraction fails, the
 item keeps `content_extraction_error` and should not be treated as parsed
 document evidence.
 
+Cámara agenda entries use the same bill-level contract. Their parser preserves
+the weekly range as `agenda_window_start` and `agenda_window_end`, while
+`scheduled_date` records the bill's section-level date. Short headings such as
+`MIERCOLES 02` are resolved only when that day falls inside the explicit weekly
+range; otherwise the parser leaves the scheduled date unknown rather than
+using the weekly end date as the event date.
+
 M1.18 extends this document-intelligence track to Gacetas del Congreso. The
 Imprenta table rows still start as official document links, but the fetcher now
 captures each row's PrimeFaces download button and posts the JSF form for the

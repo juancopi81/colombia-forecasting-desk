@@ -50,6 +50,58 @@ def _stub_market_pricing(monkeypatch) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_spending_execution(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pipeline,
+        "load_previous_spending_execution_audit",
+        lambda runs_root, run_date: None,
+    )
+
+    def fake_fetch(*, now, previous_audit=None):
+        return {
+            "schema_version": "spending_execution_audit.v1",
+            "run_date": now.date().isoformat(),
+            "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "mode": "shadow_audit",
+            "policy": {
+                "decision_use": "diagnostic_only",
+                "m2_m3_eligible": False,
+                "automatic_promotion": False,
+                "notes": [],
+            },
+            "summary": {
+                "source_count": 2,
+                "observed_count": 2,
+                "failed_count": 0,
+                "no_data_count": 0,
+                "stale_count": 0,
+                "truncated_count": 0,
+                "quality_warning_count": 0,
+                "m2_m3_eligible": False,
+            },
+            "sources": {
+                "secop_ii_plan_pagos": {
+                    "status": "observed",
+                    "latest_payment_date": now.date().isoformat(),
+                    "returned_rows": 0,
+                    "complete_day": True,
+                    "usable_for_analysis": True,
+                    "caveats": [],
+                },
+                "cuipo_territorial_execution": {
+                    "status": "observed",
+                    "latest_period": "20260301",
+                    "usable_for_analysis": True,
+                    "scopes": [],
+                    "caveats": [],
+                },
+            },
+        }
+
+    monkeypatch.setattr(pipeline, "fetch_spending_execution_audit", fake_fetch)
+
+
 def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     monkeypatch,
     tmp_path,
@@ -119,6 +171,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (result.run_dir / "indicator_tension_cards.md").exists()
     assert (result.run_dir / "market_pricing_watch.json").exists()
     assert (result.run_dir / "market_pricing_watch.md").exists()
+    assert (result.run_dir / "spending_execution_audit.json").exists()
+    assert (result.run_dir / "spending_execution_audit.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
     assert (result.run_dir / "m3_preflight_opportunities.json").exists()
@@ -138,6 +192,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.analyst_leads["schema_version"] == "analyst_leads.v1"
     assert isinstance(result.indicator_tension_cards, list)
     assert isinstance(result.market_pricing_watch, list)
+    assert result.spending_execution_audit is not None
+    assert result.spending_execution_audit["policy"]["m2_m3_eligible"] is False
     assert isinstance(result.cooccurrence_bundles, list)
     assert result.m3_preflight_opportunities["schema_version"] == (
         "m3_preflight_opportunities.v2"
@@ -154,6 +210,13 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     )
     assert "build_analyst_leads" in trace_events
     assert "build_market_pricing_watch" in trace_events
+    assert "fetch_spending_execution_audit" in trace_events
+    assert (
+        trace_events["fetch_spending_execution_audit"]["metadata"][
+            "m2_m3_eligible"
+        ]
+        is False
+    )
     assert "build_cooccurrence_bundles" in trace_events
     assert "build_m3_preflight_opportunities" in trace_events
     assert result.run_manifest["schema_version"] == "run_manifest.v1"
@@ -165,6 +228,10 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert (
         result.run_manifest["artifact_schemas"]["market_pricing_watch.json"]
         == "market_pricing_watch.v1"
+    )
+    assert (
+        result.run_manifest["artifact_schemas"]["spending_execution_audit.json"]
+        == "spending_execution_audit.v1"
     )
     assert (
         result.run_manifest["artifact_schemas"]["cooccurrence_bundles.json"]
@@ -182,6 +249,7 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert result.run_manifest["capabilities"]["m2_review_packet"] is True
     assert result.run_manifest["capabilities"]["indicator_tension_cards"] is True
     assert result.run_manifest["capabilities"]["market_pricing_watch"] is True
+    assert result.run_manifest["capabilities"]["spending_execution_audit"] is True
     assert result.run_manifest["capabilities"]["cooccurrence_bundles"] is True
     assert result.run_manifest["capabilities"]["m3_preflight_opportunities"] is True
     assert result.run_manifest["capabilities"]["analyst_leads"] is True
@@ -194,6 +262,8 @@ def test_run_date_controls_age_filter_and_low_quality_stays_out_of_clusters(
     assert manifest_artifacts["indicator_tension_cards.md"] is True
     assert manifest_artifacts["market_pricing_watch.json"] is True
     assert manifest_artifacts["market_pricing_watch.md"] is True
+    assert manifest_artifacts["spending_execution_audit.json"] is True
+    assert manifest_artifacts["spending_execution_audit.md"] is True
     assert manifest_artifacts["cooccurrence_bundles.json"] is True
     assert manifest_artifacts["cooccurrence_bundles.md"] is True
     assert manifest_artifacts["m3_preflight_opportunities.json"] is True
@@ -282,6 +352,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert (result.run_dir / "indicator_tension_cards.md").exists()
     assert (result.run_dir / "market_pricing_watch.json").exists()
     assert (result.run_dir / "market_pricing_watch.md").exists()
+    assert not (result.run_dir / "spending_execution_audit.json").exists()
+    assert not (result.run_dir / "spending_execution_audit.md").exists()
     assert (result.run_dir / "cooccurrence_bundles.json").exists()
     assert (result.run_dir / "cooccurrence_bundles.md").exists()
     assert (result.run_dir / "m3_preflight_opportunities.json").exists()
@@ -299,6 +371,8 @@ def test_run_single_source_writes_to_sandbox(monkeypatch, tmp_path) -> None:
     assert result.run_trace["schema_version"] == "run_trace.v1"
     assert result.run_trace["mode"] == "sandbox"
     assert result.run_trace["metadata"]["source_id"] == "test_source"
+    assert result.spending_execution_audit is None
+    assert result.run_manifest["capabilities"]["spending_execution_audit"] is False
 
 
 def test_run_single_source_unknown_id_raises(monkeypatch, tmp_path) -> None:

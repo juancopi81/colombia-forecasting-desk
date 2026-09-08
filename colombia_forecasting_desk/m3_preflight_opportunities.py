@@ -28,6 +28,7 @@ _DANE_RELEASE_LABELS = {
     "labor": "labor-market statistics (GEIH)",
     "icoced": "building construction costs (ICOCED)",
     "emmet": "manufacturing activity (EMMET)",
+    "services_trade": "external trade in services (EMCES)",
     "retail": "retail activity (EMC)",
     "imports": "imports",
     "exports": "exports",
@@ -326,9 +327,16 @@ def _dane_release_opportunities(
         seen.add(key)
 
         is_imminent = days_until <= IMMINENT_WINDOW_DAYS
+        calendar_url = str(metadata.get("calendar_event_url") or item.get("url") or "")
         operation_url = str(metadata.get("operation_url") or item.get("url") or "")
-        release_label = _DANE_RELEASE_LABELS[release_family]
-        title = str(item.get("title") or release_label).strip()
+        source_title = str(item.get("title") or "").strip()
+        release_label = re.sub(
+            r"^\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóú]+\s+\d{4}\s+\d{1,2}:\d{2}\s*:\s*",
+            "",
+            source_title,
+        ).strip() or _DANE_RELEASE_LABELS[release_family]
+        title = source_title or release_label
+        scheduled_at_local = str(metadata.get("scheduled_at_local") or "")
         linked_cards = _linked_tension_cards_for_ids(
             indicator_tension_cards,
             _DANE_TENSION_CARD_IDS.get(release_family, set()),
@@ -399,18 +407,27 @@ def _dane_release_opportunities(
                 },
                 "source_evidence": [
                     {
+                        "artifact": "raw_items.json",
+                        "item_id": str(item.get("id") or ""),
                         "source_id": DANE_CALENDAR_SOURCE_ID,
-                        "url": str(item.get("url") or ""),
+                        "title": source_title,
+                        "url": calendar_url,
+                        "published_at": item.get("published_at"),
                         "metadata_key": "scheduled_at_local",
-                        "value": str(metadata.get("scheduled_at_local") or ""),
+                        "value": scheduled_at_local,
+                        "excerpt": title,
                     }
                 ],
                 "evidence": [
                     {
                         "label": "Scheduled release",
-                        "value": title,
+                        "value": (
+                            f"{title} — scheduled at {scheduled_at_local} (local)"
+                            if scheduled_at_local
+                            else title
+                        ),
                         "source": str(item.get("source_name") or "DANE"),
-                        "url": str(item.get("url") or ""),
+                        "url": calendar_url,
                     }
                 ],
                 "missing_evidence": [
@@ -727,6 +744,13 @@ def _render_opportunity(item: dict[str, Any]) -> list[str]:
                 f"- Trigger excerpt: {first.get('excerpt', 'not_recorded')}",
             ]
         )
+        if item.get("event_type") == DANE_EVENT_TYPE:
+            if first.get("url"):
+                lines.append(
+                    f"- Calendar: [DANE publication calendar]({first['url']})"
+                )
+            if first.get("value"):
+                lines.append(f"- Scheduled time (local): `{first['value']}`")
     missing = item.get("missing_before_m3") or []
     if missing:
         lines.append("- Missing before M3:")

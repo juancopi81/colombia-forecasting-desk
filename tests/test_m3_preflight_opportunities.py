@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
+
+import pytest
 
 from colombia_forecasting_desk.m3_preflight_opportunities import (
     build_m3_preflight_opportunities,
@@ -130,6 +133,7 @@ def _dane_calendar_event(
     *,
     family: str = "pib",
     scheduled_at: str = "2026-08-18T10:00:00-05:00",
+    title: str = "18 Ago 2026 10:00 : Producto Interno Bruto (PIB)",
 ) -> RawItem:
     return RawItem(
         id=f"dane-calendar-{family}-{scheduled_at[:10]}",
@@ -137,7 +141,7 @@ def _dane_calendar_event(
         source_name="DANE - Calendario de publicaciones",
         source_type="calendar",
         url="https://www.dane.gov.co/index.php/calendario/evento-pib",
-        title="18 Ago 2026 10:00 : Producto Interno Bruto (PIB)",
+        title=title,
         fetched_at="2026-08-11T16:00:00Z",
         published_at=scheduled_at,
         raw_text="Official DANE publication calendar event.",
@@ -206,6 +210,128 @@ def test_dane_calendar_surfaces_clean_internal_research_clock(tmp_path) -> None:
     assert opportunity["disposition"] == "consider_shadow_or_m3_preflight"
     assert "estimate it internally" in opportunity["question_seed"]
     assert opportunity["resolution_source"]["url"].startswith("https://www.dane.gov.co/")
+
+
+def test_dane_calendar_labels_emces_as_external_services_trade(tmp_path) -> None:
+    payload = build_m3_preflight_opportunities(
+        [
+            _dane_calendar_event(
+                family="services_trade",
+                scheduled_at="2026-09-04T14:00:00-05:00",
+                title="",
+            )
+        ],
+        [],
+        [],
+        run_date="2026-09-02",
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    opportunity = payload["opportunities"][0]
+    assert opportunity["opportunity_id"] == (
+        "dane_services_trade_release_2026-09-04"
+    )
+    assert opportunity["title"] == (
+        "DANE external trade in services (EMCES) release on 2026-09-04"
+    )
+    assert "external trade in services (EMCES)" in opportunity["question_seed"]
+    assert "retail" not in opportunity["title"].lower()
+
+
+@pytest.mark.parametrize(
+    ("family", "item_id", "scheduled_at", "release_title", "calendar_path"),
+    [
+        (
+            "ipc",
+            "e1924b7ef167bf92",
+            "2026-09-10T14:00:00-05:00",
+            "Resultados del IPC sin alimentos ni regulados (IPC)",
+            "2026/09/10/11225/-/resultados-del-ipc-sin-alimentos-ni-regulados-ipc",
+        ),
+        (
+            "labor",
+            "0c02068b48bf366d",
+            "2026-09-11T14:00:00-05:00",
+            "GEIH - Mercado laboral según sexo",
+            "2026/09/11/10642/-/geih-mercado-laboral-segun-sexo",
+        ),
+    ],
+)
+def test_dane_calendar_preserves_release_scope_and_provenance(
+    tmp_path, family, item_id, scheduled_at, release_title, calendar_path
+) -> None:
+    source_title = f"{scheduled_at[8:10]} Sep 2026 14:00 : {release_title}"
+    calendar_url = (
+        "https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/"
+        + calendar_path
+    )
+    event = _dane_calendar_event(
+        family=family, scheduled_at=scheduled_at, title=source_title
+    )
+    event = replace(
+        event,
+        id=item_id,
+        url=calendar_url,
+        metadata={**event.metadata, "calendar_event_url": calendar_url},
+    )
+    payload = build_m3_preflight_opportunities(
+        [event],
+        [],
+        [],
+        run_date="2026-09-08",
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    opportunity = payload["opportunities"][0]
+    assert opportunity["opportunity_id"] == (
+        f"dane_{family}_release_{scheduled_at[:10]}"
+    )
+    assert opportunity["title"] == (
+        f"DANE {release_title} release on {scheduled_at[:10]}"
+    )
+    assert release_title in opportunity["question_seed"]
+    assert opportunity["m3_gate"] == "needs_human_review"
+    assert opportunity["source_evidence"][0] == {
+        "artifact": "raw_items.json",
+        "item_id": item_id,
+        "source_id": "dane_publication_calendar",
+        "title": source_title,
+        "url": calendar_url,
+        "published_at": scheduled_at,
+        "metadata_key": "scheduled_at_local",
+        "value": scheduled_at,
+        "excerpt": source_title,
+    }
+    assert source_title in opportunity["evidence"][0]["value"]
+    assert scheduled_at in opportunity["evidence"][0]["value"]
+    assert opportunity["evidence"][0]["url"] == calendar_url
+
+    rendered = render_m3_preflight_opportunities(payload)
+    assert f"item `{item_id}`" in rendered
+    assert f"Trigger excerpt: {source_title}" in rendered
+    assert f"[DANE publication calendar]({calendar_url})" in rendered
+    assert f"Scheduled time (local): `{scheduled_at}`" in rendered
+    assert "item `unknown`" not in rendered
+    assert "Trigger excerpt: not_recorded" not in rendered
+
+
+def test_dane_calendar_preserves_title_without_calendar_prefix(tmp_path) -> None:
+    payload = build_m3_preflight_opportunities(
+        [_dane_calendar_event(family="ipc", title="Índice de precios al consumidor (IPC)")],
+        [],
+        [],
+        run_date="2026-08-11",
+        forecast_log_path=tmp_path / "forecast_log.jsonl",
+    )
+
+    opportunity = payload["opportunities"][0]
+    assert opportunity["title"] == (
+        "DANE Índice de precios al consumidor (IPC) release on 2026-08-18"
+    )
+    assert "Índice de precios al consumidor (IPC)" in opportunity["question_seed"]
+    assert opportunity["source_evidence"][0]["url"] == (
+        "https://www.dane.gov.co/index.php/calendario/evento-pib"
+    )
 
 
 def test_dane_calendar_early_event_stays_research_only(tmp_path) -> None:

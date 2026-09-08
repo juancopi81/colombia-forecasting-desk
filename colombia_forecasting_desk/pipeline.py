@@ -63,6 +63,11 @@ from .observability import RunTrace
 from .procurement_leads import build_procurement_concentration_leads
 from .ranker import parse_iso, rank
 from .registry_changes import add_mincit_zonas_francas_change_events
+from .spending_execution import (
+    fetch_spending_execution_audit,
+    load_previous_spending_execution_audit,
+    render_spending_execution_audit,
+)
 from .zona_franca_leads import build_zona_franca_land_use_leads
 
 logger = logging.getLogger(__name__)
@@ -88,6 +93,7 @@ class PipelineResult:
     indicator_watch: list[IndicatorObservation]
     indicator_tension_cards: list[dict]
     market_pricing_watch: list[MarketPricingObservation]
+    spending_execution_audit: dict | None
     cooccurrence_bundles: list[dict]
     m3_preflight_opportunities: dict
     legislative_reconciliations: list[dict]
@@ -636,6 +642,7 @@ def run_single_source(
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
+        spending_execution_audit=None,
         cooccurrence_bundles=cooccurrence_bundles,
         m3_preflight_opportunities=m3_preflight_opportunities,
         analyst_leads=analyst_leads,
@@ -653,6 +660,7 @@ def run_single_source(
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
+        spending_execution_audit=None,
         cooccurrence_bundles=cooccurrence_bundles,
         m3_preflight_opportunities=m3_preflight_opportunities,
         legislative_reconciliations=legislative_reconciliations,
@@ -768,6 +776,28 @@ def run(
             observed=sum(1 for item in market_pricing_watch if item.status == "observed"),
             failed=sum(1 for item in market_pricing_watch if item.status == "failed"),
             stale=sum(1 for item in market_pricing_watch if item.status == "stale"),
+        )
+    with trace.span(
+        "fetch_spending_execution_audit",
+        metadata={"mode": "shadow_audit", "m2_m3_eligible": False},
+    ) as span:
+        previous_spending_execution_audit = load_previous_spending_execution_audit(
+            runs_root,
+            run_date,
+        )
+        spending_execution_audit = fetch_spending_execution_audit(
+            now=current,
+            previous_audit=previous_spending_execution_audit,
+        )
+        spending_summary = spending_execution_audit.get("summary") or {}
+        span.set_counts(
+            sources=spending_summary.get("source_count"),
+            observed=spending_summary.get("observed_count"),
+            failed=spending_summary.get("failed_count"),
+            no_data=spending_summary.get("no_data_count"),
+            stale=spending_summary.get("stale_count"),
+            truncated=spending_summary.get("truncated_count"),
+            quality_warning=spending_summary.get("quality_warning_count"),
         )
 
     finished_at = _now_iso()
@@ -922,6 +952,14 @@ def run(
             ),
             encoding="utf-8",
         )
+        _write_json(
+            run_dir / "spending_execution_audit.json",
+            spending_execution_audit,
+        )
+        (run_dir / "spending_execution_audit.md").write_text(
+            render_spending_execution_audit(spending_execution_audit),
+            encoding="utf-8",
+        )
         _write_json(run_dir / "cooccurrence_bundles.json", cooccurrence_bundles)
         (run_dir / "cooccurrence_bundles.md").write_text(
             render_cooccurrence_bundles(
@@ -986,7 +1024,7 @@ def run(
         )
         (run_dir / "m2_handoff.md").write_text(handoff_text, encoding="utf-8")
         _write_json(run_dir / "run_summary.json", asdict(summary))
-        span.set_counts(artifacts_written=25)
+        span.set_counts(artifacts_written=27)
     run_trace = trace.to_dict()
     _write_json(run_dir / "run_trace.json", run_trace)
     run_manifest = build_run_manifest(
@@ -1001,6 +1039,7 @@ def run(
         m2_review_packet=m2_review_packet,
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
+        spending_execution_audit=spending_execution_audit,
         cooccurrence_bundles=cooccurrence_bundles,
         m3_preflight_opportunities=m3_preflight_opportunities,
         analyst_leads=analyst_leads,
@@ -1018,6 +1057,7 @@ def run(
         indicator_watch=indicator_watch,
         indicator_tension_cards=indicator_tension_cards,
         market_pricing_watch=market_pricing_watch,
+        spending_execution_audit=spending_execution_audit,
         cooccurrence_bundles=cooccurrence_bundles,
         m3_preflight_opportunities=m3_preflight_opportunities,
         legislative_reconciliations=legislative_reconciliations,

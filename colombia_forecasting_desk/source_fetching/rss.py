@@ -43,9 +43,14 @@ DANE_PUBLICATION_CALENDAR_RELEASE_PATTERNS = (
         r"\b(?:emmet|encuesta mensual manufacturera con enfoque territorial)\b",
     ),
     (
+        "services_trade",
+        r"\b(?:emces|encuesta mensual de comercio exterior de servicios)\b",
+    ),
+    (
         "retail",
-        r"\b(?:emc|encuesta mensual de comercio|comercio minorista|"
-        r"ventas (?:reales )?del comercio minorista)\b",
+        r"\b(?:emc\b|encuesta mensual de comercio\b(?!\s+exterior)|"
+        r"comercio minorista\b|"
+        r"ventas (?:reales )?del comercio minorista\b)",
     ),
     ("imports", r"\bimportaciones\b"),
     ("exports", r"\bexportaciones\b"),

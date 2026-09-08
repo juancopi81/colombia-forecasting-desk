@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from urllib.parse import parse_qs
 
 from .common import *
@@ -16,6 +17,29 @@ _CAMARA_AGENDA_PROJECT_RE = re.compile(
     r"(?P<second_year>\d{4})\s+(?P<second_chamber>Senado|C[aá]mara))?",
     re.IGNORECASE,
 )
+_CAMARA_AGENDA_WINDOW_RE = re.compile(
+    r"\b(?:semana\s+)?del\s+(?P<start_day>\d{1,2})"
+    r"(?:\s+de\s+(?P<start_month>enero|febrero|marzo|abril|mayo|junio|"
+    r"julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre))?"
+    r"\s+al\s+(?P<end_day>\d{1,2})\s+de\s+"
+    r"(?P<end_month>enero|febrero|marzo|abril|mayo|junio|julio|agosto|"
+    r"septiembre|setiembre|octubre|noviembre|diciembre)\s+de\s+"
+    r"(?P<end_year>\d{4})\b",
+    re.IGNORECASE,
+)
+_CAMARA_AGENDA_SHORT_DAY_RE = re.compile(
+    r"\b(?P<weekday>LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|"
+    r"DOMINGO)\s+(?P<day>\d{1,2})\b"
+)
+_CAMARA_WEEKDAY_INDEX = {
+    "lunes": 0,
+    "martes": 1,
+    "miercoles": 2,
+    "jueves": 3,
+    "viernes": 4,
+    "sabado": 5,
+    "domingo": 6,
+}
 
 
 def _normalize_camara_agenda_text_for_matching(text: str) -> str:
@@ -152,22 +176,87 @@ def _camara_project_identity_status(label: str, document_title: str) -> str:
     return "clean_project_identity"
 
 
+def _camara_agenda_window(agenda_item: RawItem) -> tuple[str | None, str | None]:
+    agenda_title = str(
+        agenda_item.metadata.get("agenda_title") or agenda_item.title or ""
+    )
+    match = _CAMARA_AGENDA_WINDOW_RE.search(fold_accents(agenda_title.lower()))
+    if match is None:
+        return agenda_item.published_at, None
+
+    start_day = int(match.group("start_day"))
+    end_day = int(match.group("end_day"))
+    end_month = MONTHS_ES[match.group("end_month")]
+    end_year = int(match.group("end_year"))
+    start_month_name = match.group("start_month")
+    if start_month_name:
+        start_month = MONTHS_ES[start_month_name]
+        start_year = end_year - int(start_month > end_month)
+    else:
+        start_month = end_month
+        start_year = end_year
+        if start_day > end_day:
+            start_month = 12 if end_month == 1 else end_month - 1
+            start_year = end_year - int(end_month == 1)
+
+    return (
+        _date_to_iso(start_year, start_month, start_day),
+        _date_to_iso(end_year, end_month, end_day),
+    )
+
+
+def _camara_short_section_date(
+    text: str,
+    position: int,
+    agenda_window_start: str | None,
+    agenda_window_end: str | None,
+) -> str | None:
+    if not agenda_window_start or not agenda_window_end:
+        return None
+    latest: re.Match[str] | None = None
+    for match in _CAMARA_AGENDA_SHORT_DAY_RE.finditer(text[:position]):
+        latest = match
+    if latest is None:
+        return None
+
+    try:
+        current = date.fromisoformat(agenda_window_start[:10])
+        window_end = date.fromisoformat(agenda_window_end[:10])
+    except ValueError:
+        return None
+    target_day = int(latest.group("day"))
+    target_weekday = _CAMARA_WEEKDAY_INDEX.get(
+        fold_accents(latest.group("weekday").lower())
+    )
+    while current <= window_end:
+        if current.day == target_day and current.weekday() == target_weekday:
+            return _date_to_iso(current.year, current.month, current.day)
+        current += timedelta(days=1)
+    return None
+
+
 def _camara_scheduled_date(
     text: str,
     position: int,
     default_year: int | None,
+    agenda_window_start: str | None = None,
+    agenda_window_end: str | None = None,
 ) -> str | None:
     latest: re.Match[str] | None = None
     for match in _SENADO_AGENDA_DAY_RE.finditer(text[:position]):
         latest = match
-    if latest is None:
-        return None
-    year_text = latest.group(3)
-    year = int(year_text) if year_text else default_year
-    month = MONTHS_ES.get(fold_accents(latest.group(2).lower()))
-    if year is None or month is None:
-        return None
-    return _date_to_iso(year, month, int(latest.group(1)))
+    if latest is not None:
+        year_text = latest.group(3)
+        year = int(year_text) if year_text else default_year
+        month = MONTHS_ES.get(fold_accents(latest.group(2).lower()))
+        if year is not None and month is not None:
+            return _date_to_iso(year, month, int(latest.group(1)))
+    return _camara_short_section_date(
+        text,
+        position,
+        agenda_window_start,
+        agenda_window_end,
+    )
 
 
 def _camara_follow_up_sources(
@@ -304,7 +393,7 @@ def _extract_camara_agenda_entries_from_text(
     default_year = _camara_year_from_iso(agenda_item.published_at) or (
         _camara_year_from_iso(_parse_date_text_to_iso(agenda_item.title))
     )
-    agenda_start = agenda_item.published_at
+    agenda_start, agenda_end = _camara_agenda_window(agenda_item)
     entries: list[RawItem] = []
     seen_labels: set[str] = set()
     for match in _CAMARA_AGENDA_PROJECT_RE.finditer(match_text):
@@ -319,6 +408,8 @@ def _extract_camara_agenda_entries_from_text(
             match_text,
             match.start(),
             default_year,
+            agenda_start,
+            agenda_end,
         )
         action = _camara_agenda_action(context)
         document_title = _camara_document_title(context)
@@ -344,6 +435,7 @@ def _extract_camara_agenda_entries_from_text(
                 "agenda_title": agenda_item.metadata.get("agenda_title")
                 or agenda_item.title,
                 "agenda_window_start": agenda_start,
+                "agenda_window_end": agenda_end,
                 "scheduled_date": scheduled_at,
                 "agenda_action_type": action,
                 "project_label": label,
@@ -372,7 +464,7 @@ def _extract_camara_agenda_entries_from_text(
                 url=entry_url,
                 title=title,
                 fetched_at=agenda_item.fetched_at,
-                published_at=scheduled_at or agenda_item.published_at,
+                published_at=scheduled_at or agenda_start,
                 raw_text=raw_text,
                 metadata=metadata,
             )
