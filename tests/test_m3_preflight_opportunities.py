@@ -158,6 +158,41 @@ def _dane_calendar_event(
     )
 
 
+@pytest.fixture
+def dane_geih_events() -> list[RawItem]:
+    events = []
+    for item_id, event_path, release_title in [
+        (
+            "fbe398a9cbe6471c",
+            "10631/-/geih-mercado-laboral-de-la-juventud",
+            "GEIH - Mercado laboral de la juventud",
+        ),
+        (
+            "0c02068b48bf366d",
+            "10642/-/geih-mercado-laboral-segun-sexo",
+            "GEIH - Mercado laboral según sexo",
+        ),
+    ]:
+        calendar_url = (
+            "https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/"
+            f"2026/09/11/{event_path}"
+        )
+        event = _dane_calendar_event(
+            family="labor",
+            scheduled_at="2026-09-11T14:00:00-05:00",
+            title=f"11 Sep 2026 14:00 : {release_title}",
+        )
+        events.append(
+            replace(
+                event,
+                id=item_id,
+                url=calendar_url,
+                metadata={**event.metadata, "calendar_event_url": calendar_url},
+            )
+        )
+    return events
+
+
 def test_banrep_next_meeting_context_flags_m3_preflight(tmp_path) -> None:
     payload = build_m3_preflight_opportunities(
         [_banrep_minutes()],
@@ -203,7 +238,9 @@ def test_dane_calendar_surfaces_clean_internal_research_clock(tmp_path) -> None:
 
     assert payload["summary"]["opportunity_count"] == 1
     opportunity = payload["opportunities"][0]
-    assert opportunity["opportunity_id"] == "dane_pib_release_2026-08-18"
+    assert opportunity["opportunity_id"] == (
+        "dane_pib_release_2026-08-18_c8d14d4be9aaadca"
+    )
     assert opportunity["days_until_event"] == 7
     assert opportunity["urgency"] == "nearby"
     assert opportunity["m3_gate"] == "needs_human_review"
@@ -229,7 +266,7 @@ def test_dane_calendar_labels_emces_as_external_services_trade(tmp_path) -> None
 
     opportunity = payload["opportunities"][0]
     assert opportunity["opportunity_id"] == (
-        "dane_services_trade_release_2026-09-04"
+        "dane_services_trade_release_2026-09-04_c8d14d4be9aaadca"
     )
     assert opportunity["title"] == (
         "DANE external trade in services (EMCES) release on 2026-09-04"
@@ -239,7 +276,10 @@ def test_dane_calendar_labels_emces_as_external_services_trade(tmp_path) -> None
 
 
 @pytest.mark.parametrize(
-    ("family", "item_id", "scheduled_at", "release_title", "calendar_path"),
+    (
+        "family", "item_id", "scheduled_at", "release_title", "calendar_path",
+        "event_suffix",
+    ),
     [
         (
             "ipc",
@@ -247,6 +287,7 @@ def test_dane_calendar_labels_emces_as_external_services_trade(tmp_path) -> None
             "2026-09-10T14:00:00-05:00",
             "Resultados del IPC sin alimentos ni regulados (IPC)",
             "2026/09/10/11225/-/resultados-del-ipc-sin-alimentos-ni-regulados-ipc",
+            "5ad1e4135912c6ad",
         ),
         (
             "labor",
@@ -254,11 +295,12 @@ def test_dane_calendar_labels_emces_as_external_services_trade(tmp_path) -> None
             "2026-09-11T14:00:00-05:00",
             "GEIH - Mercado laboral según sexo",
             "2026/09/11/10642/-/geih-mercado-laboral-segun-sexo",
+            "6f9d5061c67541fc",
         ),
     ],
 )
 def test_dane_calendar_preserves_release_scope_and_provenance(
-    tmp_path, family, item_id, scheduled_at, release_title, calendar_path
+    tmp_path, family, item_id, scheduled_at, release_title, calendar_path, event_suffix
 ) -> None:
     source_title = f"{scheduled_at[8:10]} Sep 2026 14:00 : {release_title}"
     calendar_url = (
@@ -284,7 +326,7 @@ def test_dane_calendar_preserves_release_scope_and_provenance(
 
     opportunity = payload["opportunities"][0]
     assert opportunity["opportunity_id"] == (
-        f"dane_{family}_release_{scheduled_at[:10]}"
+        f"dane_{family}_release_{scheduled_at[:10]}_{event_suffix}"
     )
     assert opportunity["title"] == (
         f"DANE {release_title} release on {scheduled_at[:10]}"
@@ -313,6 +355,102 @@ def test_dane_calendar_preserves_release_scope_and_provenance(
     assert f"Scheduled time (local): `{scheduled_at}`" in rendered
     assert "item `unknown`" not in rendered
     assert "Trigger excerpt: not_recorded" not in rendered
+
+
+def test_dane_same_day_family_events_have_stable_distinct_ids(
+    tmp_path, dane_geih_events
+) -> None:
+    kwargs = {
+        "run_date": "2026-09-09",
+        "forecast_log_path": tmp_path / "forecast_log.jsonl",
+    }
+    payload = build_m3_preflight_opportunities(dane_geih_events, **kwargs)
+
+    assert payload["summary"]["opportunity_count"] == 2
+    by_item_id = {
+        opportunity["source_evidence"][0]["item_id"]: opportunity
+        for opportunity in payload["opportunities"]
+    }
+    assert {
+        item_id: opportunity["opportunity_id"]
+        for item_id, opportunity in by_item_id.items()
+    } == {
+        "fbe398a9cbe6471c": "dane_labor_release_2026-09-11_c31cb3f2dae1e210",
+        "0c02068b48bf366d": "dane_labor_release_2026-09-11_6f9d5061c67541fc",
+    }
+    assert build_m3_preflight_opportunities(
+        list(reversed(dane_geih_events)), **kwargs
+    ) == payload
+    assert build_m3_preflight_opportunities(
+        dane_geih_events * 2, **kwargs
+    ) == payload
+    for event in dane_geih_events:
+        singleton = build_m3_preflight_opportunities([event], **kwargs)
+        opportunity = by_item_id[event.id]
+        assert singleton["opportunities"] == [opportunity]
+        assert opportunity["source_evidence"][0]["title"] == event.title
+        assert opportunity["source_evidence"][0]["url"] == event.url
+        assert opportunity["source_evidence"][0]["value"] == (
+            "2026-09-11T14:00:00-05:00"
+        )
+        assert opportunity["m3_gate"] == "needs_human_review"
+        assert opportunity["urgency"] == "nearby"
+
+
+def test_dane_calendar_identity_uses_canonical_event_url(
+    tmp_path, dane_geih_events
+) -> None:
+    event = dane_geih_events[0]
+    duplicate = replace(
+        event,
+        id="duplicate-raw-record",
+        url=dane_geih_events[1].url,
+        metadata={
+            **event.metadata,
+            "calendar_event_url": event.url + "?utm_source=calendar#details",
+        },
+    )
+    for records in [[event, duplicate], [duplicate, event], [duplicate]]:
+        payload = build_m3_preflight_opportunities(
+            records,
+            run_date="2026-09-09",
+            forecast_log_path=tmp_path / "forecast_log.jsonl",
+        )
+        assert payload["summary"]["opportunity_count"] == 1
+        assert payload["opportunities"][0]["opportunity_id"] == (
+            "dane_labor_release_2026-09-11_c31cb3f2dae1e210"
+        )
+
+
+@pytest.mark.parametrize("keep_item_id", [True, False])
+def test_dane_url_less_event_identity_is_deterministic(
+    tmp_path, dane_geih_events, keep_item_id
+) -> None:
+    events = [
+        replace(
+            event,
+            id=event.id if keep_item_id else "",
+            url="",
+            metadata={
+                key: value
+                for key, value in event.metadata.items()
+                if key != "calendar_event_url"
+            },
+        )
+        for event in dane_geih_events
+    ]
+    kwargs = {
+        "run_date": "2026-09-09",
+        "forecast_log_path": tmp_path / "forecast_log.jsonl",
+    }
+    payload = build_m3_preflight_opportunities(events, **kwargs)
+    assert payload["summary"]["opportunity_count"] == 2
+    assert len({item["opportunity_id"] for item in payload["opportunities"]}) == 2
+    assert build_m3_preflight_opportunities(events[::-1], **kwargs) == payload
+    assert build_m3_preflight_opportunities(events * 2, **kwargs) == payload
+    for event in events:
+        singleton = build_m3_preflight_opportunities([event], **kwargs)
+        assert singleton["opportunities"][0] in payload["opportunities"]
 
 
 def test_dane_calendar_preserves_title_without_calendar_prefix(tmp_path) -> None:

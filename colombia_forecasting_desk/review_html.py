@@ -539,6 +539,7 @@ def derive_forecast_resolution_queue(art: dict[str, Any]) -> dict[str, Any]:
 @dataclass
 class Decision:
     # "monitor_no_post" | "review_for_post" | "blocked_network_not_decision_grade"
+    # | "blocked_source_health_not_decision_grade"
     status: str
     label: str
     headline: str
@@ -581,7 +582,8 @@ def _is_blocked_network_run(art: dict[str, Any]) -> bool:
 def derive_decision(art: dict[str, Any]) -> Decision:
     """Derive the post/monitor status from structured artifacts only.
 
-    A run is "review for post" only when an artifact actually carries an
+    Explicit acceptance failures block decisions before considering M3 signals.
+    Otherwise a run is "review for post" only when an artifact actually carries an
     M3-ready signal: a ``forecast_question`` lead, or a non-empty
     ``ready_for_m3`` M2 bucket. Otherwise it is a monitoring run *by design* —
     surfaced calmly, not as an error. This mirrors the M3 gate; it never loosens
@@ -607,6 +609,34 @@ def derive_decision(art: dict[str, Any]) -> Decision:
                     "with live network access."
                 ),
                 "No M3 evidence pack should be selected from this run.",
+            ],
+            m3_ready=False,
+            recorded_human_decision=art.get("_human_decision"),
+        )
+
+    acceptance = art.get("acceptance_report.json") or {}
+    manifest = art.get("run_manifest.json") or {}
+    acceptance_status = acceptance.get("status") or manifest.get("acceptance_status")
+    strict_pass = (
+        acceptance.get("strict_pass") if acceptance else manifest.get("strict_pass")
+    )
+    if acceptance_status == "fail" or strict_pass is False:
+        errors = [
+            f"{issue.get('code', 'acceptance_error')}: {issue.get('message', '')}"
+            for issue in (acceptance.get("issues") or [])
+            if isinstance(issue, dict) and issue.get("severity") == "error"
+        ]
+        return Decision(
+            status="blocked_source_health_not_decision_grade",
+            label="Blocked - source health; no post",
+            headline=(
+                "Strict acceptance failed. This run is diagnostic-only and not "
+                "decision-grade. Rerun successfully before making a post or "
+                "monitor decision."
+            ),
+            facts=errors + [
+                "Source gaps are unknown coverage, not negative evidence.",
+                "No public post or M3 evidence-pack selection is supported by this run.",
             ],
             m3_ready=False,
             recorded_human_decision=art.get("_human_decision"),
@@ -697,6 +727,7 @@ class RunRow:
     acceptance_errors: int
     review_items: int
     m2_buckets: dict[str, int]
+    decision_status: str
     m3_ready: bool
     finished_at: str
 
@@ -744,6 +775,7 @@ def summarize_run(art: dict[str, Any]) -> RunRow:
         acceptance_errors=_as_int(acceptance.get("error_count")),
         review_items=_as_int(lead_summary.get("review_item_count")),
         m2_buckets=buckets,
+        decision_status=decision.status,
         m3_ready=decision.m3_ready,
         finished_at=str(summary.get("finished_at") or manifest.get("generated_at") or ""),
     )
@@ -1171,10 +1203,10 @@ def derive_monitor_queue(
 
 
 def count_forecast_drought(rows: list[RunRow]) -> int:
-    """Count trailing consecutive runs with no M3-ready signal (rows ascending)."""
+    """Count trailing monitoring runs, stopping at blocked or M3-ready runs."""
     streak = 0
     for row in reversed(rows):
-        if row.m3_ready:
+        if row.m3_ready or row.decision_status.startswith("blocked_"):
             break
         streak += 1
     return streak
@@ -2164,7 +2196,7 @@ def _render_source_reliability_buckets(caveats: list[dict[str, Any]]) -> str:
 def _render_banner(decision: Decision) -> str:
     variant = (
         "blocked"
-        if decision.status == "blocked_network_not_decision_grade"
+        if decision.status.startswith("blocked_")
         else "post"
         if decision.m3_ready
         else "monitor"
@@ -2506,7 +2538,9 @@ def _render_counts_table(rows: list[RunRow]) -> str:
     body_rows: list[str] = []
     for row in reversed(rows):  # newest first
         status_pill = (
-            _pill("review", "post") if row.m3_ready else _pill("monitor", "watch")
+            _pill("blocked / no post", "alert")
+            if row.decision_status.startswith("blocked_")
+            else _pill("review", "post") if row.m3_ready else _pill("monitor", "watch")
         )
         fq_cls = "num num--accent" if row.forecast_questions else "num num--zero"
         fail_cls = "num num--alert" if row.sources_failed else "num"
@@ -2589,6 +2623,9 @@ def render_runs_index_html(run_dirs: list[Path]) -> str:
         "</ul>"
         "</div>"
     )
+    if latest.decision_status.startswith("blocked_"):
+        latest_art = next(art for date, art in per_run if date == latest.date)
+        banner = _render_banner(derive_decision(latest_art))
 
     counts_section = _section(
         "Counts over time",

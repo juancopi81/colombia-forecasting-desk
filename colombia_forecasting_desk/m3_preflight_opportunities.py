@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import date, datetime
@@ -7,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .config_loader import load_metasources
+from .dedupe import canonicalize_url
 from .models import Metasource
 
 SCHEMA_VERSION = "m3_preflight_opportunities.v2"
@@ -307,7 +309,7 @@ def _dane_release_opportunities(
     window_days: int,
 ) -> list[dict[str, Any]]:
     opportunities: list[dict[str, Any]] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[str] = set()
     for item in raw_items:
         if item.get("source_id") != DANE_CALENDAR_SOURCE_ID:
             continue
@@ -321,22 +323,27 @@ def _dane_release_opportunities(
         days_until = (event_day - run_day).days
         if days_until < 0 or days_until > window_days:
             continue
-        key = (event_day.isoformat(), release_family)
-        if key in seen:
+        calendar_url = str(metadata.get("calendar_event_url") or item.get("url") or "")
+        source_title = str(item.get("title") or "").strip()
+        scheduled_at_local = str(metadata.get("scheduled_at_local") or "")
+        event_identity = (
+            canonicalize_url(calendar_url)
+            or str(item.get("id") or "")
+            or f"{event_day.isoformat()}|{scheduled_at_local}|{source_title}"
+        )
+        if event_identity in seen:
             continue
-        seen.add(key)
+        seen.add(event_identity)
+        event_suffix = hashlib.sha1(event_identity.encode("utf-8")).hexdigest()[:16]
 
         is_imminent = days_until <= IMMINENT_WINDOW_DAYS
-        calendar_url = str(metadata.get("calendar_event_url") or item.get("url") or "")
         operation_url = str(metadata.get("operation_url") or item.get("url") or "")
-        source_title = str(item.get("title") or "").strip()
         release_label = re.sub(
             r"^\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóú]+\s+\d{4}\s+\d{1,2}:\d{2}\s*:\s*",
             "",
             source_title,
         ).strip() or _DANE_RELEASE_LABELS[release_family]
         title = source_title or release_label
-        scheduled_at_local = str(metadata.get("scheduled_at_local") or "")
         linked_cards = _linked_tension_cards_for_ids(
             indicator_tension_cards,
             _DANE_TENSION_CARD_IDS.get(release_family, set()),
@@ -344,7 +351,7 @@ def _dane_release_opportunities(
         opportunities.append(
             {
                 "opportunity_id": (
-                    f"dane_{release_family}_release_{event_day.isoformat()}"
+                    f"dane_{release_family}_release_{event_day.isoformat()}_{event_suffix}"
                 ),
                 "event_type": DANE_EVENT_TYPE,
                 "status": "preflight_only",

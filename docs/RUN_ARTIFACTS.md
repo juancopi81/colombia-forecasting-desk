@@ -84,7 +84,12 @@ clean resolution sources across an early 60-day research horizon. BanRep
 policy decisions use the official
 Junta calendar as the primary schedule clock and parsed minutes as a fallback;
 DANE economic releases use the official publication-calendar RSS and linked
-statistical-operation pages. Events eight to sixty days away are
+statistical-operation pages. DANE opportunity IDs include a stable suffix from
+the canonical calendar-event URL (falling back to raw-record identity), so
+distinct same-day releases remain separate regardless of input order. The
+September 9, 2026 repair replaces the earlier family/date-only DANE IDs in
+regenerated artifacts; historical artifacts retain their original IDs.
+Events eight to sixty days away are
 `research_only`; only the final seven days invite human M3-preflight review.
 Missing calendar coverage is surfaced as a caveat instead of looking like a
 quiet day. The artifact asks whether to scaffold M3; it does not create a

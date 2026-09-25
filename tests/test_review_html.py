@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import pytest
 
 from colombia_forecasting_desk import review_html as rh
 
@@ -85,6 +88,7 @@ def _row(date: str, m3_ready: bool = False) -> rh.RunRow:
         acceptance_errors=0,
         review_items=0,
         m2_buckets={},
+        decision_status="review_for_post" if m3_ready else "monitor_no_post",
         m3_ready=m3_ready,
         finished_at="",
     )
@@ -345,6 +349,7 @@ def test_derive_decision_blocks_all_zero_source_failure_run() -> None:
             "run_manifest.json": {"counts": {"m1_candidates": 0}},
             "acceptance_report.json": {
                 "status": "fail",
+                "strict_pass": False,
                 "warning_count": 12,
                 "error_count": 6,
                 "issues": [],
@@ -365,6 +370,79 @@ def test_derive_decision_blocks_all_zero_source_failure_run() -> None:
     assert "Blocked - not decision-grade" in html_out
     assert "Monitoring — no new forecast" not in html_out
     assert "recorded decision <code>blocked_network_not_decision_grade</code>" in html_out
+
+
+@pytest.mark.parametrize("forecast_questions,ready_for_m3", [(0, 0), (1, 0), (0, 1)])
+def test_partial_strict_failure_blocks_monitor_and_m3_signals(
+    forecast_questions: int, ready_for_m3: int
+) -> None:
+    errors = [
+        {
+            "code": "operational_observed_indicators_below_minimum",
+            "severity": "error",
+            "message": "Full M1 run observed too few Indicator Watch cards.",
+            "details": {"observed_indicators": 5, "minimum": 8},
+        },
+        {
+            "code": "operational_high_impact_failures_too_high",
+            "severity": "error",
+            "message": "Too many high-impact sources failed for a full M1 run.",
+        },
+    ]
+    art = _art(**{
+        "acceptance_report.json": {
+            "status": "fail",
+            "strict_pass": False,
+            "error_count": 2,
+            "issues": errors,
+        },
+    })
+    art["run_summary.json"]["sources_failed"] = 5
+    art["analyst_leads.json"]["summary"]["forecast_question_count"] = forecast_questions
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = ready_for_m3
+
+    decision = rh.derive_decision(art)
+    assert decision.status == "blocked_source_health_not_decision_grade"
+    assert decision.m3_ready is False
+    assert "diagnostic-only and not decision-grade" in decision.headline
+    row = rh.summarize_run(art)
+    assert row.decision_status == decision.status
+    assert row.m3_ready is False
+
+    html_out = rh.render_daily_review_html(art)
+    assert '<div class="banner banner--blocked"' in html_out
+    assert "Blocked - source health; no post" in html_out
+    assert "Monitoring — no new forecast" not in html_out
+    assert "Review for possible forecast" not in html_out
+    assert "Rerun with live network access" not in html_out
+    for issue in errors:
+        assert issue["code"] in html_out
+        assert issue["message"] in html_out
+
+
+@pytest.mark.parametrize(
+    "acceptance,manifest,blocked",
+    [
+        ({"status": "fail"}, {}, True),
+        ({"status": "pass", "strict_pass": False}, {}, True),
+        (None, {"acceptance_status": "fail"}, True),
+        (None, {"strict_pass": False}, True),
+        (None, {}, False),
+        ({"status": "pass"}, {"strict_pass": False}, False),
+        ({"status": "pass", "strict_pass": True, "warning_count": 3}, {}, False),
+    ],
+)
+def test_decision_acceptance_compatibility(
+    acceptance: dict | None, manifest: dict, blocked: bool
+) -> None:
+    art = _art(**{
+        "acceptance_report.json": acceptance,
+        "run_manifest.json": manifest,
+    })
+    decision = rh.derive_decision(art)
+    assert decision.status == (
+        "blocked_source_health_not_decision_grade" if blocked else "monitor_no_post"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -395,6 +473,14 @@ def test_count_forecast_drought_counts_trailing_monitor_runs() -> None:
 def test_count_forecast_drought_is_zero_when_latest_is_ready() -> None:
     rows = [_row("2026-05-20", m3_ready=False), _row("2026-05-21", m3_ready=True)]
     assert rh.count_forecast_drought(rows) == 0
+
+
+def test_count_forecast_drought_stops_at_a_blocked_run() -> None:
+    rows = [_row("2026-05-27"), _row("2026-05-28")]
+    rows[-1].decision_status = "blocked_source_health_not_decision_grade"
+    assert rh.count_forecast_drought(rows) == 0
+    rows.append(_row("2026-05-29"))
+    assert rh.count_forecast_drought(rows) == 1
 
 
 # --------------------------------------------------------------------------- #
@@ -1464,6 +1550,36 @@ def test_render_index_shows_drought_and_per_run_links(tmp_path: Path) -> None:
     assert "2 consecutive monitoring run(s)" in html_out
     assert 'href="2026-05-29/review.html"' in html_out
     assert html_out == rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+
+
+@pytest.mark.parametrize("all_sources_failed", [False, True])
+def test_render_index_shows_latest_blocked_run_without_monitoring_claim(
+    tmp_path: Path, all_sources_failed: bool
+) -> None:
+    for date in ["2026-05-28", "2026-05-29"]:
+        art = _art()
+        if date == "2026-05-29":
+            art["acceptance_report.json"].update(status="fail", strict_pass=False)
+            art["analyst_leads.json"]["summary"]["forecast_question_count"] = 1
+            art["run_summary.json"]["sources_failed"] = 5
+            if all_sources_failed:
+                art["run_summary.json"].update(
+                    raw_items=0, cleaned_items=0, clusters=0, sources_failed=30
+                )
+        run_dir = tmp_path / date
+        run_dir.mkdir()
+        for name, payload in art.items():
+            if name.endswith(".json"):
+                (run_dir / name).write_text(json.dumps(payload), encoding="utf-8")
+
+    html_out = rh.render_runs_index_html(rh.find_run_dirs(tmp_path, window=14))
+    assert '<div class="banner banner--blocked"' in html_out
+    assert 'class="pill pill--alert">blocked / no post</span>' in html_out
+    assert 'class="pill pill--watch">monitor</span>' in html_out
+    assert 'class="pill pill--post">review</span>' not in html_out
+    assert "consecutive monitoring run(s)" not in html_out
+    assert "The most recent run carries an M3-ready signal." not in html_out
+    assert 'href="2026-05-29/review.html"' in html_out
 
 
 def test_render_index_uses_latest_human_monitor_queue(tmp_path: Path) -> None:
