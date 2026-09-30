@@ -404,7 +404,9 @@ item keeps `content_extraction_error` and should not be treated as parsed
 document evidence.
 
 Cámara agenda entries use the same bill-level contract. Their parser preserves
-the weekly range as `agenda_window_start` and `agenda_window_end`, while
+the weekly range as `agenda_window_start` and `agenda_window_end`, including
+titles such as `SEMANA DEL 28 SEPTIEMBRE AL 2 DE OCTUBRE DE 2026` that omit
+`de` before the starting month, while
 `scheduled_date` records the bill's section-level date. Short headings such as
 `MIERCOLES 02` are resolved only when that day falls inside the explicit weekly
 range; otherwise the parser leaves the scheduled date unknown rather than

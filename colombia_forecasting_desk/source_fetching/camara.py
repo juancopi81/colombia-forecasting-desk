@@ -19,7 +19,7 @@ _CAMARA_AGENDA_PROJECT_RE = re.compile(
 )
 _CAMARA_AGENDA_WINDOW_RE = re.compile(
     r"\b(?:semana\s+)?del\s+(?P<start_day>\d{1,2})"
-    r"(?:\s+de\s+(?P<start_month>enero|febrero|marzo|abril|mayo|junio|"
+    r"(?:\s+(?:de\s+)?(?P<start_month>enero|febrero|marzo|abril|mayo|junio|"
     r"julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre))?"
     r"\s+al\s+(?P<end_day>\d{1,2})\s+de\s+"
     r"(?P<end_month>enero|febrero|marzo|abril|mayo|junio|julio|agosto|"

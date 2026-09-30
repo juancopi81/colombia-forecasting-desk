@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import httpx
+import pytest
 
 from colombia_forecasting_desk.cleaner import clean
 from colombia_forecasting_desk.fetchers import (
@@ -215,6 +216,104 @@ def test_extract_camara_agenda_rejects_short_date_outside_weekday_match(
     assert entry.metadata["scheduled_date"] is None
     assert entry.published_at == "2026-08-31T00:00:00Z"
     assert entry.title.startswith("Cámara agenda 2026-08-31")
+
+
+@pytest.mark.parametrize(
+    "agenda_title, heading, window_start, window_end, scheduled_date",
+    [
+        (
+            "SEMANA DEL 27 ABRIL AL 30 DE ABRIL DE 2026",
+            "MIERCOLES 29",
+            "2026-04-27",
+            "2026-04-30",
+            "2026-04-29",
+        ),
+        (
+            "SEMANA DEL 28 SEPTIEMBRE AL 2 DE OCTUBRE DE 2026.",
+            "MARTES 29",
+            "2026-09-28",
+            "2026-10-02",
+            "2026-09-29",
+        ),
+        (
+            "SEMANA DEL 28 SEPTIEMBRE AL 2 DE OCTUBRE DE 2026.",
+            "JUEVES 01",
+            "2026-09-28",
+            "2026-10-02",
+            "2026-10-01",
+        ),
+        (
+            "SEMANA DEL 28 DICIEMBRE AL 2 DE ENERO DE 2027",
+            "MARTES 29",
+            "2026-12-28",
+            "2027-01-02",
+            "2026-12-29",
+        ),
+        (
+            "SEMANA DEL 28 DICIEMBRE AL 2 DE ENERO DE 2027",
+            "VIERNES 01",
+            "2026-12-28",
+            "2027-01-02",
+            "2027-01-01",
+        ),
+    ],
+)
+def test_extract_camara_agenda_accepts_start_month_without_de(
+    make_raw,
+    agenda_title,
+    heading,
+    window_start,
+    window_end,
+    scheduled_date,
+) -> None:
+    item = make_raw(
+        title=f"Cámara agenda PDF — {agenda_title}",
+        published_at=f"{window_end}T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    text = _camara_agenda_pdf_text().replace("MIERCOLES 29 de abril", heading)
+
+    entry = _extract_camara_agenda_entries_from_text(item, text)[0]
+
+    assert entry.metadata["agenda_window_start"] == f"{window_start}T00:00:00Z"
+    assert entry.metadata["agenda_window_end"] == f"{window_end}T00:00:00Z"
+    assert entry.metadata["scheduled_date"] == f"{scheduled_date}T00:00:00Z"
+    assert entry.published_at == f"{scheduled_date}T00:00:00Z"
+    assert entry.title.startswith(f"Cámara agenda {scheduled_date}")
+
+
+@pytest.mark.parametrize("has_day_heading", [True, False])
+def test_extract_camara_agenda_september_29_saved_excerpt(
+    make_raw,
+    has_day_heading,
+) -> None:
+    agenda_title = "SEMANA DEL 28 SEPTIEMBRE AL 2 DE OCTUBRE DE 2026."
+    item = make_raw(
+        title=f"Cámara agenda PDF — {agenda_title}",
+        published_at="2026-10-02T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    # PL075's stored agenda excerpt from the 2026-09-29 run, before item 2.
+    text = (
+        FIXTURE_DIR / "camara_agenda_consolidada" / "2026-09-29_excerpt.txt"
+    ).read_text(encoding="utf-8")
+    if not has_day_heading:
+        text = text.replace("MARTES 29", "")
+
+    entries = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.metadata["project_records"][0]["number"] == "075"
+    assert entry.metadata["agenda_window_start"] == "2026-09-28T00:00:00Z"
+    assert entry.metadata["agenda_window_end"] == "2026-10-02T00:00:00Z"
+    assert entry.metadata["scheduled_date"] == (
+        "2026-09-29T00:00:00Z" if has_day_heading else None
+    )
+    assert entry.published_at == (
+        "2026-09-29T00:00:00Z" if has_day_heading else "2026-09-28T00:00:00Z"
+    )
+    assert not entry.title.startswith("Cámara agenda 2026-10-02")
 
 
 def test_extract_camara_agenda_entries_from_live_plenary_text_shape(
