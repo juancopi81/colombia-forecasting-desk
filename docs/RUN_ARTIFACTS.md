@@ -66,6 +66,19 @@ rates, and construction-cost pressure versus headline IPC.
 for EC, CIB, COLO, and Brent spot. It is not investment advice, a ranking
 signal, or a probability input; endpoint failures and stale closes are surfaced
 as source-health caveats so silence is not mistaken for no market movement.
+Market `fetched_at` records UTC HTTP response receipt time, including received
+error responses; it is empty when no receipt timestamp is available. The run-date
+clock still controls historical row selection and freshness, independently of
+retrieval time. Receipt time does not certify source publication time or
+first-release vintage. Existing saved runs are not rewritten, and older
+run-date-anchored `fetched_at` values are not verified retrieval timestamps.
+Yahoo daily bars need a valid exchange timezone and receipt time. Earlier dates
+are eligible, constrained by the provider's quote time when available; a bar on
+that current date also needs matching regular-session start/end metadata and
+both source quote time and actual receipt at or after session end. This handles
+provider-declared early closes without a fixed UTC closing hour. Unconfirmed
+bars are skipped with a caveat; missing completion evidence never borrows the
+run-date end-of-day clock. These checks do not certify first-release vintage.
 `spending_execution_audit.json` / `.md` is a separate shadow diagnostic. The
 daily command collects one bounded latest-day SECOP II payment snapshot and the
 latest CUIPO territorial-execution aggregate, but does not attach either source

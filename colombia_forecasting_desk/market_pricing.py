@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from io import StringIO
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
@@ -80,6 +82,10 @@ def fetch_market_pricing_observations(
 
     These observations are review context only. They must fail closed because the
     ADR/ETF endpoints are public web endpoints, not contracted market-data APIs.
+
+    ``now`` controls historical row selection and freshness only. ``fetched_at``
+    records the UTC response receipt time, or is empty when no receipt timestamp
+    is available; it is never inferred from the evaluation clock.
     """
     current = now or datetime.now(timezone.utc)
     close_client = client is None
@@ -196,7 +202,7 @@ def _fetch_market_definition(
     except Exception as exc:  # pragma: no cover - final fail-closed guard.
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at="",
             message=f"Market pricing fetch failed: {exc.__class__.__name__}: {exc}",
         )
 
@@ -209,6 +215,7 @@ def _fetch_fred_brent(
 ) -> MarketPricingObservation:
     end = now.date()
     start = end - timedelta(days=MARKET_LOOKBACK_DAYS)
+    fetched_at = ""
     try:
         response = client.get(
             FRED_BRENT_CSV_URL,
@@ -218,11 +225,12 @@ def _fetch_fred_brent(
                 "coed": end.isoformat(),
             },
         )
+        fetched_at = _now_iso()
         response.raise_for_status()
     except httpx.HTTPError as exc:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at=fetched_at,
             message=f"FRED Brent fetch failed: {exc.__class__.__name__}: {exc}",
         )
 
@@ -231,13 +239,13 @@ def _fetch_fred_brent(
     if latest is None:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at=fetched_at,
             message="FRED Brent CSV returned no parseable non-empty daily rows.",
         )
     observed_date, close = latest
     return _priced_observation(
         definition,
-        fetched_at=_iso_now(now),
+        fetched_at=fetched_at,
         observed_date=observed_date,
         latest_close=close,
         source_name=definition["source_name"],
@@ -275,7 +283,10 @@ def _fetch_nasdaq_with_yahoo_fallback(
     fallback = _fetch_yahoo_chart(client, definition, now=now)
     if fallback.status == "observed":
         return fallback
-    return primary
+    return replace(
+        primary,
+        caveats=[*primary.caveats, f"Yahoo fallback unavailable: {fallback.headline}"],
+    )
 
 
 def _fetch_nasdaq_history(
@@ -287,6 +298,7 @@ def _fetch_nasdaq_history(
     end = now.date()
     start = end - timedelta(days=MARKET_LOOKBACK_DAYS)
     url = NASDAQ_HISTORICAL_URL.format(symbol=definition["symbol"])
+    fetched_at = ""
     try:
         response = client.get(
             url,
@@ -298,12 +310,13 @@ def _fetch_nasdaq_history(
             },
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )
+        fetched_at = _now_iso()
         response.raise_for_status()
         payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at=fetched_at,
             message=f"Nasdaq historical fetch failed: {exc.__class__.__name__}: {exc}",
         )
     rows = (
@@ -319,13 +332,13 @@ def _fetch_nasdaq_history(
     if latest is None:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at=fetched_at,
             message="Nasdaq historical endpoint returned no parseable daily rows.",
         )
     observed_date, close, volume = latest
     return _priced_observation(
         definition,
-        fetched_at=_iso_now(now),
+        fetched_at=fetched_at,
         observed_date=observed_date,
         latest_close=close,
         source_name=definition["source_name"],
@@ -359,36 +372,48 @@ def _fetch_yahoo_chart(
 ) -> MarketPricingObservation:
     symbol = definition["symbol"]
     url = YAHOO_CHART_URL.format(symbol=symbol)
+    definition = {
+        **definition,
+        "source_name": "Yahoo Finance chart endpoint",
+        "source_url": f"https://finance.yahoo.com/quote/{symbol}",
+    }
+    fetched_at = ""
     try:
         response = client.get(
             url,
-            params={"range": "1mo", "interval": "1d"},
+            params={"range": "1mo", "interval": "1d", "includePrePost": "false"},
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )
+        fetched_at = _now_iso()
         response.raise_for_status()
         payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
+            fetched_at=fetched_at,
             message=f"Yahoo chart fallback failed: {exc.__class__.__name__}: {exc}",
         )
 
-    latest = _latest_yahoo_row(payload, as_of=now.date())
+    latest, completion_note = _latest_yahoo_row(
+        payload, as_of=now.date(), fetched_at=fetched_at
+    )
     if latest is None:
         return _failed_observation(
             definition,
-            fetched_at=_iso_now(now),
-            message="Yahoo chart fallback returned no parseable daily rows.",
+            fetched_at=fetched_at,
+            message=(
+                "Yahoo chart fallback returned no confirmed completed daily rows. "
+                + completion_note
+            ).rstrip(),
         )
     observed_date, close, volume = latest
     return _priced_observation(
         definition,
-        fetched_at=_iso_now(now),
+        fetched_at=fetched_at,
         observed_date=observed_date,
         latest_close=close,
-        source_name="Yahoo Finance chart endpoint",
-        source_url=f"https://finance.yahoo.com/quote/{symbol}",
+        source_name=definition["source_name"],
+        source_url=definition["source_url"],
         now=now,
         headline=(
             f"{definition['name']} latest Yahoo daily close was {close:.2f} "
@@ -402,7 +427,7 @@ def _fetch_yahoo_chart(
         caveats=[
             "Yahoo Finance is an unofficial fallback endpoint and may rate-limit.",
             "The quote is for a US-listed ADR/ETF in USD, not local Colombian shares.",
-        ],
+        ] + ([completion_note] if completion_note else []),
         next_step=(
             "Treat as fallback context only; prefer Nasdaq when available and "
             "corroborate with official Colombia sources."
@@ -452,14 +477,15 @@ def _latest_yahoo_row(
     payload: dict[str, Any],
     *,
     as_of: date,
-) -> tuple[date, float, int | None] | None:
+    fetched_at: str,
+) -> tuple[tuple[date, float, int | None] | None, str]:
     chart = payload.get("chart") if isinstance(payload, dict) else None
     results = chart.get("result") if isinstance(chart, dict) else None
     if not isinstance(results, list) or not results:
-        return None
+        return None, ""
     result = results[0]
     if not isinstance(result, dict):
-        return None
+        return None, ""
     timestamps = result.get("timestamp")
     quote = (
         (result.get("indicators") or {}).get("quote") or []
@@ -467,22 +493,79 @@ def _latest_yahoo_row(
         else []
     )
     if not isinstance(timestamps, list) or not quote or not isinstance(quote[0], dict):
-        return None
+        return None, ""
+    meta = result.get("meta")
+    meta = meta if isinstance(meta, dict) else {}
+    try:
+        exchange_tz = ZoneInfo(meta.get("exchangeTimezoneName", ""))
+    except (TypeError, ValueError, ZoneInfoNotFoundError):
+        return None, "Daily-bar completion is unknown: exchange timezone unavailable."
+    try:
+        received = datetime.fromisoformat(fetched_at)
+    except (TypeError, ValueError):
+        return None, "Daily-bar completion is unknown: receipt time unavailable."
+    if received.tzinfo is None:
+        return None, "Daily-bar completion is unknown: receipt timezone unavailable."
+
+    market_time = _yahoo_timestamp(meta.get("regularMarketTime"))
+    if market_time is not None and market_time > received:
+        market_time = None
+    completed_before = received.astimezone(exchange_tz).date()
+    if market_time is not None:
+        # A cached pre-close response does not become a completed bar overnight.
+        completed_before = min(
+            completed_before, market_time.astimezone(exchange_tz).date()
+        )
+    periods = meta.get("currentTradingPeriod")
+    session = periods.get("regular") if isinstance(periods, dict) else None
+    session = session if isinstance(session, dict) else {}
+    session_start = _yahoo_timestamp(session.get("start"))
+    session_end = _yahoo_timestamp(session.get("end"))
     closes = quote[0].get("close") or []
     volumes = quote[0].get("volume") or []
     parsed: list[tuple[date, float, int | None]] = []
+    skipped: set[str] = set()
     for index, timestamp in enumerate(timestamps):
-        if not isinstance(timestamp, int):
+        quoted_at = _yahoo_timestamp(timestamp)
+        if quoted_at is None:
             continue
-        observed_date = datetime.fromtimestamp(timestamp, timezone.utc).date()
+        observed_date = quoted_at.astimezone(exchange_tz).date()
         close = _to_float(closes[index] if index < len(closes) else None)
         volume = _to_int(volumes[index] if index < len(volumes) else None)
         if close is None or observed_date > as_of:
             continue
+        completed = observed_date < completed_before
+        if not completed:
+            # Both source and receipt clocks must reach this bar's session end.
+            completed = bool(
+                session_start is not None
+                and session_end is not None
+                and market_time is not None
+                and session_start < session_end <= market_time <= received
+                and session_start.astimezone(exchange_tz).date() == observed_date
+                and session_end.astimezone(exchange_tz).date() == observed_date
+                and market_time.astimezone(exchange_tz).date() == observed_date
+                and session_start <= quoted_at <= session_end
+            )
+        if not completed or quoted_at > received:
+            skipped.add(observed_date.isoformat())
+            continue
         parsed.append((observed_date, close, volume))
-    if not parsed:
+    note = (
+        "Skipped Yahoo bars with unconfirmed completion (possibly provisional): "
+        + ", ".join(sorted(skipped)) + "."
+        if skipped else ""
+    )
+    return (max(parsed, key=lambda item: item[0]) if parsed else None), note
+
+
+def _yahoo_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, int) or isinstance(value, bool):
         return None
-    return max(parsed, key=lambda item: item[0])
+    try:
+        return datetime.fromtimestamp(value, timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        return None
 
 
 def _priced_observation(
@@ -641,5 +724,5 @@ def _to_int(value: Any) -> int | None:
         return None
 
 
-def _iso_now(now: datetime) -> str:
-    return now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
