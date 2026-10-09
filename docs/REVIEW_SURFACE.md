@@ -45,11 +45,19 @@ uv run python scripts/render_review.py --daily-only    # or --index-only
 The renderer only *reads and arranges* artifacts. It must never promote, score,
 or reinterpret them. In particular:
 
-- It does **not** loosen the M3 gate. The post/monitor status is derived
-  strictly: a run is "review for possible forecast" only when an artifact already
-  carries an M3-ready signal — a `forecast_question` lead in `analyst_leads.json`
-  or a non-empty `ready_for_m3` bucket in `m2_ranked_questions.json`. Otherwise it
-  is "monitoring — no new forecast", framed as intentional, not as an error.
+- It does **not** loosen the M3 gate. Failed acceptance blocks the banner before
+  any editorial or scanner signal. Otherwise, a current explicit public decision
+  in dated authored notes, a complete current sampling bridge, or a
+  contract-valid current agent analysis governs the completed-review banner.
+  Notes require a recognized public/overall decision and an explicit post value;
+  monitor decisions cannot say post yes. Conflicting public dispositions fall
+  back to a provisional scanner view. Missing, stale, or invalid records do not
+  establish completed review.
+- Before a valid editorial decision is available, a `forecast_question` lead or
+  non-empty `ready_for_m3` bucket produces a **provisional scanner suggestion**
+  for review. Scanner counts and buckets remain visible as context after the
+  editorial decision, including when a reviewer demotes a generated ready item.
+  M3 selection indicates review, not publication approval.
 - It does **not** turn tension cards, market-pricing rows, or co-occurrence
   bundles into probability inputs. Each is shown with its own advisory/context
   label and its source caveats.
@@ -59,20 +67,24 @@ or reinterpret them. In particular:
 - It reads `forecasts/forecast_log.jsonl` only to show whether unresolved
   forecasts have passed their resolution-check windows. This queue is a
   follow-up control, not an M3 promotion or an automatic resolver.
-- It reads `agent_analysis.json` and the separate shadow ledger for visibility
-  only. An internal probability never flips the public post/monitor banner,
-  creates an M3-ready item, or writes the selected forecast log.
-- The recorded human decision (if any) is read from `human_decisions.md` for
-  display only; the page's primary status is always the artifact-derived one.
+- `agent_analysis.json` contributes only its validated public-candidate decision
+  to the public banner; its internal disposition is shown separately. An internal
+  probability or shadow-ledger entry never supplies a public M3 promotion or
+  writes the selected forecast log. Authored notes take display precedence over
+  a consistent bridge and analysis. Undated legacy human notes remain visible
+  as recorded notes, without governing the banner.
 - Numbered monitor queues are parsed for display only. The renderer prefers
   `human_decisions.md`, then a reviewed `## Monitor Queue` in
   `candidate_questions.md`, then the artifact-derived fallback from
   investigation leads and M2 review queue items. These queues record
   human/editorial priorities only and do not promote any lead or alter the
-  artifact-derived status.
-- `m2_sampling_decisions.json` and `.md` may be present after the editorial
-  pass. They are linked as source artifacts only; they do not change the
-  artifact-derived post/monitor status.
+  public disposition.
+- A current `m2_sampling_decisions.json` with recorded status, reviewed candidate
+  rows, and matching candidate/decision counts reports the number of reviewed
+  editorial lanes separately from the packet item count. Those counts need not
+  match. Without a valid bridge, sampling completion is unknown; the renderer
+  does not claim that every packet item is still waiting. Both bridge formats
+  remain linked as source artifacts.
 - Source reliability buckets affect display and recent-run aggregation only.
   They do **not** change M1/M2/M3 logic, forecast promotion, or acceptance
   criteria.

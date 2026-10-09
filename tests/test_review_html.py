@@ -109,6 +109,72 @@ def _insight(title: str, family: str = "sovereign_funding", **overrides) -> dict
     return lead
 
 
+def _sampling(**overrides) -> dict:
+    sampling = {
+        "schema_version": "m2_sampling_decisions.v1",
+        "run_date": "2026-05-29",
+        "status": "recorded",
+        "inputs": {"candidate_questions_artifact": "candidate_questions.md"},
+        "overall_decision": "monitor_no_new_m3",
+        "candidate_count": 2,
+        "decision_counts": {"research_more_before_m3": 2},
+        "candidates": [
+            {"decision": "research_more_before_m3", "sample_status": "reviewed_in_candidate_questions"}
+            for _ in range(2)
+        ],
+    }
+    sampling.update(overrides)
+    return sampling
+
+
+def _analysis(disposition: str = "insight_only", **overrides) -> dict:
+    refs = [{"artifact": "m2_review_packet.json", "locator": "packet_item_id=one"}]
+    analysis = {
+        "schema_version": "agent_analysis.v1",
+        "run_date": "2026-05-29",
+        "model": "test model",
+        "reasoning_effort": "high",
+        "strongest_changed_signal": {
+            "signal": "Original project published.",
+            "interpretation": "Publication does not establish a future vote clock.",
+            "evidence_refs": refs,
+            "alternative_explanations": ["Parser enrichment."],
+            "falsifiers": ["A dated official session."],
+        },
+        "tension_card_reviews": [],
+        "relationships": [{
+            "type": "unbundled", "relationship": "Publication and vote timing",
+            "interpretation": "Different events.", "evidence_refs": refs,
+            "caveats": ["No future session verified."],
+        }],
+        "official_source_follow_up": {
+            "candidate": "Original project", "bounded_scope": "One official text.",
+            "sources_checked": [{"source_id": "official", "url": "https://example.gov/", "result": "Verified original text."}],
+            "result": "Research only.",
+        },
+        "public_interest_candidate": {
+            "candidate": "Will the provision survive first debate?",
+            "disposition": "research_more", "rationale": "Future session missing.",
+            "evidence_refs": refs, "missing_evidence": ["Prospective session."],
+        },
+        "shadow_forecast": None,
+        "overall_disposition": disposition,
+        "overall_rationale": "Retain an insight; no public forecast.",
+    }
+    if disposition == "shadow_track":
+        analysis["shadow_forecast"] = {
+            "id": "shadow_one", "visibility": "internal", "question": "Will the next reading increase?",
+            "probability": 0.6, "prediction_date": "2026-05-29", "resolution_date": "2026-06-05",
+            "official_resolver": {"source_name": "Official series", "source_url": "https://example.gov/series"},
+            "resolution_criteria": {"yes": "Higher reading.", "no": "Same or lower reading."},
+            "baseline": {"name": "Persistence", "probability": 0.5, "rationale": "Named comparator."},
+            "evidence": refs, "rationale_for": ["Recent increase."],
+            "rationale_against": ["Possible reversal."], "falsifier": "New contrary data.",
+        }
+    analysis.update(overrides)
+    return analysis
+
+
 # --------------------------------------------------------------------------- #
 # derive_decision
 # --------------------------------------------------------------------------- #
@@ -168,7 +234,7 @@ def test_preflight_opportunities_do_not_flip_m3_decision() -> None:
     html_out = rh.render_daily_review_html(art)
     assert "Upcoming M3 preflight opportunities" in html_out
     assert "BanRep board policy-rate decision" in html_out
-    assert "Monitoring — no new forecast" in html_out
+    assert "Public monitor — no new public forecast" in html_out
 
 
 def test_preflight_caveat_is_visible_without_opportunity() -> None:
@@ -208,6 +274,132 @@ def test_derive_decision_is_review_when_ready_for_m3_bucket_present() -> None:
     art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
     decision = rh.derive_decision(art)
     assert decision.m3_ready is True
+    assert "Provisional scanner suggestion" in decision.label
+
+
+@pytest.mark.parametrize("source", ["human", "candidate", "sampling", "analysis"])
+def test_current_editorial_monitor_overrides_scanner_readiness(source: str) -> None:
+    art = _art()
+    art["analyst_leads.json"]["summary"]["forecast_question_count"] = 1
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    record = {"run_date": "2026-05-29", "decision": "monitor_no_new_m3", "post_today": "no"}
+    if source in {"human", "candidate"}:
+        art[f"_{source}_decision"] = record
+    elif source == "sampling":
+        art["m2_sampling_decisions.json"] = _sampling()
+    else:
+        art["agent_analysis.json"] = _analysis()
+
+    decision = rh.derive_decision(art)
+    assert decision.status == "monitor_no_post"
+    assert not decision.m3_ready
+    assert "Completed editorial review" in decision.headline
+    assert any("Scanner M2 triage flagged 1 ready_for_m3" in fact for fact in decision.facts)
+    assert art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] == 1
+    assert not rh.summarize_run(art).m3_ready
+    html_out = rh.render_daily_review_html(art)
+    assert 'class="banner banner--monitor"' in html_out
+    assert "Provisional scanner suggestion" not in html_out
+
+
+@pytest.mark.parametrize("record", [
+    {"decision": "monitor_no_new_m3", "post_today": "no"},
+    {"run_date": "2026-05-28", "decision": "monitor_no_new_m3", "post_today": "no"},
+    {"run_date": "2026-05-29", "decision": "monitor_no_new_m3"},
+    {"run_date": "2026-05-29", "decision": "monitor_no_new_m3", "post_today": "yes"},
+    {"run_date": "2026-05-29", "decision": "shadow_track", "post_today": "no"},
+    {"run_date": "2026-05-29", "decision": {}, "post_today": "no"},
+])
+def test_incomplete_stale_or_invalid_notes_leave_scanner_provisional(record: dict) -> None:
+    art = _art(_human_decision=record)
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    decision = rh.derive_decision(art)
+    assert decision.status == "review_for_post"
+    assert "Provisional" in decision.label
+    assert not any("Public editorial decision:" in fact for fact in decision.facts)
+
+
+@pytest.mark.parametrize("overrides", [
+    {"run_date": "2026-05-28"}, {"schema_version": "unknown"},
+    {"strongest_changed_signal": {}}, {"public_interest_candidate": {}},
+])
+def test_invalid_or_stale_analysis_does_not_override_scanner(overrides: dict) -> None:
+    art = _art(**{"agent_analysis.json": _analysis(**overrides)})
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    assert "Provisional" in rh.derive_decision(art).label
+
+
+def test_valid_shadow_review_remains_separate_from_public_monitor() -> None:
+    analysis = _analysis("shadow_track")
+    assert not rh.validate_agent_analysis(analysis)
+    art = _art(**{"agent_analysis.json": analysis})
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    decision = rh.derive_decision(art)
+    assert not decision.m3_ready
+    assert decision.status == "monitor_no_post"
+    assert any("Internal disposition: shadow_track" in fact for fact in decision.facts)
+
+
+def test_explicit_public_m3_selection_is_distinct_from_shadow_and_publication() -> None:
+    analysis = _analysis("promote_to_m3")
+    analysis["public_interest_candidate"]["disposition"] = "promote_to_m3"
+    analysis["public_interest_candidate"]["missing_evidence"] = []
+    art = _art(**{"agent_analysis.json": analysis})
+    decision = rh.derive_decision(art)
+    assert decision.m3_ready
+    assert decision.status == "review_for_post"
+    assert "Editorial review" in decision.label
+    assert "not publication approval" in decision.headline
+
+
+def test_conflicting_current_public_decisions_do_not_claim_completed_review() -> None:
+    art = _art(
+        _human_decision={"run_date": "2026-05-29", "decision": "promote_to_m3", "post_today": "no"},
+        **{"m2_sampling_decisions.json": _sampling()},
+    )
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    decision = rh.derive_decision(art)
+    assert "Provisional" in decision.label
+    assert not any("Public editorial decision:" in fact for fact in decision.facts)
+
+
+@pytest.mark.parametrize("network", [False, True])
+def test_failed_acceptance_dominates_completed_editorial_review(network: bool) -> None:
+    art = _art(**{
+        "m2_sampling_decisions.json": _sampling(),
+        "agent_analysis.json": _analysis(),
+        "acceptance_report.json": {"status": "fail", "strict_pass": False},
+    })
+    if network:
+        art["run_summary.json"].update(raw_items=0, cleaned_items=0, clusters=0, sources_failed=30)
+    decision = rh.derive_decision(art)
+    assert decision.status == (
+        "blocked_network_not_decision_grade" if network else "blocked_source_health_not_decision_grade"
+    )
+    assert not decision.m3_ready
+
+
+def test_completed_sampling_counts_editorial_lanes_separately_from_packet_items() -> None:
+    art = _art(**{"m2_sampling_decisions.json": _sampling()})
+    html_out = rh.render_daily_review_html(art)
+    assert "M2 sampling recorded for 2 editorial lane(s)" in html_out
+    assert "M2 packet contains 20 item(s)" in html_out
+    assert "lane and packet counts need not match" in html_out
+    assert "waiting" not in html_out
+
+
+@pytest.mark.parametrize("overrides", [
+    {"run_date": "2026-05-28"}, {"schema_version": "unknown"},
+    {"status": "no_candidates_recorded"}, {"candidate_count": 3},
+    {"candidates": []}, {"candidates": [{}]}, {"decision_counts": {}},
+])
+def test_stale_or_incomplete_bridge_does_not_claim_completed_sampling(overrides: dict) -> None:
+    art = _art(**{"m2_sampling_decisions.json": _sampling(**overrides)})
+    art["m2_ranked_questions.json"]["bucket_counts"]["ready_for_m3"] = 1
+    decision = rh.derive_decision(art)
+    assert "Provisional" in decision.label
+    assert any("no valid current sampling bridge" in fact for fact in decision.facts)
+    assert not any("M2 sampling recorded" in fact for fact in decision.facts)
 
 
 def test_forecast_resolution_queue_finds_only_past_unresolved_windows() -> None:
@@ -368,7 +560,7 @@ def test_derive_decision_blocks_all_zero_source_failure_run() -> None:
 
     html_out = rh.render_daily_review_html(art)
     assert "Blocked - not decision-grade" in html_out
-    assert "Monitoring — no new forecast" not in html_out
+    assert "Public monitor — no new public forecast" not in html_out
     assert "recorded decision <code>blocked_network_not_decision_grade</code>" in html_out
 
 
@@ -412,7 +604,7 @@ def test_partial_strict_failure_blocks_monitor_and_m3_signals(
     html_out = rh.render_daily_review_html(art)
     assert '<div class="banner banner--blocked"' in html_out
     assert "Blocked - source health; no post" in html_out
-    assert "Monitoring — no new forecast" not in html_out
+    assert "Public monitor — no new public forecast" not in html_out
     assert "Review for possible forecast" not in html_out
     assert "Rerun with live network access" not in html_out
     for issue in errors:
@@ -826,6 +1018,42 @@ def test_load_run_artifacts_is_tolerant_and_extracts_human_decision(tmp_path: Pa
     assert "human_decisions.md" in art["_present"]
 
 
+@pytest.mark.parametrize("filename", ["human_decisions.md", "candidate_questions.md"])
+def test_load_current_public_decision_and_sampling_bridge(tmp_path: Path, filename: str) -> None:
+    run_dir = tmp_path / "2026-05-29"
+    run_dir.mkdir()
+    (run_dir / filename).write_text(
+        "# Authored decisions - 2026-05-29\n\n"
+        "- Overall decision: shadow_track\n"
+        "- Public decision: `monitor_no_new_m3`.\n"
+        "- Post today: no.\n"
+        "### 1. Candidate\n- Decision: promote_to_m3\n",
+        encoding="utf-8",
+    )
+    (run_dir / "m2_sampling_decisions.json").write_text(json.dumps(_sampling()), encoding="utf-8")
+    art = rh.load_run_artifacts(run_dir)
+    key = "_human_decision" if filename == "human_decisions.md" else "_candidate_decision"
+    assert art[key] == {
+        "run_date": "2026-05-29", "decision": "monitor_no_new_m3", "post_today": "no",
+    }
+    assert art["m2_sampling_decisions.json"] == _sampling()
+    assert "Completed editorial review" in rh.derive_decision(art).headline
+
+
+def test_conflicting_public_fields_do_not_become_an_editorial_decision(tmp_path: Path) -> None:
+    run_dir = tmp_path / "2026-05-29"
+    run_dir.mkdir()
+    (run_dir / "human_decisions.md").write_text(
+        "# Human decisions - 2026-05-29\n"
+        "- Public decision: monitor_no_new_m3\n"
+        "- Public decision: promote_to_m3\n- Post today: no\n",
+        encoding="utf-8",
+    )
+    art = rh.load_run_artifacts(run_dir)
+    assert art["_human_decision"]["invalid"] == "conflicting fields"
+    assert "Completed editorial review" not in rh.derive_decision(art).headline
+
+
 def test_load_run_artifacts_extracts_candidate_questions_monitor_queue(tmp_path: Path) -> None:
     run_dir = tmp_path / "2026-06-02"
     run_dir.mkdir()
@@ -976,7 +1204,7 @@ def test_render_daily_returns_complete_deterministic_document() -> None:
     assert html_out.count("<!DOCTYPE html>") == 1
     assert html_out.count("<html") == 1 and html_out.count("</html>") == 1
     assert "<title>Daily Review — 2026-05-29</title>" in html_out
-    assert "Monitoring — no new forecast" in html_out
+    assert "Public monitor — no new public forecast" in html_out
     assert "TES-policy spread tension" in html_out
     assert "human_decisions.md" in html_out
     # advisory framing is present so the surface cannot read as a probability input
@@ -1777,7 +2005,7 @@ def test_daily_review_surfaces_agent_analysis_and_internal_shadow_forecast() -> 
     assert "model 0.1764" in html_out
     assert "baseline 0.2500" in html_out
     assert "+0.0736" in html_out
-    assert "Monitoring — no new forecast" in html_out
+    assert "Public monitor — no new public forecast" in html_out
 
 
 def test_shadow_ledger_parse_errors_and_overdue_rows_fail_closed_in_review() -> None:
@@ -1800,4 +2028,4 @@ def test_shadow_ledger_parse_errors_and_overdue_rows_fail_closed_in_review() -> 
 
     assert "2 malformed row(s)" in html_out
     assert "1 open shadow forecast(s) are past" in html_out
-    assert "Monitoring — no new forecast" in html_out
+    assert "Public monitor — no new public forecast" in html_out

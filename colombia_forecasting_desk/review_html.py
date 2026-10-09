@@ -36,6 +36,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from .agent_analysis import validate_agent_analysis
 from .brief import _indicator_alerts
 from .m3_case_file import extract_m3_case_file, validate_evidence_pack_markdown
 from .models import IndicatorComponent, IndicatorObservation
@@ -64,6 +65,7 @@ JSON_ARTIFACTS = (
     "acceptance_report.json",
     "analyst_leads.json",
     "m2_ranked_questions.json",
+    "m2_sampling_decisions.json",
     "indicator_watch.json",
     "indicator_tension_cards.json",
     "market_pricing_watch.json",
@@ -216,26 +218,39 @@ def _read_jsonl(path: Path) -> tuple[list[dict[str, Any]], int]:
     return rows, parse_errors
 
 
-def _extract_recorded_decision(run_dir: Path, present: set[str]) -> dict[str, str] | None:
-    """Best-effort, tolerant parse of the recorded human decision.
-
-    Reads only two known single-value lines from ``human_decisions.md``. If the
-    file is absent or the prose drifts, this quietly returns ``None`` and the
-    daily view falls back to the artifact-derived status plus a plain link.
-    """
-    if "human_decisions.md" not in present:
+def _extract_recorded_decision(
+    run_dir: Path, present: set[str], filename: str = "human_decisions.md"
+) -> dict[str, str] | None:
+    """Read explicit editorial fields, retaining undated notes for display only."""
+    if filename not in present:
         return None
     try:
-        text = (run_dir / "human_decisions.md").read_text(encoding="utf-8")
+        text = (run_dir / filename).read_text(encoding="utf-8")
     except OSError:
         return None
+    # Candidate-level decisions below the global review must not become the
+    # day's public decision.
+    text = re.split(r"^###\s", text, maxsplit=1, flags=re.MULTILINE)[0]
     out: dict[str, str] = {}
-    decision = re.search(r"Decision:\s*`?([A-Za-z0-9_]+)`?", text)
-    if decision:
-        out["decision"] = decision.group(1)
-    post = re.search(r"Post today:\s*([A-Za-z]+)", text)
-    if post:
-        out["post_today"] = post.group(1).lower()
+    heading = re.search(r"^#\s+[^\n]*?(\d{4}-\d{2}-\d{2})\s*$", text, re.MULTILINE)
+    if heading:
+        out["run_date"] = heading.group(1)
+    for field, labels in (
+        ("decision", ("Public decision", "Overall decision", "Decision")),
+        ("post_today", ("Post today",)),
+    ):
+        for label in labels:
+            values = set(re.findall(
+                rf"^\s*(?:[-*]\s+)?{label}:\s*`?([A-Za-z0-9_]+)`?\b",
+                text,
+                flags=re.MULTILINE | re.IGNORECASE,
+            ))
+            if values:
+                if len(values) == 1:
+                    out[field] = values.pop().lower()
+                else:
+                    out["invalid"] = "conflicting fields"
+                break
     return out or None
 
 
@@ -350,6 +365,9 @@ def load_run_artifacts(run_dir: Path) -> dict[str, Any]:
     art["_run_date"] = run_dir.name
     art["_present"] = present
     art["_human_decision"] = _extract_recorded_decision(run_dir, present)
+    art["_candidate_decision"] = _extract_recorded_decision(
+        run_dir, present, "candidate_questions.md"
+    )
     art["_human_monitor_queue"] = _extract_human_monitor_queue(run_dir, present)
     art["_candidate_monitor_queue"] = _extract_candidate_monitor_queue(run_dir, present)
     forecast_log, forecast_log_parse_errors = _read_jsonl(
@@ -579,16 +597,112 @@ def _is_blocked_network_run(art: dict[str, Any]) -> bool:
     )
 
 
-def derive_decision(art: dict[str, Any]) -> Decision:
-    """Derive the post/monitor status from structured artifacts only.
+def _completed_sampling(art: dict[str, Any]) -> dict[str, Any] | None:
+    """Recognize a current, complete bridge without equating lanes to packet items."""
+    sampling = art.get("m2_sampling_decisions.json")
+    if not isinstance(sampling, dict) or (
+        sampling.get("schema_version") != "m2_sampling_decisions.v1"
+        or sampling.get("run_date") != art.get("_run_date")
+        or not _parse_date(sampling.get("run_date"))
+        or sampling.get("status") != "recorded"
+    ):
+        return None
+    candidates = sampling.get("candidates")
+    inputs = sampling.get("inputs")
+    if (
+        not isinstance(inputs, dict)
+        or inputs.get("candidate_questions_artifact") != "candidate_questions.md"
+        or not isinstance(candidates, list)
+        or not candidates
+        or type(sampling.get("candidate_count")) is not int
+        or sampling["candidate_count"] != len(candidates)
+    ):
+        return None
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            return None
+        decision = candidate.get("decision")
+        if (
+            candidate.get("sample_status") != "reviewed_in_candidate_questions"
+            or not isinstance(decision, str)
+            or not decision.strip()
+            or decision == "not_recorded"
+        ):
+            return None
+        counts[decision] = counts.get(decision, 0) + 1
+    return sampling if sampling.get("decision_counts") == counts else None
 
-    Explicit acceptance failures block decisions before considering M3 signals.
-    Otherwise a run is "review for post" only when an artifact actually carries an
-    M3-ready signal: a ``forecast_question`` lead, or a non-empty
-    ``ready_for_m3`` M2 bucket. Otherwise it is a monitoring run *by design* —
-    surfaced calmly, not as an error. This mirrors the M3 gate; it never loosens
-    it.
+
+def _current_analysis(art: dict[str, Any]) -> dict[str, Any] | None:
+    analysis = art.get("agent_analysis.json")
+    if (
+        not isinstance(analysis, dict)
+        or analysis.get("run_date") != art.get("_run_date")
+        or validate_agent_analysis(analysis)
+    ):
+        return None
+    return analysis
+
+
+def _public_decision_status(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    if value in {
+        "monitor", "monitor_no_new_m3", "monitor_no_post",
+        "monitor_select_m3_research", "research_more", "research_more_before_m3",
+    }:
+        return "monitor_no_post"
+    if value in {"promote_to_m3", "select_for_evidence_pack", "select_m3_after_human_override"}:
+        return "review_for_post"
+    return None
+
+
+def _editorial_decision(
+    art: dict[str, Any],
+    sampling: dict[str, Any] | None,
+    analysis: dict[str, Any] | None,
+) -> tuple[str, str, str] | None:
+    """Use explicit current public decisions; conflicting records stay provisional.
+
+    The analysis's public candidate is distinct from its internal disposition.
+    In particular, a selected shadow never supplies a public M3 promotion.
     """
+    decisions: list[tuple[str, str, str]] = []
+    for key, source in (
+        ("_human_decision", "human_decisions.md"),
+        ("_candidate_decision", "candidate_questions.md"),
+    ):
+        record = art.get(key)
+        if not isinstance(record, dict) or (
+            record.get("invalid")
+            or record.get("run_date") != art.get("_run_date")
+            or not _parse_date(record.get("run_date"))
+            or record.get("post_today") not in ("yes", "no")
+        ):
+            continue
+        status = _public_decision_status(record.get("decision"))
+        if status and not (status == "monitor_no_post" and record["post_today"] == "yes"):
+            decisions.append((status, record["decision"], source))
+    if sampling:
+        status = _public_decision_status(sampling.get("overall_decision"))
+        if status:
+            decisions.append((status, sampling["overall_decision"], "m2_sampling_decisions.json"))
+    if analysis:
+        public = analysis["public_interest_candidate"]["disposition"]
+        internal = analysis["overall_disposition"]
+        if public == "promote_to_m3":
+            if internal == "promote_to_m3":
+                decisions.append(("review_for_post", public, "agent_analysis.json"))
+        else:
+            decisions.append(("monitor_no_post", public, "agent_analysis.json"))
+    if not decisions or len({decision[0] for decision in decisions}) != 1:
+        return None
+    return decisions[0]
+
+
+def derive_decision(art: dict[str, Any]) -> Decision:
+    """Acceptance first, then current editorial decisions, then provisional scan."""
     if _is_blocked_network_run(art):
         summary = art.get("run_summary.json") or {}
         checked = _as_int(summary.get("sources_checked"))
@@ -657,6 +771,9 @@ def derive_decision(art: dict[str, Any]) -> Decision:
     ready = _as_int(buckets.get("ready_for_m3"))
 
     m3_ready = fq > 0 or ready > 0
+    sampling = _completed_sampling(art)
+    analysis = _current_analysis(art)
+    editorial = _editorial_decision(art, sampling, analysis)
 
     bucket_text = (
         ", ".join(
@@ -666,26 +783,54 @@ def derive_decision(art: dict[str, Any]) -> Decision:
         or "none recorded"
     )
     facts = [
-        f"{fq} forecast-question lead(s) promoted in analyst_leads.json.",
-        f"M2 legislative triage produced no ready_for_m3 bucket (buckets: {bucket_text})."
+        f"Scanner context: {fq} forecast-question lead(s) in analyst_leads.json.",
+        f"Scanner M2 triage produced no ready_for_m3 bucket (buckets: {bucket_text})."
         if not ready
-        else f"M2 triage flagged {ready} ready_for_m3 record(s) (buckets: {bucket_text}).",
+        else f"Scanner M2 triage flagged {ready} ready_for_m3 record(s) (buckets: {bucket_text}).",
         f"{insights} analyst insight(s) and {investigations} investigation lead(s) recorded.",
-        f"{review_items} item(s) waiting in the M2 review queue for sampling.",
+        (
+            f"M2 sampling recorded for {sampling['candidate_count']} editorial lane(s). "
+            f"The M2 packet contains {review_items} item(s); lane and packet counts need not match."
+            if sampling else
+            f"The M2 packet contains {review_items} item(s); no valid current sampling bridge is recorded."
+        ),
     ]
+    if analysis:
+        facts.append(
+            f"Internal disposition: {analysis['overall_disposition']} "
+            "(agent_analysis.json); separate from the public decision."
+        )
     if preflight:
         facts.append(
             f"{preflight} M3 preflight opportunity(s) surfaced for human review; "
             "these are not ready_for_m3 promotions."
         )
 
+    if editorial:
+        status, public_decision, source = editorial
+        facts.insert(0, f"Public editorial decision: {public_decision} ({source}).")
+        return Decision(
+            status=status,
+            label=(
+                "Public monitor — no new public forecast" if status == "monitor_no_post"
+                else "Editorial review — M3 selected for review"
+            ),
+            headline=(
+                "Completed editorial review governs the public disposition. "
+                "Scanner suggestions below remain context; M3 selection is not publication approval."
+            ),
+            facts=facts,
+            m3_ready=status == "review_for_post",
+            recorded_human_decision=art.get("_human_decision"),
+        )
+    facts.insert(0, "No consistent, valid current editorial decision is recorded; the scanner suggestion is provisional.")
     if m3_ready:
         return Decision(
             status="review_for_post",
-            label="Review for possible forecast",
+            label="Provisional scanner suggestion — review for possible forecast",
             headline=(
-                "An artifact carries an M3-ready signal today. Open the M2 review "
-                "packet and the analyst leads before deciding to post."
+                "The scanner carries an M3-ready signal. Complete or reconcile "
+                "editorial review before making a public forecast decision."
             ),
             facts=facts,
             m3_ready=True,
@@ -693,7 +838,7 @@ def derive_decision(art: dict[str, Any]) -> Decision:
         )
     return Decision(
         status="monitor_no_post",
-        label="Monitoring — no new forecast",
+        label="Public monitor — no new public forecast",
         headline=(
             "No M3-ready forecast question in today's artifacts. This is a "
             "monitoring run by design — the desk recorded insights and leads, "
