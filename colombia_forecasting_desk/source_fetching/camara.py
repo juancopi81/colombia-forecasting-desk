@@ -18,7 +18,7 @@ _CAMARA_AGENDA_PROJECT_RE = re.compile(
     re.IGNORECASE,
 )
 _CAMARA_AGENDA_WINDOW_RE = re.compile(
-    r"\b(?:semana\s+)?del\s+(?P<start_day>\d{1,2})"
+    r"\b(?:semana\s+)?del\s*(?P<start_day>\d{1,2})"
     r"(?:\s+(?:de\s+)?(?P<start_month>enero|febrero|marzo|abril|mayo|junio|"
     r"julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre))?"
     r"\s+al\s+(?P<end_day>\d{1,2})\s+de\s+"
@@ -30,6 +30,19 @@ _CAMARA_AGENDA_WINDOW_RE = re.compile(
 _CAMARA_AGENDA_SHORT_DAY_RE = re.compile(
     r"\b(?P<weekday>LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|"
     r"DOMINGO)\s+(?P<day>\d{1,2})\b"
+)
+_CAMARA_AGENDA_PROJECT_START_RE = re.compile(
+    r"\bProyecto\s+de\s+(?:Ley(?:\s+Estatutaria)?|Acto\s+Legislativo)\s+"
+    r"(?:(?:No[.:]?|N[°ºo]\.?)\s*)?\d{1,4}\b",
+    re.IGNORECASE,
+)
+_CAMARA_AGENDA_SECTION_RE = re.compile(
+    r"\b(?i:TEMA|Hora|Lugar)\s*:"
+    r"|^\s*(?:COMISI[ÓO]N(?:ES)?|PLENARIA)\b"
+    r"|^\s*(?:(?:ESTUDIO,?\s+)?DISCUSI[ÓO]N\s+Y\s+VOTACI[ÓO]N"
+    r"|(?i:PROYECTOS)\s+PARA\s+(?:PRIMER|SEGUNDO|TERCER|CUARTO)\s+DEBATE"
+    r"|INFORMES?\s+DE\s+CONCILIACI[ÓO]N)\b",
+    re.MULTILINE,
 )
 _CAMARA_WEEKDAY_INDEX = {
     "lunes": 0,
@@ -43,7 +56,10 @@ _CAMARA_WEEKDAY_INDEX = {
 
 
 def _normalize_camara_agenda_text_for_matching(text: str) -> str:
-    normalized = normalize_whitespace(text)
+    # Keep line starts so a new agenda heading can end the preceding item.
+    normalized = "\n".join(
+        normalize_whitespace(line) for line in text.splitlines() if line.strip()
+    )
     replacements = (
         (r"Pr\s*oyecto", "Proyecto"),
         (r"Proyec\s*to", "Proyecto"),
@@ -70,7 +86,7 @@ def _normalize_camara_agenda_text_for_matching(text: str) -> str:
     )
     for pattern, replacement in replacements:
         normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
-    return normalize_whitespace(normalized)
+    return "\n".join(normalize_whitespace(line) for line in normalized.splitlines())
 
 
 def _camara_year_from_iso(value: str | None) -> int | None:
@@ -121,7 +137,11 @@ def _camara_project_label(match: re.Match[str]) -> str:
 
 
 def _camara_agenda_action(context: str) -> str:
-    folded = fold_accents(context.lower())
+    folded = fold_accents(normalize_whitespace(context).lower())
+    if "reunion" in folded and "votacion" not in folded:
+        return "reunion"
+    if re.search(r"\bestudio\s+en\s+(?:primer|segundo|tercer|cuarto)\s+debate", folded):
+        return "estudio"
     if "primer debate" in folded:
         return "primer debate"
     if "segundo debate" in folded:
@@ -142,23 +162,42 @@ def _camara_agenda_action(context: str) -> str:
 
 
 def _camara_document_title(context: str) -> str:
-    quote_match = re.search(r"[“\"]([^”\"]{24,220})[”\"]", context)
+    # A room or another item's quotation is not this project's title.
+    quote_match = re.match(r"^[\s,;:(-]*[“\"]([^”\"]{24,1000})[”\"]", context)
     if quote_match:
         return normalize_whitespace(quote_match.group(1)).strip(" .,:;-")
-    tema_match = re.search(
-        r"\bTEMA:\s*(.{24,260}?)(?:\bAutores?:|\bPublicaci[oó]n|$)",
-        context,
-        re.IGNORECASE,
-    )
-    if tema_match:
-        title = re.split(
-            r"\bProyecto\s+de\s+(?:Ley|Acto\s+Legislativo)\b",
-            tema_match.group(1),
-            maxsplit=1,
-            flags=re.IGNORECASE,
-        )[0]
-        return normalize_whitespace(title).strip(" .,:;-")
     return ""
+
+
+def _camara_agenda_entry_context(
+    text: str, project: re.Match[str]
+) -> tuple[str, str, str]:
+    boundaries = sorted(
+        match.start()
+        for pattern in (
+            _CAMARA_AGENDA_SECTION_RE,
+            _CAMARA_AGENDA_SHORT_DAY_RE,
+            _SENADO_AGENDA_DAY_RE,
+        )
+        for match in pattern.finditer(text)
+    )
+    section_start = max((p for p in boundaries if p < project.start()), default=0)
+    section_end = min(
+        (p for p in boundaries if p > project.start()), default=len(text)
+    )
+    project_starts = [m.start() for m in _CAMARA_AGENDA_PROJECT_START_RE.finditer(text)]
+    heading_end = min(
+        (p for p in project_starts if section_start <= p <= project.start()),
+        default=project.start(),
+    )
+    body_end = min(
+        (p for p in project_starts if project.start() < p < section_end),
+        default=section_end,
+    )
+    heading = normalize_whitespace(text[section_start:heading_end])
+    body = normalize_whitespace(text[project.end():body_end])
+    context = normalize_whitespace(f"{heading} {text[project.start():body_end]}")
+    return context, heading, body
 
 
 def _camara_project_identity_status(label: str, document_title: str) -> str:
@@ -245,11 +284,28 @@ def _camara_scheduled_date(
     latest: re.Match[str] | None = None
     for match in _SENADO_AGENDA_DAY_RE.finditer(text[:position]):
         latest = match
+    latest_short = next(
+        reversed(list(_CAMARA_AGENDA_SHORT_DAY_RE.finditer(text[:position]))),
+        None,
+    )
+    if latest_short is not None and (
+        latest is None or latest_short.start() > latest.start()
+    ):
+        return _camara_short_section_date(
+            text, position, agenda_window_start, agenda_window_end
+        )
     if latest is not None:
         year_text = latest.group(3)
         year = int(year_text) if year_text else default_year
         month = MONTHS_ES.get(fold_accents(latest.group(2).lower()))
         if year is not None and month is not None:
+            try:
+                section_date = date(year, month, int(latest.group(1)))
+            except ValueError:
+                return None
+            weekday = fold_accents(latest.group(0).split()[0].lower())
+            if section_date.weekday() != _CAMARA_WEEKDAY_INDEX[weekday]:
+                return None
             return _date_to_iso(year, month, int(latest.group(1)))
     return _camara_short_section_date(
         text,
@@ -401,9 +457,7 @@ def _extract_camara_agenda_entries_from_text(
         if label in seen_labels:
             continue
         seen_labels.add(label)
-        context_start = max(0, match.start() - 220)
-        context_end = min(len(match_text), match.end() + 520)
-        context = normalize_whitespace(match_text[context_start:context_end])
+        context, heading, body = _camara_agenda_entry_context(match_text, match)
         scheduled_at = _camara_scheduled_date(
             match_text,
             match.start(),
@@ -411,10 +465,10 @@ def _extract_camara_agenda_entries_from_text(
             agenda_start,
             agenda_end,
         )
-        action = _camara_agenda_action(context)
-        document_title = _camara_document_title(context)
+        action = _camara_agenda_action(heading)
+        document_title = _camara_document_title(body)
         identity_status = _camara_project_identity_status(label, document_title)
-        date_label = (scheduled_at or agenda_start or "")[:10] or "agenda window"
+        date_label = scheduled_at[:10] if scheduled_at else "window"
         title = f"Cámara agenda {date_label} — {action}: {label}"
         if document_title:
             title = f"{title} — {document_title[:180]}"

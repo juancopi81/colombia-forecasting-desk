@@ -215,7 +215,7 @@ def test_extract_camara_agenda_rejects_short_date_outside_weekday_match(
     entry = entries[0]
     assert entry.metadata["scheduled_date"] is None
     assert entry.published_at == "2026-08-31T00:00:00Z"
-    assert entry.title.startswith("Cámara agenda 2026-08-31")
+    assert entry.title.startswith("Cámara agenda window")
 
 
 @pytest.mark.parametrize(
@@ -313,7 +313,139 @@ def test_extract_camara_agenda_september_29_saved_excerpt(
     assert entry.published_at == (
         "2026-09-29T00:00:00Z" if has_day_heading else "2026-09-28T00:00:00Z"
     )
+    assert entry.title.startswith(
+        "Cámara agenda 2026-09-29" if has_day_heading else "Cámara agenda window"
+    )
     assert not entry.title.startswith("Cámara agenda 2026-10-02")
+
+
+def test_extract_camara_agenda_october_12_saved_sections(make_raw) -> None:
+    agenda_title = "AGENDA LEGISLATIVA SEMANA DEL13 AL 16 DE OCTUBRE DE 2026."
+    item = make_raw(
+        title=f"Cámara agenda PDF — {agenda_title}",
+        published_at="2026-10-16T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    # Complete physical pages 1-2 of the saved October 12 official follow-up.
+    text = (
+        FIXTURE_DIR / "camara_agenda_consolidada" / "2026-10-12_pages_1_2.txt"
+    ).read_text(encoding="utf-8")
+
+    entries = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert len(entries) == 3
+    for entry in entries:
+        assert entry.metadata["agenda_window_start"] == "2026-10-13T00:00:00Z"
+        assert entry.metadata["agenda_window_end"] == "2026-10-16T00:00:00Z"
+        assert entry.metadata["scheduled_date"] == "2026-10-13T00:00:00Z"
+        assert entry.published_at == "2026-10-13T00:00:00Z"
+    budget_report, voting_item, coordinators = entries
+    assert budget_report.metadata["project_records"][0]["number"] == "152"
+    assert budget_report.metadata["document_title"].startswith(
+        "Por la cual se decreta el presupuesto de rentas"
+    )
+    assert budget_report.metadata["agenda_action_type"] == "agenda legislativa"
+    assert "ROBERTO CAMACHO WEVERBERG" not in budget_report.raw_text
+    assert "VOTACIÓN" not in budget_report.raw_text
+    assert voting_item.metadata["project_records"][0]["number"] == "054"
+    assert voting_item.metadata["agenda_action_type"] == "primer debate"
+    assert voting_item.metadata["document_title"].startswith(
+        "Por medio de la cual se adoptan medidas contra la reincidencia"
+    )
+    assert "124 de 2026" not in voting_item.raw_text
+    assert [r["number"] for r in coordinators.metadata["project_records"]] == [
+        "152", "111"
+    ]
+    assert coordinators.metadata["agenda_action_type"] == "reunion"
+    assert "estudio en segundo debate" in coordinators.raw_text
+    assert "COMISIÓN QUINTA" not in coordinators.raw_text
+    assert "PRIMER DEBATE" not in coordinators.raw_text
+
+
+@pytest.mark.parametrize("day_heading", ["", "MARTES 14"])
+def test_extract_camara_agenda_does_not_invent_missing_or_invalid_day(
+    make_raw, day_heading
+) -> None:
+    agenda_title = "SEMANA DEL13 AL 16 DE OCTUBRE DE 2026"
+    item = make_raw(
+        title=agenda_title,
+        published_at="2026-10-16T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    text = (
+        FIXTURE_DIR / "camara_agenda_consolidada" / "2026-10-12_pages_1_2.txt"
+    ).read_text(encoding="utf-8").replace("MARTES 13", day_heading)
+
+    entries = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert entries
+    assert all(entry.metadata["scheduled_date"] is None for entry in entries)
+    assert all(entry.published_at == "2026-10-13T00:00:00Z" for entry in entries)
+    assert all(entry.title.startswith("Cámara agenda window") for entry in entries)
+
+
+@pytest.mark.parametrize(
+    "new_heading, expected_date",
+    [
+        ("MIERCOLES 14", "2026-10-14T00:00:00Z"),
+        ("MIERCOLES 15", None),
+        ("miércoles 14 de octubre de 2026", "2026-10-14T00:00:00Z"),
+        ("miércoles 15 de octubre de 2026", None),
+    ],
+)
+def test_extract_camara_agenda_latest_day_overrides_earlier_full_date(
+    make_raw, new_heading, expected_date
+) -> None:
+    agenda_title = "SEMANA DEL13 AL 16 DE OCTUBRE DE 2026"
+    item = make_raw(
+        title=agenda_title,
+        published_at="2026-10-16T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    text = (
+        "MARTES 13 de octubre de 2026\nTEMA: DISCUSIÓN Y VOTACIÓN\n"
+        "Proyecto de Ley No. 301 de 2026 Cámara \"Por la cual se adopta "
+        "el primer programa nacional de educación\".\n"
+        f"{new_heading}\nCOMISIÓN QUINTA\n"
+        "Proyecto de Ley No. 302 de 2026 Cámara \"Por la cual se adopta "
+        "el segundo programa nacional de educación\"."
+    )
+
+    first, second = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert first.metadata["scheduled_date"] == "2026-10-13T00:00:00Z"
+    assert second.metadata["scheduled_date"] == expected_date
+    assert second.metadata["agenda_action_type"] == "agenda legislativa"
+    assert "301 de 2026" not in second.raw_text
+
+
+def test_extract_camara_agenda_room_and_bill_text_cannot_supply_action_or_title(
+    make_raw,
+) -> None:
+    item = make_raw(title="SEMANA DEL13 AL 16 DE OCTUBRE DE 2026")
+    text = (
+        "MARTES 13\nCOMISIÓN PRIMERA\nLugar: Salón \"Un nombre de sala "
+        "suficientemente largo\"\nTema: NEGOCIOS SUSTANCIADOS POR LA PRESIDENCIA\n"
+        "Proyecto de Ley No. 301 de 2026 Cámara.\n"
+        "DISCUSIÓN Y VOTACIÓN DE PROYECTOS EN PRIMER DEBATE\n"
+        "Proyecto de Ley No. 302 de 2026 Cámara \"Por la cual se regula "
+        "el segundo debate de los presupuestos\".\n"
+        "Proyecto de Ley No. 303 de 2026 Cámara \"Por la cual se establece "
+        "un nuevo programa de educación pública\"."
+    )
+
+    report, first_voting_item, second_voting_item = (
+        _extract_camara_agenda_entries_from_text(item, text)
+    )
+
+    assert report.metadata["document_title"] == ""
+    assert report.metadata["has_clean_project_identity"] is False
+    assert report.metadata["agenda_action_type"] == "agenda legislativa"
+    assert first_voting_item.metadata["agenda_action_type"] == "primer debate"
+    assert second_voting_item.metadata["agenda_action_type"] == "primer debate"
+    assert second_voting_item.metadata["document_title"].startswith(
+        "Por la cual se establece"
+    )
 
 
 def test_extract_camara_agenda_entries_from_live_plenary_text_shape(
