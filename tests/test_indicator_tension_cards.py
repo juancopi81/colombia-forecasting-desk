@@ -88,8 +88,9 @@ def test_indicator_tension_cards_trigger_on_observed_macro_tensions() -> None:
             _component(
                 "tes_auction",
                 {
+                    "auction_type": "COP",
                     "max_cutoff_rate_pct": 14.79,
-                    "total_issued_cop_billions": 6.0,
+                    "total_issued_cop_trillions": 6.0,
                     "bid_to_cover": 4.1,
                     "maturity_years": [2030, 2035, 2040, 2058],
                 },
@@ -148,6 +149,7 @@ def test_indicator_tension_cards_trigger_on_observed_macro_tensions() -> None:
     assert cards[1]["calculations"]["ex_post_real_policy_rate_pp"] == 5.57
     assert cards[2]["calculations"]["approx_real_tax_revenue_growth_pp"] == -4.24
     assert cards[3]["calculations"]["max_cutoff_rate_pct"] == 14.79
+    assert cards[3]["calculations"]["total_issued_cop_trillions"] == 6.0
     assert cards[4]["calculations"]["spread_pp"] == 0.65
     assert all("Advisory screen only" in card["review_policy"] for card in cards)
 
@@ -156,9 +158,45 @@ def test_indicator_tension_cards_trigger_on_observed_macro_tensions() -> None:
     assert "High ex-post real policy rate" in rendered
     assert "Real tax revenue squeeze" in rendered
     assert "TES auction high funding cost" in rendered
+    assert "COP 6 trillion" in rendered
+    assert "Published bid-to-cover" in rendered
+    assert "denominator is not inferred" in rendered
     assert "Construction cost vs IPC squeeze" in rendered
     assert "Family: `monetary_stance`" in rendered
     assert "not conclusions" in rendered
+
+
+def test_tes_funding_cost_card_does_not_infer_units_from_archived_component() -> None:
+    fiscal = _observation(
+        "fiscal_tax_pulse", {},
+        components=[_component("tes_auction", {
+            "auction_type": "COP",
+            "max_cutoff_rate_pct": 14.79,
+            "total_issued_cop_billions": 6.0,
+            "bid_to_cover": 4.1,
+        })],
+    )
+
+    card, = build_indicator_tension_cards([fiscal])
+
+    # Raw-item compatibility normalization owns the known old parser schema;
+    # standalone archived components do not carry that provenance.
+    assert card["calculations"]["total_issued_cop_trillions"] is None
+    assert not any(item["label"] == "Issued amount" for item in card["evidence"])
+    assert card["calculations"]["bid_to_cover"] == 4.1
+
+
+def test_tes_funding_cost_card_does_not_compare_other_auction_types() -> None:
+    for auction_type in ("TCO", "UVR"):
+        fiscal = _observation(
+            "fiscal_tax_pulse", {},
+            components=[_component("tes_auction", {
+                "auction_type": auction_type,
+                "max_cutoff_rate_pct": 15.0,
+                "total_issued_cop_trillions": 1.8,
+            })],
+        )
+        assert build_indicator_tension_cards([fiscal]) == []
 
 
 def test_indicator_tension_cards_stay_silent_below_thresholds() -> None:

@@ -1,0 +1,30 @@
+PAGE 1
+
+
+
+
+   RESUMEN SUBASTA TES TASA FIJA
+   Subdirección Financiamiento Interno de la Nación
+   Dirección General de Crédito Público y Tesoro Nacional
+   Ministerio de Hacienda y Crédito Público
+   Subasta No. 17                                               14 de octubre de 2026
+    FECHA PLAZO AL VTO.                TASA DE
+                 TASA MÍNIMA TASA MÁXIMA TASA PROMEDIO TASA SEN* PRECIA PRECIO CUPÓN "TI" TAIL PB
+   VENCIMIENTO (AÑOS)                  CORTE
+    27-feb-30 4  12,600% 13,290% 12,945% 13,000% 13,036% 12,971% 106,364 12,50% 13,062% -6,215
+    24-ene-35 9  12,600% 13,371% 12,986% 13,049% 13,090% 12,974% 101,971 11,75% 3044,849% -303179,979
+    28-nov-40 14 12,780% 13,470% 13,125% 13,230% 13,289% 13,167% 108,091 12,75% 13,292% -6,220
+    13-mar-58 32 13,000% 13,697% 13,349% 13,414% 13,468% 13,309% 96,546 12,00% 13,463% -4,934
+   *En caso de que el título no presente cierre en SEN se toma como referencia la tasa PRECIA
+   TI: tasa recibida promedio ponderada por las ofertas recibidas en subasta
+   TAIL pbs: diferencia entre el TI y la tasa de corte
+                                        MONTOS
+                                      SESION COMPETITIVA
+           FECHA   MONTO OFERTADO M ONTO OFERTADO MONTO APROBADO MONTO APROBADO
+                                                                     BID/COVER
+          VENCIMIENTO Valor Nominal Valor Costo Valor Nominal Valor Costo
+           27-feb-30 926.500.000.000 978.541.505.000 361.225.300.000 384.213.678.092
+           24-ene-35 1.526.500.000.000 1.533.872.995.000 589.000.000.000 600.609.190.000
+           28-nov-40 546.500.000.000 582.798.530.000 237.000.000.000 256.175.670.000
+          13-mar-58 1.329.000.000.000 1.258.722.480.000 579.000.000.000 559.001.340.000
+           TOTAL   4.328.500.000.000 4.353.935.510.000 1.766.225.300.000 1.799.999.878.092 3,6

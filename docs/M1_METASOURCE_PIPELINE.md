@@ -511,6 +511,19 @@ returns 403 to simple shell fetches, so this source uses a Playwright browser
 path; if the browser path is blocked or a PDF table cannot be parsed, the item
 stays link-level with `content_extraction_error`.
 
+TES amount schema 2 uses `*_cop_trillions`, `amount_unit: COP_trillions`, and
+explicit `amount_provenance`; cost and nominal amounts stay distinct. New PDF
+parses preserve the published amount precision. The known unversioned TES raw
+parser used trillion-scaled values under `*_cop_billions`; replay normalizes
+those names without rescaling or recovering lost rounding. Unknown amount
+schemas are omitted rather than guessed, and standalone archived indicator
+components do not supply the raw-parser provenance needed for normalization.
+The fiscal auction component selects the latest eligible COP auction by its
+auction date, excluding future dates, TCO, and UVR; its date, source, and values
+must describe the same report regardless of input order. BID/COVER remains the
+published ratio with an unverified denominator, not demand divided by final
+allocation. TI/TAIL are not trusted numeric fields.
+
 M1.24 also deepens the fiscal card with official BanRep TES curve observations
 from SUAMECA. The parent group page is
 `informacionSerie/220002/tasas_interes_cero_cupon_tes`, but the group id is not

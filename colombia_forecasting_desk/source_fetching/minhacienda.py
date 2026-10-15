@@ -4,7 +4,7 @@ from .common import *
 from .dane import _to_float
 from .pdf import *
 
-def _money_text_to_cop_billions(text: str | None) -> float | None:
+def _money_text_to_cop_trillions(text: str | None) -> float | None:
     if not text:
         return None
     match = re.search(
@@ -14,13 +14,13 @@ def _money_text_to_cop_billions(text: str | None) -> float | None:
     )
     if not match:
         return None
-    value = _to_float(match.group(1))
+    value = _tes_decimal(match.group(1))
     if value is None:
         return None
     unit = fold_accents(match.group(2).lower())
     if "mil millones" in unit:
         value = value / 1000
-    return round(value, 3)
+    return value
 
 
 def _tes_decimal(text: str | None) -> float | None:
@@ -35,24 +35,24 @@ def _tes_decimal(text: str | None) -> float | None:
         return None
 
 
-def _money_amounts_to_cop_billions(text: str) -> list[float]:
+def _money_amounts_to_cop_trillions(text: str) -> list[float]:
     amounts: list[float] = []
     for match in re.finditer(
         r"\$\s*[\d.,]+\s*(?:billones|mil\s+millones)",
         text,
         flags=re.IGNORECASE,
     ):
-        value = _money_text_to_cop_billions(match.group(0))
+        value = _money_text_to_cop_trillions(match.group(0))
         if value is not None:
             amounts.append(value)
     return amounts
 
 
-def _large_cop_amounts_to_billions(text: str) -> list[float]:
+def _large_cop_amounts_to_trillions(text: str) -> list[float]:
     values: list[float] = []
     for match in re.finditer(r"\b\d{1,3}(?:\.\d{3}){2,}\b", text):
         amount = int(match.group(0).replace(".", ""))
-        values.append(round(amount / 1_000_000_000_000, 3))
+        values.append(amount / 1_000_000_000_000)
     return values
 
 
@@ -117,14 +117,14 @@ def _extract_minhacienda_tes_auction_rows_from_text(
             r"Ofertas\s+Recibidas",
         )
     )
-    demand = _money_amounts_to_cop_billions(
+    demand = _money_amounts_to_cop_trillions(
         _minhacienda_tes_row_segment(
             normalized,
             r"Ofertas\s+Recibidas",
             r"Monto\s+Aprobado",
         )
     )
-    approved = _money_amounts_to_cop_billions(
+    approved = _money_amounts_to_cop_trillions(
         _minhacienda_tes_row_segment(
             normalized,
             r"Monto\s+Aprobado",
@@ -151,8 +151,8 @@ def _extract_minhacienda_tes_auction_rows_from_text(
                 "maturity_year": maturity_year,
                 "coupon_rate_pct": coupon_rates[index],
                 "cutoff_rate_pct": cutoff_rates[index],
-                "demand_cop_billions": demand[index],
-                "approved_cop_billions": approved[index],
+                "demand_cop_trillions": demand[index],
+                "approved_cop_trillions": approved[index],
             }
         )
     return rows
@@ -196,13 +196,13 @@ def _extract_irc_tes_auction_rows_from_text(text: str) -> list[dict[str, Any]]:
                 row["coupon_rate_pct"] = percent_values[6]
             rate_rows[maturity_date] = row
             continue
-        amounts = _large_cop_amounts_to_billions(remainder)
+        amounts = _large_cop_amounts_to_trillions(remainder)
         if len(amounts) >= 4:
             amount_rows[maturity_date] = {
-                "demand_cop_billions": amounts[1],
-                "approved_cop_billions": amounts[3],
-                "offered_nominal_cop_billions": amounts[0],
-                "approved_nominal_cop_billions": amounts[2],
+                "demand_cop_trillions": amounts[1],
+                "approved_cop_trillions": amounts[3],
+                "offered_nominal_cop_trillions": amounts[0],
+                "approved_nominal_cop_trillions": amounts[2],
             }
     rows: list[dict[str, Any]] = []
     for maturity_date, row in rate_rows.items():
@@ -218,7 +218,7 @@ def _extract_irc_tes_total_facts(text: str) -> dict[str, Any]:
     for line in lines:
         if not line.startswith("TOTAL"):
             continue
-        amounts = _large_cop_amounts_to_billions(line)
+        amounts = _large_cop_amounts_to_trillions(line)
         bid_to_cover_values = [
             value
             for value in re.findall(r"\b\d{1,2},\d\b", line)
@@ -226,10 +226,10 @@ def _extract_irc_tes_total_facts(text: str) -> dict[str, Any]:
         ]
         if len(amounts) >= 4:
             return {
-                "total_demand_cop_billions": amounts[1],
-                "total_issued_cop_billions": amounts[3],
-                "total_demand_nominal_cop_billions": amounts[0],
-                "total_issued_nominal_cop_billions": amounts[2],
+                "total_demand_cop_trillions": amounts[1],
+                "total_issued_cop_trillions": amounts[3],
+                "total_demand_nominal_cop_trillions": amounts[0],
+                "total_issued_nominal_cop_trillions": amounts[2],
                 "bid_to_cover": _to_float(bid_to_cover_values[-1])
                 if bid_to_cover_values
                 else None,
@@ -238,14 +238,14 @@ def _extract_irc_tes_total_facts(text: str) -> dict[str, Any]:
         maturity_match = re.match(r"^\d{1,2}-[a-z]{3}-\d{2}\s+(.+)$", line)
         if not maturity_match:
             continue
-        amounts = _large_cop_amounts_to_billions(maturity_match.group(1))
+        amounts = _large_cop_amounts_to_trillions(maturity_match.group(1))
         bid_to_cover_match = re.search(r"\b(\d{1,2},\d)\b\s*$", line)
         if len(amounts) >= 4 and bid_to_cover_match:
             return {
-                "total_demand_cop_billions": amounts[1],
-                "total_issued_cop_billions": amounts[3],
-                "total_demand_nominal_cop_billions": amounts[0],
-                "total_issued_nominal_cop_billions": amounts[2],
+                "total_demand_cop_trillions": amounts[1],
+                "total_issued_cop_trillions": amounts[3],
+                "total_demand_nominal_cop_trillions": amounts[0],
+                "total_issued_nominal_cop_trillions": amounts[2],
                 "bid_to_cover": _to_float(bid_to_cover_match.group(1)),
             }
     return {}
@@ -269,8 +269,8 @@ def _extract_irc_tes_auction_facts(
     auction_type = title_match.group(2).upper() if title_match else "TES"
     auction_date = _parse_date_text_to_iso(title) or _parse_date_text_to_iso(text)
     totals = _extract_irc_tes_total_facts(text)
-    total_issued = totals.get("total_issued_cop_billions")
-    total_demand = totals.get("total_demand_cop_billions")
+    total_issued = totals.get("total_issued_cop_trillions")
+    total_demand = totals.get("total_demand_cop_trillions")
     bid_to_cover = totals.get("bid_to_cover")
     if auction_date is None or total_issued is None or total_demand is None:
         return None
@@ -278,14 +278,18 @@ def _extract_irc_tes_auction_facts(
     max_cutoff = max(float(row["cutoff_rate_pct"]) for row in rows)
     return {
         "content_extraction": "minhacienda_tes_auction_pdf",
+        "amount_schema_version": 2,
+        "amount_unit": "COP_trillions",
+        "amount_provenance": "source_pdf",
         "auction_date": auction_date,
         "auction_type": auction_type,
         "auction_number": auction_number,
         "currency": "COP" if auction_type in {"COP", "TCO"} else auction_type,
         "security_type": "TES",
-        "total_issued_cop_billions": total_issued,
-        "total_demand_cop_billions": total_demand,
+        "total_issued_cop_trillions": total_issued,
+        "total_demand_cop_trillions": total_demand,
         "bid_to_cover": bid_to_cover,
+        "bid_to_cover_basis": "published; denominator not inferred",
         "maturity_rows": rows,
         "maturity_years": [row["maturity_year"] for row in rows],
         "max_cutoff_rate_pct": round(max_cutoff, 3),
@@ -336,10 +340,10 @@ def _extract_minhacienda_tes_auction_facts(
         flags=re.IGNORECASE,
     )
     auction_date = _parse_date_text_to_iso(normalized)
-    total_issued = _money_text_to_cop_billions(
+    total_issued = _money_text_to_cop_trillions(
         issued_match.group(1) if issued_match else None
     )
-    total_demand = _money_text_to_cop_billions(
+    total_demand = _money_text_to_cop_trillions(
         demand_match.group(1) if demand_match else None
     )
     bid_to_cover = _to_float(bid_to_cover_match.group(1)) if bid_to_cover_match else None
@@ -354,14 +358,18 @@ def _extract_minhacienda_tes_auction_facts(
     max_cutoff = max(float(row["cutoff_rate_pct"]) for row in rows)
     return {
         "content_extraction": "minhacienda_tes_auction_pdf",
+        "amount_schema_version": 2,
+        "amount_unit": "COP_trillions",
+        "amount_provenance": "source_pdf",
         "auction_date": auction_date,
         "auction_type": auction_type,
         "auction_number": auction_number,
         "currency": "COP" if auction_type == "COP" else auction_type,
         "security_type": "TES",
-        "total_issued_cop_billions": total_issued,
-        "total_demand_cop_billions": total_demand,
+        "total_issued_cop_trillions": total_issued,
+        "total_demand_cop_trillions": total_demand,
         "bid_to_cover": bid_to_cover,
+        "bid_to_cover_basis": "published; denominator not inferred",
         "maturity_rows": rows,
         "maturity_years": [row["maturity_year"] for row in rows],
         "max_cutoff_rate_pct": round(max_cutoff, 3),
@@ -793,17 +801,22 @@ def _minhacienda_tes_item_with_facts(
     item: RawItem,
     facts: dict[str, Any],
 ) -> RawItem:
-    metadata = dict(item.metadata)
+    metadata = {
+        key: value
+        for key, value in item.metadata.items()
+        if not key.endswith("_cop_billions")
+    }
     metadata.update(facts)
-    issued = facts.get("total_issued_cop_billions")
-    demand = facts.get("total_demand_cop_billions")
+    issued = facts.get("total_issued_cop_trillions")
+    demand = facts.get("total_demand_cop_trillions")
     btc = facts.get("bid_to_cover")
     maturities = "/".join(str(year) for year in facts["maturity_years"])
     raw_text = (
         f"{item.title}. Official MinHacienda TES auction report. "
         f"Auction date: {(facts.get('auction_date') or '')[:10] or 'unknown'}; "
-        f"type: TES {facts.get('currency')}; issued: COP {issued} billones; "
-        f"demand: COP {demand} billones; bid-to-cover: {btc}x; "
+        f"type: TES {facts.get('currency')}; issued: COP {issued} trillion; "
+        f"demand: COP {demand} trillion; published bid-to-cover: {btc}x "
+        "(denominator not inferred); "
         f"maturities: {maturities}; max cutoff rate: "
         f"{facts.get('max_cutoff_rate_pct')}%; long cutoff rate: "
         f"{facts.get('long_cutoff_rate_pct')}% for {facts.get('long_maturity_year')}. "

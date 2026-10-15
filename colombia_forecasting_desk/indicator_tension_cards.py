@@ -321,14 +321,14 @@ def tes_auction_high_cost_rule(
     if fiscal is None:
         return None
     auction = _component(fiscal, "tes_auction")
-    if auction is None:
+    if auction is None or auction.values.get("auction_type") != "COP":
         return None
 
     max_cutoff = _number(auction.values.get("max_cutoff_rate_pct"))
     if max_cutoff is None or max_cutoff < TES_AUCTION_CUTOFF_THRESHOLD_PCT:
         return None
 
-    total_issued = _number(auction.values.get("total_issued_cop_billions"))
+    total_issued = _number(auction.values.get("total_issued_cop_trillions"))
     bid_to_cover = _number(auction.values.get("bid_to_cover"))
     maturities = auction.values.get("maturity_years") or []
     evidence = [
@@ -336,10 +336,12 @@ def tes_auction_high_cost_rule(
     ]
     if total_issued is not None:
         evidence.append(
-            _evidence("Issued amount", f"COP {total_issued:g} billones", auction)
+            _evidence("Issued amount", f"COP {total_issued:g} trillion", auction)
         )
     if bid_to_cover is not None:
-        evidence.append(_evidence("Bid-to-cover", f"{bid_to_cover:g}x", auction))
+        evidence.append(
+            _evidence("Published bid-to-cover", f"{bid_to_cover:g}x", auction)
+        )
     if maturities:
         evidence.append(
             {
@@ -353,9 +355,10 @@ def tes_auction_high_cost_rule(
         "High cutoff rate is a funding-cost signal, not automatically weak demand.",
         "Compare tenor mix before interpreting this as a deterioration.",
     ]
-    if bid_to_cover is not None and bid_to_cover >= 2:
+    if bid_to_cover is not None:
         caveats.append(
-            "Bid-to-cover was not low, so demand weakness is not the main claim."
+            "Published bid-to-cover uses the report's convention; its denominator "
+            "is not inferred from demand and final approved amounts."
         )
 
     return _card(
@@ -370,7 +373,7 @@ def tes_auction_high_cost_rule(
         calculations={
             "threshold_pct": TES_AUCTION_CUTOFF_THRESHOLD_PCT,
             "max_cutoff_rate_pct": max_cutoff,
-            "total_issued_cop_billions": total_issued,
+            "total_issued_cop_trillions": total_issued,
             "bid_to_cover": bid_to_cover,
             "maturity_years": maturities,
         },

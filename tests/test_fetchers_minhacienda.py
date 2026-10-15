@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
 from tests.fetcher_helpers import *  # noqa: F403
 
 
@@ -13,8 +18,8 @@ def test_extract_minhacienda_tes_auction_rows_from_text() -> None:
             "maturity_year": 2030,
             "coupon_rate_pct": 12.5,
             "cutoff_rate_pct": 14.79,
-            "demand_cop_billions": 5.4,
-            "approved_cop_billions": 2.8,
+            "demand_cop_trillions": 5.4,
+            "approved_cop_trillions": 2.8,
         },
         {
             "tenor_years": 9,
@@ -22,8 +27,8 @@ def test_extract_minhacienda_tes_auction_rows_from_text() -> None:
             "maturity_year": 2035,
             "coupon_rate_pct": 11.75,
             "cutoff_rate_pct": 14.3,
-            "demand_cop_billions": 4.2,
-            "approved_cop_billions": 2.2,
+            "demand_cop_trillions": 4.2,
+            "approved_cop_trillions": 2.2,
         },
         {
             "tenor_years": 14,
@@ -31,8 +36,8 @@ def test_extract_minhacienda_tes_auction_rows_from_text() -> None:
             "maturity_year": 2040,
             "coupon_rate_pct": 12.75,
             "cutoff_rate_pct": 13.968,
-            "demand_cop_billions": 0.74,
-            "approved_cop_billions": 0.178,
+            "demand_cop_trillions": 0.74,
+            "approved_cop_trillions": 0.178,
         },
         {
             "tenor_years": 32,
@@ -40,8 +45,8 @@ def test_extract_minhacienda_tes_auction_rows_from_text() -> None:
             "maturity_year": 2058,
             "coupon_rate_pct": 12.0,
             "cutoff_rate_pct": 13.94,
-            "demand_cop_billions": 1.9,
-            "approved_cop_billions": 0.89,
+            "demand_cop_trillions": 1.9,
+            "approved_cop_trillions": 0.89,
         },
     ]
 
@@ -57,14 +62,68 @@ def test_extract_irc_tes_auction_facts() -> None:
     assert facts["auction_date"] == "2026-05-13T00:00:00Z"
     assert facts["auction_type"] == "COP"
     assert facts["auction_number"] == "9"
-    assert facts["total_issued_cop_billions"] == 6.0
-    assert facts["total_demand_cop_billions"] == 12.276
+    assert facts["total_issued_cop_trillions"] == 5.99999988256
+    assert facts["total_demand_cop_trillions"] == 12.27590514731
     assert facts["bid_to_cover"] == 4.1
     assert facts["maturity_years"] == [2030, 2035, 2040, 2058]
     assert facts["maturity_rows"][0]["cutoff_rate_pct"] == 14.79
     assert facts["maturity_rows"][0]["coupon_rate_pct"] == 12.5
-    assert facts["maturity_rows"][0]["approved_cop_billions"] == 2.774
+    assert facts["maturity_rows"][0]["approved_cop_trillions"] == 2.77407491256
     assert facts["max_cutoff_rate_pct"] == 14.79
+
+
+@pytest.mark.parametrize(
+    ("stamp", "title", "demand", "issued", "demand_nominal", "issued_nominal",
+     "bid_to_cover", "cutoffs"),
+    [
+        (
+            "20261014", "Subasta 17 COP Octubre 14 de 2026",
+            4.35393551, 1.799999878092, 4.3285, 1.7662253, 3.6,
+            [13.000, 13.049, 13.230, 13.414],
+        ),
+        (
+            "20260923", "Subasta 16 COP Septiembre 23 de 2026",
+            5.6622295319, 1.799999983424, 5.528957, 1.7306308, 4.7,
+            [12.649, 12.740, 12.976, 12.970],
+        ),
+    ],
+)
+def test_irc_saved_tes_reports_preserve_cost_nominal_amounts_and_cutoffs(
+    stamp, title, demand, issued, demand_nominal, issued_nominal, bid_to_cover,
+    cutoffs,
+) -> None:
+    text = (
+        Path(__file__).parent / "fixtures" / "minhacienda_tes_reports"
+        / f"tes_{stamp}_excerpt.txt"
+    ).read_text()
+    facts = _extract_minhacienda_tes_auction_facts(
+        text, title=title, pdf_url=f"https://www.irc.gov.co/tes-{stamp}.pdf",
+    )
+
+    assert facts is not None
+    assert facts["amount_schema_version"] == 2
+    assert facts["amount_unit"] == "COP_trillions"
+    assert facts["amount_provenance"] == "source_pdf"
+    assert facts["total_demand_cop_trillions"] == demand
+    assert facts["total_issued_cop_trillions"] == issued
+    assert facts["total_demand_nominal_cop_trillions"] == demand_nominal
+    assert facts["total_issued_nominal_cop_trillions"] == issued_nominal
+    assert facts["bid_to_cover"] == bid_to_cover
+    assert facts["bid_to_cover"] != pytest.approx(demand / issued)
+    assert facts["bid_to_cover_basis"] == "published; denominator not inferred"
+    rows = facts["maturity_rows"]
+    assert [row["cutoff_rate_pct"] for row in rows] == cutoffs
+    assert [row["coupon_rate_pct"] for row in rows] == [12.5, 11.75, 12.75, 12.0]
+    assert sum(row["approved_cop_trillions"] for row in rows) == pytest.approx(issued)
+    assert sum(row["demand_cop_trillions"] for row in rows) == pytest.approx(demand)
+    assert facts["max_cutoff_rate_pct"] == max(cutoffs)
+    assert facts["long_cutoff_rate_pct"] == cutoffs[-1]
+    assert "_cop_billions" not in json.dumps(facts)
+    if stamp == "20261014":
+        assert "3044,849% -303179,979" in text
+        # TI and TAIL remain source text only, never trusted numeric fields.
+        assert "3044.849" not in json.dumps(facts)
+        assert "303179.979" not in json.dumps(facts)
 
 
 def test_extract_minhacienda_tes_auction_facts_fail_closed_without_table() -> None:
@@ -127,13 +186,18 @@ def test_fetch_minhacienda_tes_reports_enriches_pdf_text(
     item = items[0]
     assert item.published_at == "2026-05-13T00:00:00Z"
     assert item.metadata["content_extraction"] == "minhacienda_tes_auction_pdf"
-    assert item.metadata["total_issued_cop_billions"] == 6.0
-    assert item.metadata["total_demand_cop_billions"] == 12.3
+    assert item.metadata["total_issued_cop_trillions"] == 6.0
+    assert item.metadata["total_demand_cop_trillions"] == 12.3
     assert item.metadata["bid_to_cover"] == 4.1
     assert item.metadata["maturity_years"] == [2030, 2035, 2040, 2058]
     assert item.metadata["max_cutoff_rate_pct"] == 14.79
     assert item.metadata["long_cutoff_rate_pct"] == 13.94
     assert "Source PDF:" in item.raw_text
+    assert "issued: COP 6.0 trillion" in item.raw_text
+    assert "published bid-to-cover: 4.1x (denominator not inferred)" in item.raw_text
+    assert item.metadata["amount_schema_version"] == 2
+    assert item.metadata["amount_unit"] == "COP_trillions"
+    assert "_cop_billions" not in json.dumps(item.metadata)
 
 
 def test_extract_minhacienda_tes_reports_derives_pdf_url_from_view_file(

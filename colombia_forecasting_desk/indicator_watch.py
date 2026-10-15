@@ -2761,36 +2761,92 @@ def _icoced_observation(item: RawItem) -> IndicatorObservation | None:
     )
 
 
-def _tes_auction_observation(item: RawItem) -> IndicatorObservation | None:
+def _tes_auction_observation(
+    item: RawItem, *, now: datetime
+) -> IndicatorObservation | None:
     metadata = item.metadata or {}
     if metadata.get("content_extraction") != "minhacienda_tes_auction_pdf":
+        return None
+    # This component feeds the COP funding-cost screen. UVR and TCO auctions
+    # remain available as raw items, but are not comparable replacements.
+    if metadata.get("auction_type") != "COP":
+        return None
+    auction_date = metadata.get("auction_date") or item.published_at
+    parsed_date = _parse_iso_date(auction_date)
+    if parsed_date is None or parsed_date > now:
         return None
     rows = metadata.get("maturity_rows")
     if not isinstance(rows, list) or not rows:
         return None
+    legacy_amounts = (
+        metadata.get("amount_schema_version") is None
+        and metadata.get("amount_unit") is None
+    )
+    current_amounts = (
+        metadata.get("amount_schema_version") == 2
+        and metadata.get("amount_unit") == "COP_trillions"
+    )
+
+    def amounts(record: dict[str, Any]) -> dict[str, Any]:
+        # The unversioned MinHacienda parser divided COP by 10^12 and rounded
+        # to three decimals despite naming its fields *_cop_billions. Use that
+        # known parser contract, never an amount's magnitude, to read archives.
+        suffix = "_cop_billions" if legacy_amounts else "_cop_trillions"
+        return {
+            key.removesuffix(suffix) + "_cop_trillions": value
+            for key, value in record.items()
+            if (legacy_amounts or current_amounts) and key.endswith(suffix)
+        }
+
+    amount_metadata = {
+        "amount_schema_version": 2,
+        "amount_unit": "COP_trillions",
+        "amount_provenance": (
+            "legacy_unversioned_parser; rounded to 0.001 COP trillion"
+            if legacy_amounts
+            else metadata.get("amount_provenance", "source_pdf")
+        ),
+    } if legacy_amounts or current_amounts else {
+        "amount_provenance": "unsupported amount schema; amounts omitted",
+    }
+    source_url = metadata.get("source_pdf_url") or item.url
     values = {
-        "auction_date": metadata.get("auction_date"),
+        "auction_date": auction_date,
         "auction_type": metadata.get("auction_type"),
+        "auction_number": metadata.get("auction_number"),
         "currency": metadata.get("currency"),
         "security_type": metadata.get("security_type"),
-        "total_issued_cop_billions": metadata.get("total_issued_cop_billions"),
-        "total_demand_cop_billions": metadata.get("total_demand_cop_billions"),
+        **amount_metadata,
+        **amounts(metadata),
         "bid_to_cover": metadata.get("bid_to_cover"),
+        "bid_to_cover_basis": "published; denominator not inferred",
         "maturity_years": metadata.get("maturity_years"),
-        "maturity_rows": rows,
+        "maturity_rows": [
+            {
+                **{
+                    key: value for key, value in row.items()
+                    if key in {
+                        "tenor_years", "tenor_days", "maturity_date",
+                        "maturity_year", "coupon_rate_pct", "cutoff_rate_pct",
+                    }
+                },
+                **amounts(row),
+            }
+            for row in rows
+        ],
         "max_cutoff_rate_pct": metadata.get("max_cutoff_rate_pct"),
         "long_cutoff_rate_pct": metadata.get("long_cutoff_rate_pct"),
         "long_maturity_year": metadata.get("long_maturity_year"),
-        "source_pdf_url": metadata.get("source_pdf_url") or item.url,
+        "source_pdf_url": source_url,
     }
     component = _component(
         component_id="tes_auction",
         name="MinHacienda TES auction",
         status="observed",
         source_name=item.source_name,
-        source_url=item.url,
-        period=(metadata.get("auction_date") or item.published_at or "")[:10],
-        release_date=metadata.get("auction_date") or item.published_at,
+        source_url=source_url,
+        period=auction_date[:10],
+        release_date=auction_date,
         headline=item.raw_text,
         values=values,
         next_step="Parsed from official MinHacienda TES auction report PDFs.",
@@ -2801,7 +2857,7 @@ def _tes_auction_observation(item: RawItem) -> IndicatorObservation | None:
     return replace(
         observation,
         source_name=item.source_name,
-        source_url=item.url,
+        source_url=source_url,
         headline=item.raw_text,
     )
 
@@ -2944,6 +3000,10 @@ def _merge_observations(
         existing = components_by_id.get(component.component_id)
         if existing is None or (
             existing.status != "observed" and component.status == "observed"
+        ) or (
+            component.component_id == "tes_auction"
+            and component.status == "observed"
+            and (component.release_date or "") > (existing.release_date or "")
         ):
             components_by_id[component.component_id] = component
     components = _complete_bundle_components(
@@ -2998,6 +3058,7 @@ def build_indicator_watch(
     extra_observations: Iterable[IndicatorObservation] = (),
     now: datetime | None = None,
 ) -> list[IndicatorObservation]:
+    current = now or datetime.now(timezone.utc)
     observed: dict[str, IndicatorObservation] = {}
     for observation in extra_observations:
         _store_observation(observed, observation)
@@ -3008,7 +3069,7 @@ def build_indicator_watch(
             if observation:
                 _store_observation(observed, observation)
         if item.source_id == "minhacienda_tes_reports":
-            observation = _tes_auction_observation(item)
+            observation = _tes_auction_observation(item, now=current)
             if observation:
                 _store_observation(observed, observation)
 
@@ -3017,7 +3078,6 @@ def build_indicator_watch(
         _store_observation(observed, secop)
 
     watch: list[IndicatorObservation] = []
-    current = now or datetime.now(timezone.utc)
     for definition in INDICATOR_DEFINITIONS:
         observation = observed.get(definition.indicator_id) or _pending_observation(
             definition

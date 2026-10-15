@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
+from dataclasses import replace
 from datetime import datetime, timezone
+from pathlib import Path
+
+import pytest
 
 from colombia_forecasting_desk.indicator_watch import (
     banrep_tes_curve_component_from_rows,
@@ -34,6 +39,9 @@ from colombia_forecasting_desk.indicator_watch import (
     trm_observation_from_rows,
 )
 from colombia_forecasting_desk.models import IndicatorComponent, IndicatorObservation
+from colombia_forecasting_desk.source_fetching.minhacienda import (
+    _extract_minhacienda_tes_auction_facts,
+)
 
 
 def test_indicator_watch_registers_all_core_indicators() -> None:
@@ -1091,7 +1099,166 @@ def test_indicator_watch_extracts_minhacienda_tes_auction(make_raw) -> None:
     by_id = {component.component_id: component for component in fiscal.components}
     assert by_id["tes_auction"].status == "observed"
     assert by_id["tes_auction"].values["max_cutoff_rate_pct"] == 14.79
+    values = by_id["tes_auction"].values
+    assert values["total_issued_cop_trillions"] == 6.0
+    assert values["total_demand_cop_trillions"] == 12.3
+    assert values["maturity_rows"][1]["approved_cop_trillions"] == 0.89
+    assert values["amount_schema_version"] == 2
+    assert values["amount_unit"] == "COP_trillions"
+    assert values["amount_provenance"] == (
+        "legacy_unversioned_parser; rounded to 0.001 COP trillion"
+    )
+    assert "_cop_billions" not in json.dumps(values)
+    assert raw.metadata["total_issued_cop_billions"] == 6.0
     assert by_id["banrep_tes_curve"].status == "pending_source"
+
+
+def _saved_tes_auction(make_raw, stamp: str, title: str, url: str):
+    text = (
+        Path(__file__).parent / "fixtures" / "minhacienda_tes_reports"
+        / f"tes_{stamp}_excerpt.txt"
+    ).read_text()
+    metadata = _extract_minhacienda_tes_auction_facts(text, title=title, pdf_url=url)
+    assert metadata is not None
+    return make_raw(
+        id=stamp,
+        source_id="minhacienda_tes_reports",
+        source_name="MinHacienda / IRC",
+        source_type="economic_indicator",
+        title=title,
+        url="https://www.irc.gov.co/424",
+        published_at="2026-10-15T00:00:00Z",
+        raw_text=f"{title}. Source PDF: {url}",
+        metadata=metadata,
+    )
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_tes_auction_selects_latest_comparable_cop_with_matching_metadata(
+    make_raw, reverse,
+) -> None:
+    previous = _saved_tes_auction(
+        make_raw, "20260923", "Subasta 16 COP Septiembre 23 de 2026",
+        "https://www.irc.gov.co/documents/d/guest/"
+        "subasta-16-cop-septiembre-23-de-2026-1?download=true",
+    )
+    latest = _saved_tes_auction(
+        make_raw, "20261014", "Subasta 17 COP Octubre 14 de 2026",
+        "https://www.irc.gov.co/documents/d/guest/"
+        "subasta-17-cop-octubre-14-de-2026?download=true",
+    )
+    other_items = [
+        replace(
+            latest,
+            id=auction_type,
+            metadata={
+                **latest.metadata,
+                "auction_type": auction_type,
+                "auction_date": "2026-10-15T00:00:00Z",
+                "max_cutoff_rate_pct": 99.0,
+                "source_pdf_url": f"https://www.irc.gov.co/{auction_type}.pdf",
+            },
+        )
+        for auction_type in ("TCO", "UVR")
+    ]
+    future = replace(
+        latest, id="future",
+        metadata={
+            **latest.metadata,
+            "auction_date": "2026-10-16T00:00:00Z",
+            "source_pdf_url": "https://www.irc.gov.co/future.pdf",
+        },
+    )
+    raw_items = [previous, *other_items, future, latest]
+    if reverse:
+        raw_items.reverse()
+    fiscal = next(
+        observation for observation in build_indicator_watch(
+            raw_items, [], now=datetime(2026, 10, 15, tzinfo=timezone.utc),
+        )
+        if observation.indicator_id == "fiscal_tax_pulse"
+    )
+    auction = next(c for c in fiscal.components if c.component_id == "tes_auction")
+
+    assert fiscal.period == auction.period == "2026-10-14"
+    assert fiscal.release_date == auction.release_date == "2026-10-14T00:00:00Z"
+    assert fiscal.source_url == auction.source_url == latest.metadata["source_pdf_url"]
+    assert fiscal.source_name == auction.source_name == latest.source_name
+    assert auction.headline == latest.raw_text
+    assert auction.values == fiscal.values["components"]["tes_auction"]
+    assert auction.values["auction_number"] == "17"
+    assert auction.values["auction_type"] == "COP"
+    assert auction.values["auction_date"] == auction.release_date
+    assert auction.values["source_pdf_url"] == auction.source_url
+    assert auction.values["total_issued_cop_trillions"] == 1.799999878092
+    assert auction.values["total_demand_cop_trillions"] == 4.35393551
+    assert auction.values["total_issued_nominal_cop_trillions"] == 1.7662253
+    assert auction.values["bid_to_cover"] == 3.6
+    assert auction.values["max_cutoff_rate_pct"] == 13.414
+    assert [row["cutoff_rate_pct"] for row in auction.values["maturity_rows"]] == [
+        13.000, 13.049, 13.230, 13.414,
+    ]
+
+
+@pytest.mark.parametrize("auction_type", ["TCO", "UVR", "COP"])
+def test_tes_auction_stays_pending_without_an_eligible_cop_auction(
+    make_raw, auction_type,
+) -> None:
+    raw = make_raw(
+        source_id="minhacienda_tes_reports",
+        metadata={
+            "content_extraction": "minhacienda_tes_auction_pdf",
+            "auction_type": auction_type,
+            "auction_date": "2026-10-16T00:00:00Z",
+            "maturity_rows": [{"cutoff_rate_pct": 14.5}],
+        },
+    )
+    fiscal = next(
+        observation for observation in build_indicator_watch(
+            [raw], [], now=datetime(2026, 10, 15, tzinfo=timezone.utc),
+        )
+        if observation.indicator_id == "fiscal_tax_pulse"
+    )
+    assert fiscal.status == "pending_source"
+    assert all(component.status == "pending_source" for component in fiscal.components)
+
+
+@pytest.mark.parametrize(
+    "schema", [
+        {"amount_schema_version": 99, "amount_unit": "COP_trillions"},
+        {"amount_unit": "COP_billions"},
+    ],
+)
+def test_tes_auction_does_not_guess_amount_units_for_unknown_schema(make_raw, schema):
+    raw = make_raw(
+        source_id="minhacienda_tes_reports",
+        metadata={
+            "content_extraction": "minhacienda_tes_auction_pdf",
+            "auction_type": "COP",
+            "auction_date": "2026-10-14T00:00:00Z",
+            "total_issued_cop_billions": 1.8,
+            "total_issued_cop_trillions": 1.8,
+            "max_cutoff_rate_pct": 13.414,
+            "maturity_rows": [{
+                "cutoff_rate_pct": 13.414,
+                "approved_cop_billions": 1.8,
+                "approved_cop_trillions": 1.8,
+            }],
+            **schema,
+        },
+    )
+    fiscal = next(
+        observation for observation in build_indicator_watch(
+            [raw], [], now=datetime(2026, 10, 15, tzinfo=timezone.utc),
+        )
+        if observation.indicator_id == "fiscal_tax_pulse"
+    )
+    values = fiscal.values["components"]["tes_auction"]
+    assert values["max_cutoff_rate_pct"] == 13.414
+    assert values["maturity_rows"] == [{"cutoff_rate_pct": 13.414}]
+    assert "total_issued_cop_billions" not in values
+    assert "total_issued_cop_trillions" not in values
+    assert values["amount_provenance"] == "unsupported amount schema; amounts omitted"
 
 
 def test_fiscal_tax_observation_from_components_merges_banrep_tes_curve() -> None:
