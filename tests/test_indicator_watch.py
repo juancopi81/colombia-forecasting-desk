@@ -646,6 +646,144 @@ def test_ise_observation_from_html_extracts_dane_headline() -> None:
     )
 
 
+def test_ise_observation_from_saved_dane_august_2026_headline() -> None:
+    html = (
+        Path(__file__).parent / "fixtures" / "dane_ise" / "august_2026_headline.html"
+    ).read_text()
+
+    observation = ise_observation_from_html(html)
+
+    assert observation is not None
+    assert observation.status == "observed"
+    assert observation.period == "2026-08"
+    assert observation.release_date == "2026-10-19T00:00:00Z"
+    assert observation.values["ise_index"] == 127.27
+    assert observation.values["annual_growth_pct"] == -0.04
+    assert observation.values.get("adjusted_annual_growth_pct") is None
+    assert observation.headline == (
+        "DANE ISE 2026-08: index 127.27, activity -0.04% y/y."
+    )
+    assert [doc["url"] for doc in observation.values["official_documents"]] == [
+        "https://www.dane.gov.co/files/operaciones/ISE/bol-ISE-ago2026.pdf",
+        "https://www.dane.gov.co/files/operaciones/ISE/"
+        "anex-ISE-9actividades-ago2026.xlsx",
+        "https://www.dane.gov.co/files/operaciones/ISE/"
+        "anex-ISE-EspecificacionesModelos-ago2026.pdf",
+    ]
+
+
+@pytest.mark.parametrize("with_index", [True, False])
+@pytest.mark.parametrize(
+    ("growth_text", "expected"),
+    [
+        ("crecimiento de 0,04%", 0.04),
+        ("crecimiento del +0.04%", 0.04),
+        ("crecimiento de -0,04%", -0.04),
+        ("crecimiento de − 0.04%", -0.04),
+        ("crecimiento de &minus;0,04%", -0.04),
+        ("decrecimiento de 0,04%", -0.04),
+        ("decrecimiento del -0.04%", -0.04),
+        ("decrecimiento de −0,04%", -0.04),
+        ("decrecimiento de 0.040%", -0.04),
+    ],
+)
+def test_ise_growth_direction_and_explicit_sign(
+    with_index: bool, growth_text: str, expected: float
+) -> None:
+    index_text = "se ubicó en 127,27, lo que representó" if with_index else "presentó"
+    observation = ise_observation_from_html(
+        "<p>Para el mes de agosto de 2026, el ISE en su serie original "
+        f"{index_text} un {growth_text} respecto al mes de agosto de 2025.</p>"
+    )
+
+    assert observation is not None
+    assert observation.period == "2026-08"
+    assert observation.values.get("ise_index") == (127.27 if with_index else None)
+    assert observation.values["annual_growth_pct"] == expected
+
+
+@pytest.mark.parametrize(
+    "growth_text",
+    [
+        "decrecimiento de +0,04%",
+        "decrecimiento de --0,04%",
+        "decrecimiento de −-0,04%",
+        "decrecimiento de 0,,04%",
+        "decrecimiento de 0.04.0%",
+        "crecimiento de ±0,04%",
+        "crecimiento de –0,04%",
+        "decrecimiento de ,%",
+        "decrecimiento de 0,04",
+        "precrecimiento de 0,04%",
+        "crecimiento de 0,04% y decrecimiento de 0,04%",
+    ],
+)
+def test_ise_rejects_malformed_or_conflicting_growth(growth_text: str) -> None:
+    observation = ise_observation_from_html(
+        "<p>Para el mes de agosto de 2026, el ISE en su serie original "
+        f"se ubicó en 127,27, lo que representó un {growth_text}.</p>"
+        "<p>En su serie ajustada, el ISE presentó un crecimiento de 4,0%.</p>"
+    )
+
+    assert observation is None
+
+
+@pytest.mark.parametrize("separator", [" ", ".</p><p>En su "])
+def test_ise_original_growth_does_not_cross_into_adjusted_series(
+    separator: str,
+) -> None:
+    observation = ise_observation_from_html(
+        "<p>Para el mes de agosto de 2026, el ISE en su serie original "
+        f"se ubicó en 127,27{separator}serie ajustada, el ISE presentó "
+        "un crecimiento de 4,0%.</p>"
+    )
+
+    assert observation is None
+
+
+@pytest.mark.parametrize(
+    ("adjusted_text", "expected"),
+    [
+        ("un decrecimiento de 0,11% respecto al mismo mes del año anterior", -0.11),
+        ("un decrecimiento de −0.11% respecto al mismo mes del año anterior", -0.11),
+        ("un decrecimiento de 0,11% respecto al mes de agosto de 2025", -0.11),
+        ("un decrecimiento de +0,11% respecto al mismo mes del año anterior", None),
+        ("un decrecimiento mensual de 3,11%", None),
+        ("un decrecimiento de 3,11% respecto al mes anterior", None),
+        ("un decrecimiento de 3,11% respecto al mes inmediatamente anterior", None),
+        ("un decrecimiento de 3,11% respecto al mes de julio de 2026", None),
+        ("un decrecimiento de 3,11% respecto al mes de julio de 2026pr", None),
+    ],
+)
+def test_ise_adjusted_growth_keeps_its_sign_and_excludes_monthly_values(
+    adjusted_text: str, expected: float | None
+) -> None:
+    observation = ise_observation_from_html(
+        "<p>Para el mes de agosto de 2026, el ISE en su serie original "
+        "presentó un decrecimiento de 0,04% respecto al mes de agosto de 2025.</p>"
+        "<p>En su serie ajustada por efecto estacional y calendario, el ISE "
+        f"presentó {adjusted_text}.</p>"
+    )
+
+    assert observation is not None
+    assert observation.values["annual_growth_pct"] == -0.04
+    assert observation.values.get("adjusted_annual_growth_pct") == expected
+
+
+def test_ise_adjusted_growth_does_not_cross_into_another_release() -> None:
+    observation = ise_observation_from_html(
+        "<p>Para el mes de agosto de 2026, el ISE en su serie original "
+        "presentó un decrecimiento de 0,04%.</p>"
+        "<p>Para el mes de julio de 2026, el ISE en su serie original "
+        "presentó un crecimiento de 1,11%.</p>"
+        "<p>En su serie ajustada, el ISE presentó un crecimiento de 4,0%.</p>"
+    )
+
+    assert observation is not None
+    assert observation.values["annual_growth_pct"] == -0.04
+    assert observation.values.get("adjusted_annual_growth_pct") is None
+
+
 def test_construction_components_from_html_extract_dane_headlines() -> None:
     cement = cement_component_from_html(
         """

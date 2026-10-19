@@ -497,6 +497,14 @@ official document/annex links for M2/M3 follow-up. A strong ISE reading fires
 an `activity_acceleration` M2 seed, making the follow-up question explicit
 instead of relying on indirect retail/manufacturing clues.
 
+ISE headline parsing distinguishes the complete words `crecimiento` and
+`decrecimiento` and preserves explicit numeric signs without double negation.
+Original and adjusted series are parsed within their own contexts; an explicitly
+monthly adjusted rate must not become an adjusted annual value. Unparseable or
+contradictory original growth remains unavailable rather than being guessed.
+Saved-source replay verifies the sign while retaining the release period and
+official document links; historical run artifacts are not rewritten.
+
 M1.24 adds official sovereign-debt/TES coverage. `minhacienda_tes_reports`
 uses the MinHacienda Investor Relations Colombia (`irc.gov.co`) COP, UVR, and
 TCO auction-result document-library pages because the main MinHacienda

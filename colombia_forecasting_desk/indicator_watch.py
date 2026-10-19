@@ -18,6 +18,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import unicodedata
 import zipfile
 from calendar import monthrange
 from dataclasses import dataclass, replace
@@ -978,37 +979,78 @@ def gdp_observation_from_html(html: str) -> IndicatorObservation | None:
     )
 
 
-def ise_observation_from_html(html: str) -> IndicatorObservation | None:
-    text = _folded_text_from_html(html)
-    match = re.search(
-        rf"para el mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*.*?"
-        rf"(?:indicador de seguimiento a la economia|ise).*?serie original.*?"
-        rf"se ubico en\s+{_NUMBER}.*?(?:un\s+)?crecimiento(?: de| del)\s+"
-        rf"{_PERCENT}",
+def _ise_series_sentence(text: str) -> str:
+    # Stop before another series, release, or sentence; decimal points stay intact.
+    return re.split(
+        r"\bserie (?:original|ajustada)\b|\bpara el mes de\b|\.(?:\s|$)",
         text,
-    )
-    index_value: float | None = None
-    if match:
-        month_name, year = match.group(1), match.group(2)
-        index_value = _to_float(match.group(3))
-        annual_growth = _to_float(match.group(4))
-    else:
-        fallback = re.search(
-            rf"para el mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*.*?"
-            rf"(?:indicador de seguimiento a la economia|ise).*?serie original.*?"
-            rf"(?:un\s+)?crecimiento(?: de| del)\s+{_PERCENT}",
-            text,
-        )
-        if not fallback:
+        maxsplit=1,
+    )[0]
+
+
+def _ise_annual_growth(text: str, *, period: str) -> float | None:
+    if re.search(r"\b(?:mensual|mes (?:inmediatamente )?anterior)\b", text):
+        return None
+    prior_year_period = f"{int(period[:4]) - 1}{period[4:]}"
+    for comparison in re.finditer(
+        rf"\brespecto al mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*\b",
+        text,
+    ):
+        if _month_period(comparison.group(1), comparison.group(2)) != prior_year_period:
             return None
-        month_name, year = fallback.group(1), fallback.group(2)
-        annual_growth = _to_float(fallback.group(3))
-    adjusted_match = re.search(
-        rf"serie ajustada.*?(?:un\s+)?crecimiento(?: de| del)\s+{_PERCENT}",
+    directions = list(re.finditer(r"\b(decrecimiento|crecimiento)\b", text))
+    if len(directions) != 1:
+        return None
+    direction = directions[0]
+    value_match = re.match(
+        r"\s+(?:de|del)\s+([+−-]?\s*\d+(?:[.,]\d+)?)\s*%",
+        text[direction.end():],
+    )
+    if not value_match:
+        return None
+    number = value_match.group(1).replace(" ", "").replace("−", "-")
+    value = float(number.replace(",", "."))
+    if direction.group(1) == "decrecimiento":
+        if number.startswith("+") and value > 0:
+            return None
+        value = -abs(value)
+    return round(value, 2)
+
+
+def ise_observation_from_html(html: str) -> IndicatorObservation | None:
+    # Preserve signs and unsupported symbols while removing accents, so malformed
+    # signs cannot disappear into an apparently positive rate during ASCII folding.
+    text = "".join(
+        char
+        for char in unicodedata.normalize("NFKD", _text_from_html(html).lower())
+        if not unicodedata.combining(char)
+    )
+    context = r"(?:(?!\bpara el mes de\b|\bserie (?:original|ajustada)\b).)*?"
+    match = re.search(
+        rf"\bpara el mes de\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\w*"
+        rf"{context}\b(?:indicador de seguimiento a la economia|ise)\b"
+        rf"{context}\bserie original\b",
         text,
     )
-    adjusted_growth = _to_float(adjusted_match.group(1)) if adjusted_match else None
+    if not match:
+        return None
+    month_name, year = match.group(1), match.group(2)
     period = _month_period(month_name, year)
+    release_text = re.split(r"\bpara el mes de\b", text[match.end():], maxsplit=1)[0]
+    original_text = _ise_series_sentence(release_text)
+    annual_growth = _ise_annual_growth(original_text, period=period)
+    if annual_growth is None:
+        return None
+    index_match = re.search(rf"\bse ubico en\s+{_NUMBER}", original_text)
+    index_value = _to_float(index_match.group(1)) if index_match else None
+    adjusted_match = re.search(r"\bserie ajustada\b", release_text)
+    adjusted_growth = (
+        _ise_annual_growth(
+            _ise_series_sentence(release_text[adjusted_match.end():]), period=period
+        )
+        if adjusted_match
+        else None
+    )
     index_text = (
         f" index {index_value:.2f},"
         if isinstance(index_value, int | float)
