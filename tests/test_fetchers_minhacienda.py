@@ -1,11 +1,215 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
+import sys
 
 import pytest
 
 from tests.fetcher_helpers import *  # noqa: F403
+from colombia_forecasting_desk.source_fetching import tes_browser
+
+
+@pytest.fixture
+def tes_worker(sample_source, monkeypatch, tmp_path):
+    source = replace(
+        sample_source, id="minhacienda_tes_reports",
+        name="MinHacienda / IRC — Subastas TES 2026",
+        url="https://www.irc.gov.co/424", type="economic_indicator",
+        fetch_method="html", max_items=1,
+    )
+    monkeypatch.setattr(tes_browser, "TES_BROWSER_DEADLINE_SECONDS", 1.5)
+    monkeypatch.setattr(tes_browser, "TES_BROWSER_TERMINATE_GRACE_SECONDS", 0.15)
+
+    def configure(mode):
+        monkeypatch.setattr(tes_browser, "_worker_command", lambda directory: [
+            sys.executable, "-m", "tests.tes_browser_worker_fixture",
+            str(directory), mode, str(tmp_path),
+        ])
+        return source, tmp_path
+
+    yield configure
+    # Defensive cleanup if a regression causes an assertion to fail. These PIDs
+    # were created only by this test fixture; do not use process-name matching.
+    for path in tmp_path.glob("*.pid"):
+        try:
+            os.kill(int(path.read_text()), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+@pytest.mark.parametrize("stage", [
+    "startup", "fetch", "parse", "context_close", "browser_close", "driver_stop",
+])
+def test_tes_browser_deadline_covers_entire_lifecycle(tes_worker, stage):
+    source, state = tes_worker(f"{stage}_hang")
+    started = time.monotonic()
+    with pytest.raises(tes_browser.TesBrowserTimeoutError, match="lifecycle deadline"):
+        minhacienda_fetchers._fetch_minhacienda_tes_reports_with_browser(
+            source, "2026-10-22T13:00:00Z", max_items=1,
+        )
+    assert (state / stage).exists(), "fixture must reach the intended hang"
+    assert time.monotonic() - started < 4
+    assert int((state / "worker.pid").read_text()) not in tes_browser._process_snapshot()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+@pytest.mark.parametrize("mode", ["tree_hang", "worker_exits_first"])
+def test_tes_browser_cleans_owned_detached_tree_and_preserves_unrelated_process(
+    tes_worker, mode,
+):
+    source, state = tes_worker(mode)
+    unrelated = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        start_new_session=True,
+    )
+    try:
+        if mode == "tree_hang":
+            with pytest.raises(tes_browser.TesBrowserTimeoutError):
+                tes_browser.fetch_tes_reports(source, "2026-10-22T13:00:00Z", max_items=1)
+        else:
+            assert len(tes_browser.fetch_tes_reports(
+                source, "2026-10-22T13:00:00Z", max_items=1,
+            )) == 1
+        assert unrelated.poll() is None
+        running = tes_browser._process_snapshot()
+        for name in ("worker", "driver", "browser", "renderer"):
+            assert int((state / f"{name}.pid").read_text()) not in running
+    finally:
+        unrelated.kill()
+        unrelated.wait(timeout=1)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+def test_tes_timeout_discards_results_and_fetch_all_continues(tes_worker):
+    source, _ = tes_worker("result_then_hang")
+    next_source = replace(source, id="next_source", url="https://example.com/next")
+    trace = RunTrace(run_date="2026-10-22", mode="daily")
+    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+        200, text='<main><a href="/news">Next official source remains available</a></main>',
+    ))) as client:
+        items, failures = fetchers.fetch_all([source, next_source], client, trace)
+    assert [item.source_id for item in items] == ["next_source"]
+    assert len(failures) == 1
+    assert failures[0].source_id == source.id
+    assert failures[0].error_class == "TesBrowserTimeoutError"
+    assert "partial results discarded" in failures[0].error_message
+    assert [event["status"] for event in trace.events] == ["error", "ok"]
+    assert trace.events[0]["error_class"] == "TesBrowserTimeoutError"
+    assert trace.events[1]["counts"]["raw_items"] == 1
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+def test_tes_browser_subprocess_preserves_successful_fixture_output(tes_worker):
+    source, _ = tes_worker("success")
+    fetched_at = "2026-10-22T13:00:00Z"
+    html = '''<main><a href="/documents/d/portal/tes-20261014">
+                Subasta 17 COP Octubre 14 de 2026
+            </a></main>'''
+    original = minhacienda_fetchers._extract_minhacienda_tes_reports(
+        html, source.url, source, fetched_at,
+    )[0]
+    text = (Path(__file__).parent / "fixtures" / "minhacienda_tes_reports"
+            / "tes_20261014_excerpt.txt").read_text()
+    facts = _extract_minhacienda_tes_auction_facts(
+        text, title=original.title, pdf_url=original.url,
+    )
+    expected = minhacienda_fetchers._minhacienda_tes_item_with_facts(original, facts)
+    assert tes_browser.fetch_tes_reports(source, fetched_at, max_items=1) == [expected]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+@pytest.mark.parametrize(("mode", "message"), [
+    ("fetch_and_close_fail", "ValueError: primary TES fetch failure"),
+    ("close_fail", "RuntimeError: context cleanup failed"),
+    ("result_then_fail", "worker exited with status 1"),
+])
+def test_tes_browser_preserves_primary_failure_and_rejects_failed_worker(
+    tes_worker, mode, message,
+):
+    source, state = tes_worker(mode)
+    with pytest.raises(tes_browser.TesBrowserWorkerError, match=message):
+        tes_browser.fetch_tes_reports(source, "2026-10-22T13:00:00Z", max_items=1)
+    if mode in {"fetch_and_close_fail", "close_fail"}:
+        assert (state / "browser_close").exists()
+        assert (state / "driver_stop").exists()
+
+
+def test_tes_browser_fails_before_launch_on_unsupported_platform(
+    sample_source, monkeypatch,
+):
+    monkeypatch.setattr(tes_browser, "os", type("OS", (), {"name": "nt"}))
+    with pytest.raises(tes_browser.TesBrowserWorkerError, match="browser was not started"):
+        tes_browser.fetch_tes_reports(sample_source, "2026-10-22T13:00:00Z", max_items=1)
+
+
+def test_tes_browser_fails_before_launch_when_enumeration_is_unavailable(
+    sample_source, monkeypatch,
+):
+    def denied():
+        raise PermissionError("process enumeration denied")
+
+    def unexpected_launch(*args):
+        pytest.fail("worker must not launch without process enumeration")
+
+    monkeypatch.setattr(tes_browser, "_process_snapshot", denied)
+    monkeypatch.setattr(tes_browser, "_worker_command", unexpected_launch)
+    with pytest.raises(tes_browser.TesBrowserWorkerError, match="browser was not started"):
+        tes_browser.fetch_tes_reports(sample_source, "2026-10-22T13:00:00Z", max_items=1)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+@pytest.mark.parametrize("mode", ["success", "fetch_and_close_fail"])
+def test_tes_supervisor_cleanup_failure_never_masks_primary_error(
+    tes_worker, monkeypatch, mode,
+):
+    source, _ = tes_worker(mode)
+    stop_worker = tes_browser._stop_worker
+
+    def failed_cleanup(*args):
+        stop_worker(*args)
+        raise tes_browser.TesBrowserWorkerError("cleanup verification failed")
+
+    monkeypatch.setattr(tes_browser, "_stop_worker", failed_cleanup)
+    expected = "cleanup verification failed" if mode == "success" else "primary TES fetch failure"
+    with pytest.raises(tes_browser.TesBrowserWorkerError, match=expected):
+        tes_browser.fetch_tes_reports(source, "2026-10-22T13:00:00Z", max_items=1)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX TES supervisor")
+def test_tes_browser_rechecks_deadline_after_process_snapshot(tes_worker, monkeypatch):
+    source, _ = tes_worker("success")
+    track = tes_browser._track_descendants
+    monkeypatch.setattr(tes_browser, "TES_BROWSER_DEADLINE_SECONDS", 0.2)
+    calls = 0
+
+    def slow_snapshot(*args):
+        nonlocal calls
+        processes = track(*args)
+        calls += 1
+        if calls == 1:
+            time.sleep(0.3)
+        return processes
+
+    monkeypatch.setattr(tes_browser, "_track_descendants", slow_snapshot)
+    with pytest.raises(tes_browser.TesBrowserTimeoutError):
+        tes_browser.fetch_tes_reports(source, "2026-10-22T13:00:00Z", max_items=1)
+
+
+def test_tes_real_worker_entrypoint_serializes_failure_without_browser(tmp_path):
+    (tmp_path / "request.json").write_text(json.dumps({
+        "source": {}, "fetched_at": "2026-10-22T13:00:00Z", "max_items": 1,
+    }))
+    subprocess.run(tes_browser._worker_command(tmp_path), check=True, timeout=5)
+    result = json.loads((tmp_path / "result.json").read_text())
+    assert result["status"] == "error"
+    assert result["error_class"] == "TypeError"
+    assert "Metasource.__init__" in result["error_message"]
+    assert "items" not in result
 
 
 def test_extract_minhacienda_tes_auction_rows_from_text() -> None:

@@ -519,6 +519,18 @@ returns 403 to simple shell fetches, so this source uses a Playwright browser
 path; if the browser path is blocked or a PDF table cannot be parsed, the item
 stays link-level with `content_extraction_error`.
 
+The TES browser attempt runs in a supervised child with a 120-second deadline
+covering browser startup, retrieval, parsing, and shutdown, followed by bounded
+process cleanup. A deadline failure discards partial rows and flows through the
+existing source-failure path so the scan can continue. The POSIX supervisor
+tracks the attempt's descendants, including detached Chromium process groups;
+it never selects processes by executable name. Unsupported platforms or
+unavailable process enumeration fail before browser launch. Process ancestry
+and birth-time checks reduce accidental
+termination risk, but descendants that detach and lose ancestry between
+snapshots may escape discovery. This is stall containment, not a diagnosis of
+the underlying browser failure. Prior daily evidence is not rewritten.
+
 TES amount schema 2 uses `*_cop_trillions`, `amount_unit: COP_trillions`, and
 explicit `amount_provenance`; cost and nominal amounts stay distinct. New PDF
 parses preserve the published amount precision. The known unversioned TES raw

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from .common import *
 from .dane import _to_float
 from .pdf import *
@@ -1008,6 +1010,35 @@ def _fetch_minhacienda_tes_reports_with_browser(
     *,
     max_items: int = MINHACIENDA_TES_PARSE_LIMIT,
 ) -> list[RawItem]:
+    from .tes_browser import fetch_tes_reports
+
+    return fetch_tes_reports(source, fetched_at, max_items=max_items)
+
+
+def _close_tes_browser_resources(context, browser, playwright) -> None:
+    primary_error = sys.exc_info()[1]
+    cleanup_error = None
+    for resource, method in ((context, "close"), (browser, "close"),
+                             (playwright, "stop")):
+        if resource is None:
+            continue
+        try:
+            getattr(resource, method)()
+        except Exception as exc:  # noqa: BLE001 - retain the primary fetch failure
+            if primary_error is None and cleanup_error is None:
+                cleanup_error = exc
+            else:
+                logger.warning("TES %s cleanup also failed: %s", method, exc)
+    if cleanup_error is not None:
+        raise cleanup_error
+
+
+def _fetch_minhacienda_tes_reports_in_browser(
+    source: Metasource,
+    fetched_at: str,
+    *,
+    max_items: int = MINHACIENDA_TES_PARSE_LIMIT,
+) -> list[RawItem]:
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
@@ -1018,120 +1049,121 @@ def _fetch_minhacienda_tes_reports_with_browser(
         ) from exc
 
     enriched: list[RawItem] = []
-    with sync_playwright() as playwright:
+    playwright = sync_playwright().start()
+    browser = context = None
+    try:
         launch_kwargs: dict[str, Any] = {"headless": True}
         chrome_path = _chrome_executable_path()
         if chrome_path:
             launch_kwargs["executable_path"] = chrome_path
         browser = playwright.chromium.launch(**launch_kwargs)
-        try:
-            context = browser.new_context()
-            page = context.new_page()
-            page_urls = [source.url]
-            if "irc.gov.co" in source.url:
-                page_urls = list(dict.fromkeys([*MINHACIENDA_TES_IRC_PAGES, source.url]))
-            per_page_limit = (
-                max(1, max_items // len(page_urls))
-                if "irc.gov.co" in source.url
-                else max_items
+        context = browser.new_context()
+        page = context.new_page()
+        page_urls = [source.url]
+        if "irc.gov.co" in source.url:
+            page_urls = list(dict.fromkeys([*MINHACIENDA_TES_IRC_PAGES, source.url]))
+        per_page_limit = (
+            max(1, max_items // len(page_urls))
+            if "irc.gov.co" in source.url
+            else max_items
+        )
+        items: list[RawItem] = []
+        for page_url in page_urls:
+            page.goto(
+                page_url,
+                wait_until="domcontentloaded",
+                timeout=MINHACIENDA_TES_BROWSER_TIMEOUT_MS,
             )
-            items: list[RawItem] = []
-            for page_url in page_urls:
-                page.goto(
-                    page_url,
-                    wait_until="domcontentloaded",
+            try:
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=MINHACIENDA_TES_BROWSER_NETWORK_IDLE_MS,
+                )
+            except PlaywrightTimeoutError:
+                pass
+            html_text = page.content()
+            marker = _detect_bot_block(html_text)
+            if marker:
+                raise BotBlockError(f"browser fetch still bot-blocked: {marker}")
+            items.extend(
+                _extract_minhacienda_tes_reports(
+                    html_text,
+                    page.url,
+                    source,
+                    fetched_at,
+                )[:per_page_limit]
+            )
+            if len(items) >= max_items:
+                break
+        items = items[:max_items]
+        for item in items:
+            metadata = dict(item.metadata)
+            try:
+                response = context.request.get(
+                    item.url,
                     timeout=MINHACIENDA_TES_BROWSER_TIMEOUT_MS,
                 )
-                try:
-                    page.wait_for_load_state(
-                        "networkidle",
-                        timeout=MINHACIENDA_TES_BROWSER_NETWORK_IDLE_MS,
+                if not response.ok:
+                    raise httpx.HTTPStatusError(
+                        f"browser download returned {response.status}",
+                        request=httpx.Request("GET", item.url),
+                        response=httpx.Response(response.status),
                     )
-                except PlaywrightTimeoutError:
-                    pass
-                html_text = page.content()
-                marker = _detect_bot_block(html_text)
-                if marker:
-                    raise BotBlockError(f"browser fetch still bot-blocked: {marker}")
-                items.extend(
-                    _extract_minhacienda_tes_reports(
-                        html_text,
-                        page.url,
-                        source,
-                        fetched_at,
-                    )[:per_page_limit]
+                text = _extract_pdf_text_with_pdfplumber(
+                    response.body(),
+                    max_chars=MINHACIENDA_TES_TEXT_MAX_CHARS,
                 )
-                if len(items) >= max_items:
-                    break
-            items = items[:max_items]
-            for item in items:
-                metadata = dict(item.metadata)
-                try:
-                    response = context.request.get(
-                        item.url,
-                        timeout=MINHACIENDA_TES_BROWSER_TIMEOUT_MS,
-                    )
-                    if not response.ok:
-                        raise httpx.HTTPStatusError(
-                            f"browser download returned {response.status}",
-                            request=httpx.Request("GET", item.url),
-                            response=httpx.Response(response.status),
-                        )
-                    text = _extract_pdf_text_with_pdfplumber(
-                        response.body(),
-                        max_chars=MINHACIENDA_TES_TEXT_MAX_CHARS,
-                    )
-                    facts = _extract_minhacienda_tes_auction_facts(
-                        text,
+                facts = _extract_minhacienda_tes_auction_facts(
+                    text,
+                    title=item.title,
+                    pdf_url=item.url,
+                )
+            except Exception as exc:  # noqa: BLE001 - preserve link-level item
+                metadata["content_extraction_error"] = (
+                    f"browser_pdf_download: {exc.__class__.__name__}: {exc}"
+                )
+                enriched.append(
+                    RawItem(
+                        id=item.id,
+                        source_id=item.source_id,
+                        source_name=item.source_name,
+                        source_type=item.source_type,
+                        url=item.url,
                         title=item.title,
-                        pdf_url=item.url,
+                        fetched_at=item.fetched_at,
+                        published_at=item.published_at,
+                        raw_text=item.raw_text,
+                        metadata=metadata,
                     )
-                except Exception as exc:  # noqa: BLE001 - preserve link-level item
-                    metadata["content_extraction_error"] = (
-                        f"browser_pdf_download: {exc.__class__.__name__}: {exc}"
+                )
+                continue
+            if facts is None:
+                metadata.update(
+                    {
+                        "content_extraction_error": (
+                            "unable to parse TES auction table/rates"
+                        ),
+                        "pdf_text_chars": len(text),
+                    }
+                )
+                enriched.append(
+                    RawItem(
+                        id=item.id,
+                        source_id=item.source_id,
+                        source_name=item.source_name,
+                        source_type=item.source_type,
+                        url=item.url,
+                        title=item.title,
+                        fetched_at=item.fetched_at,
+                        published_at=item.published_at,
+                        raw_text=item.raw_text,
+                        metadata=metadata,
                     )
-                    enriched.append(
-                        RawItem(
-                            id=item.id,
-                            source_id=item.source_id,
-                            source_name=item.source_name,
-                            source_type=item.source_type,
-                            url=item.url,
-                            title=item.title,
-                            fetched_at=item.fetched_at,
-                            published_at=item.published_at,
-                            raw_text=item.raw_text,
-                            metadata=metadata,
-                        )
-                    )
-                    continue
-                if facts is None:
-                    metadata.update(
-                        {
-                            "content_extraction_error": (
-                                "unable to parse TES auction table/rates"
-                            ),
-                            "pdf_text_chars": len(text),
-                        }
-                    )
-                    enriched.append(
-                        RawItem(
-                            id=item.id,
-                            source_id=item.source_id,
-                            source_name=item.source_name,
-                            source_type=item.source_type,
-                            url=item.url,
-                            title=item.title,
-                            fetched_at=item.fetched_at,
-                            published_at=item.published_at,
-                            raw_text=item.raw_text,
-                            metadata=metadata,
-                        )
-                    )
-                    continue
-                enriched.append(_minhacienda_tes_item_with_facts(item, facts))
-        finally:
-            browser.close()
+                )
+                continue
+            enriched.append(_minhacienda_tes_item_with_facts(item, facts))
+    finally:
+        _close_tes_browser_resources(context, browser, playwright)
     return enriched
 
 
