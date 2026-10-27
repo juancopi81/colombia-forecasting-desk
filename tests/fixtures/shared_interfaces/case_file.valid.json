@@ -1,0 +1,38 @@
+{
+  "schema_version": "case_file.v1",
+  "case_id": "interest-rates",
+  "plain_title": "Interest rates and inflation",
+  "plain_summary": "The central bank weighs persistent inflation against weaker activity.",
+  "why_it_matters": "Borrowing costs affect households and companies.",
+  "who_is_affected": "Households and companies.",
+  "identifiers": {
+    "bills": [],
+    "decrees": [],
+    "indicator_ids": [
+      "ipc_inflation"
+    ],
+    "nits": [],
+    "keywords": [
+      "inflación"
+    ]
+  },
+  "current_view": {
+    "date": "2026-10-27",
+    "text": "Inflation remains above target.",
+    "confidence": "confirmed"
+  },
+  "next_trigger": {
+    "date": "2026-10-30",
+    "event": "The board decides its policy rate."
+  },
+  "forecast_ids": [],
+  "status": "active",
+  "park_after_days": 21,
+  "updates": [
+    {
+      "date": "2026-10-27",
+      "change": "The decision is due on Friday.",
+      "source_url": "https://www.banrep.gov.co/es/comunicados-junta"
+    }
+  ]
+}

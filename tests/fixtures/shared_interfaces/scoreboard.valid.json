@@ -1,0 +1,41 @@
+{
+  "schema_version": "scoreboard.v1",
+  "as_of": "2026-10-27",
+  "public": {
+    "open": [],
+    "resolved": [],
+    "void": [],
+    "needs_review": [],
+    "n_scored": 0,
+    "right_side_n": 0,
+    "right_side_rate": null,
+    "mean_brier": null,
+    "baseline_n": 0,
+    "model_brier_paired": null,
+    "baseline_brier": null,
+    "improvement": null
+  },
+  "internal": {
+    "open": [],
+    "resolved": [],
+    "void": [],
+    "needs_review": [],
+    "n_scored": 0,
+    "right_side_n": 0,
+    "right_side_rate": null,
+    "mean_brier": null,
+    "baseline_n": 0,
+    "model_brier_paired": null,
+    "baseline_brier": null,
+    "improvement": null
+  },
+  "families": [
+    {
+      "family_id": "banrep_rate_decision",
+      "events": 0,
+      "calls": 0,
+      "skips": 0,
+      "missed_events": 0
+    }
+  ]
+}

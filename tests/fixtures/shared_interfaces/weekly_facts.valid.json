@@ -1,0 +1,18 @@
+{
+  "schema_version": "weekly_facts.v1",
+  "week": "2026-W43",
+  "as_of": "2026-10-23",
+  "run_dates": [
+    "2026-10-19",
+    "2026-10-23"
+  ],
+  "coverage_gaps": [
+    "Case snapshots are unavailable for this historical week."
+  ],
+  "indicator_changes": [],
+  "forecasts": {},
+  "cases": [],
+  "watchlist_hits": [],
+  "events": [],
+  "data_problems": []
+}

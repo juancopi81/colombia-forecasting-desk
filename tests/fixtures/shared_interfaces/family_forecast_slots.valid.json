@@ -1,0 +1,24 @@
+{
+  "schema_version": "family_forecast_slots.v1",
+  "run_date": "2026-10-27",
+  "slots": [
+    {
+      "slot_id": "banrep_rate_decision:2026-10-30",
+      "family_id": "banrep_rate_decision",
+      "question": "Will the policy rate be above 12.25%?",
+      "resolution_source": "https://www.banrep.gov.co/es/comunicados-junta",
+      "resolution_criteria": "YES: above 12.25%. NO: at or below 12.25%.",
+      "event_date": "2026-10-30",
+      "event_at": "2026-10-30T00:00:00-05:00",
+      "resolution_deadline": "2026-10-30",
+      "resolution_check_window_end": "2026-11-02",
+      "days_until_event": 3,
+      "enabled": true,
+      "baseline": {
+        "label": "uninformative_50_50",
+        "probability": 0.5,
+        "rationale": "There is no informative comparator."
+      }
+    }
+  ]
+}

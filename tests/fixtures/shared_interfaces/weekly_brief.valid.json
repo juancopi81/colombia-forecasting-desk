@@ -1,0 +1,29 @@
+{
+  "schema_version": "weekly_brief.v1",
+  "week": "2026-W43",
+  "as_of": "2026-10-23",
+  "big_picture": "Activity weakened while inflation remained high.",
+  "top_stories": [
+    {
+      "title": "Interest rates stay in focus",
+      "what_happened": "The board has a decision on Friday.",
+      "why_it_matters": "Borrowing costs remain high.",
+      "who_is_affected": "Households and companies.",
+      "confidence": "confirmed",
+      "source_url": "https://www.banrep.gov.co/es/comunicados-junta",
+      "case_id": "interest-rates"
+    }
+  ],
+  "our_calls": "Nine forecasts have resolved; six were on the right side.",
+  "next_week": [
+    {
+      "date": "2026-10-30",
+      "event": "Interest-rate decision",
+      "our_call": null,
+      "no_call_reason": "The rate call will be recorded before Thursday ends."
+    }
+  ],
+  "patterns": [],
+  "data_problems": [],
+  "question": "Did any finding change what you plan to check?"
+}

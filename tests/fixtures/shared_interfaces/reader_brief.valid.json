@@ -1,0 +1,31 @@
+{
+  "schema_version": "reader_brief.v1",
+  "run_date": "2026-10-27",
+  "needs_you": {
+    "required": false,
+    "action": null,
+    "by": null
+  },
+  "headline": "Friday brings an interest-rate decision.",
+  "changes": [
+    {
+      "title": "Interest rates stay in focus",
+      "what_happened": "The board has a decision on Friday.",
+      "why_it_matters": "Borrowing costs remain high.",
+      "who_is_affected": "Households and companies.",
+      "confidence": "confirmed",
+      "source_url": "https://www.banrep.gov.co/es/comunicados-junta",
+      "case_id": "interest-rates"
+    }
+  ],
+  "coming_up": [
+    {
+      "date": "2026-10-30",
+      "event": "Interest-rate decision",
+      "our_call": null,
+      "no_call_reason": "The rate call will be recorded before Thursday ends."
+    }
+  ],
+  "open_forecasts": [],
+  "data_problems": []
+}

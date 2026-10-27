@@ -1,0 +1,25 @@
+{
+  "schema_version": "family_forecasts.v1",
+  "run_date": "2026-10-27",
+  "entries": [
+    {
+      "slot_id": "banrep_rate_decision:2026-10-30",
+      "decision": "forecast",
+      "probability": 0.55,
+      "rationale_for": [
+        "Inflation remains above target."
+      ],
+      "rationale_against": [
+        "Activity has weakened."
+      ],
+      "falsifier": "The official board decision holds or cuts the rate.",
+      "skip_reason": null,
+      "evidence_refs": [
+        {
+          "artifact": "indicator_watch.json",
+          "locator": "indicator_id=ipc_inflation"
+        }
+      ]
+    }
+  ]
+}

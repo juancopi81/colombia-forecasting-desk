@@ -1,0 +1,16 @@
+{
+  "schema_version": "watchlist_hits.v1",
+  "run_date": "2026-10-27",
+  "hits": [
+    {
+      "watch_id": "demo",
+      "kind": "public_entity",
+      "source_id": "secop_ii_contratos",
+      "title": "A new contract",
+      "url": "https://www.datos.gov.co/resource/jbjy-vk9h.json",
+      "matched_on": "nit",
+      "summary": "A matching company signed a contract."
+    }
+  ],
+  "patterns": []
+}
