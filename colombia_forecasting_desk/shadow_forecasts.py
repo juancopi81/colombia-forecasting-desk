@@ -11,6 +11,7 @@ import tempfile
 from typing import Any
 import unicodedata
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 SCHEMA_VERSION = "shadow_forecast.v1"
 ALLOWED_STATUSES = {"open", "resolved", "void"}
@@ -405,9 +406,12 @@ def forecast_event_key(row: dict[str, Any]) -> str | None:
     return f"{family}:{day}" if family else None
 
 
-def flag_shadow_forecasts_for_review(path: Path, *, as_of: str) -> list[str]:
+def flag_shadow_forecasts_for_review(path: Path, *, as_of: str, now: datetime | None = None) -> list[str]:
     """Flag overdue records without inferring a negative outcome or voiding."""
     day = date.fromisoformat(as_of)
+    clock = now or datetime.now(timezone.utc)
+    if clock.tzinfo is None or day > clock.astimezone(ZoneInfo("America/Bogota")).date():
+        raise ShadowForecastError("Review flags require the actual aware recording clock; no future flag date.")
     if not path.exists():
         return []
     changed = []
@@ -421,6 +425,7 @@ def flag_shadow_forecasts_for_review(path: Path, *, as_of: str) -> list[str]:
             if row["status"] == "open" and day >= threshold and not row.get("needs_review"):
                 row["needs_review"] = True
                 row["needs_review_since"] = threshold.isoformat()
+                row["needs_review_at"] = clock.isoformat()
                 changed.append(row["forecast_id"])
         if changed:
             _atomic_write_json_rows(path, rows)

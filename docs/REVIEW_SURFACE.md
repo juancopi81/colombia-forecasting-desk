@@ -10,6 +10,16 @@ read as "nothing happened".
 It is rendered by `scripts/render_review.py` (logic in
 `colombia_forecasting_desk/review_html.py`).
 
+When a valid `reader_brief.json` exists, a plain-language brief leads the page and
+the operational sections sit in collapsed details below it. The complete reader
+text is capped at 250 words; the layout wraps labels on desktop and phones,
+including when every detail section is expanded. Without a valid brief the
+legacy rendering path remains unchanged. Use `finalize_reader_brief.py` to check
+captured source URLs and ledger probabilities before writing the Markdown and
+HTML. See [Reader brief contract](READER_BRIEF_CONTRACT.md) and
+[Daily workflow](DAILY_READER_WORKFLOW.md). Friday output has its own
+[weekly contract](WEEKLY_BRIEF_CONTRACT.md).
+
 ```text
 runs/YYYY-MM-DD/review.html   # daily TLDR for one run
 runs/review_index.html        # recent-runs trends across the last --window runs

@@ -1,6 +1,6 @@
 # Make the desk useful — merged implementation plan
 
-*Written 2026-10-27. Status: proposed; nothing implemented yet.*
+*Written 2026-10-27. Status: implemented locally; see [implementation and validation](2026-10-27-implementation-record.md). The first scheduled Friday execution and ten-run usefulness assessment remain prospective.*
 *Revision 1 (2026-10-27) adds six corrections from Codex's review; see the [Revision log](#revision-log).*
 *Audience: AI coding sessions (Claude Code or Codex) and Juan.*
 

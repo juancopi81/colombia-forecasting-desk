@@ -278,10 +278,11 @@ def test_review_flag_does_not_void_or_score_and_explicit_void_needs_approval(tmp
     prepare(run)
     append(run)
     original = json.loads(ledger(tmp_path).read_text())
-    assert not flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-22")
-    assert flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-23") == [original["forecast_id"]]
+    assert not flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-22", now=datetime(2026, 11, 22, 17, tzinfo=timezone.utc))
+    assert flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-23", now=datetime(2026, 11, 23, 17, tzinfo=timezone.utc)) == [original["forecast_id"]]
     flagged = json.loads(ledger(tmp_path).read_text())
     assert flagged["needs_review"]
+    assert flagged["needs_review_at"] == "2026-11-23T17:00:00+00:00"
     assert flagged["status"] == "open"
     assert "outcome" not in flagged
     with pytest.raises(ShadowForecastError, match="approval"):
@@ -295,6 +296,17 @@ def test_review_flag_does_not_void_or_score_and_explicit_void_needs_approval(tmp
     score = build_scoreboard(tmp_path, as_of="2026-11-23")
     assert len(score["internal"]["void"]) == 1
     assert score["internal"]["n_scored"] == 0
+
+
+def test_scoreboard_excludes_a_review_flag_recorded_after_its_historical_cutoff(tmp_path):
+    run = setup_run(tmp_path)
+    prepare(run)
+    append(run)
+    flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-25", now=datetime(2026, 11, 25, 17, tzinfo=timezone.utc))
+    score = build_scoreboard(tmp_path, as_of="2026-11-24")
+    assert not score["internal"]["needs_review"]
+    with pytest.raises(ShadowForecastError, match="future"):
+        flag_shadow_forecasts_for_review(ledger(tmp_path), as_of="2026-11-26", now=datetime(2026, 11, 25, 17, tzinfo=timezone.utc))
 
 
 def test_banrep_requires_its_exact_board_communique_and_checks_rate_card(tmp_path):

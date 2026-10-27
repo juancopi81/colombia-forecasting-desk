@@ -59,16 +59,21 @@ model's conclusion.
 4. Describe at least one `cross_bundle` or `unbundled` relationship. You may
    challenge the predefined bundles and should notice relationships outside
    them.
-5. Choose the best candidate after the initial review and perform one bounded
+5. Choose the case with the most consequential missing evidence after the initial review and perform one bounded
    official-source follow-up. Check no more than three official sources or
    spend no more than ten minutes. Record every source checked and the result.
 6. Select the best public-interest candidate and give it an explicit
    disposition.
-7. Decide whether one clean internal shadow forecast is justified.
+7. Decide whether one clean discretionary internal shadow forecast is justified.
+   Scheduled family calls are handled separately through the reader workflow.
 
 The experiment aims to collect roughly one to three shadow forecasts per week,
 but this is not a quota. Never lower the resolver, baseline, or evidence bar to
-hit that range, and never create more than one shadow forecast in a run.
+hit that range, and never create more than one discretionary shadow forecast in a run.
+The forecast-family workflow requires a call or written skip for each enabled
+due event, independently of this discretionary choice. Read
+`docs/DAILY_READER_WORKFLOW.md` and `docs/FORECAST_FAMILIES.md` for that sequence.
+An analyst-survey median or mean is a point estimate, not a baseline probability.
 
 ## Shadow Forecast Policy
 
@@ -122,3 +127,8 @@ It validates and renders the analysis, appends at most one protected shadow
 forecast when selected, refreshes the experiment summary, and rerenders the
 HTML review. If validation fails, correct the JSON. Do not weaken the contract
 or omit a triggered tension-card review to make it pass.
+
+Continue through the family planner, authoring/appender, resolver and scoreboard;
+update and snapshot cases, compute watchlist hits and finalize the reader brief.
+The user-facing result is the validated reader Markdown (the weekly Markdown on
+Fridays), not the analysis's operational log or the old pilot retrospective.

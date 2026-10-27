@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -57,6 +58,15 @@ def finalize(*, run_date: str, runs_dir: Path) -> dict[str, Any]:
     rendered = render_daily_review_html(art)
     (run_dir / "reader_brief.md").write_text(markdown, encoding="utf-8")
     (run_dir / "review.html").write_text(rendered, encoding="utf-8")
+    receipt = {
+        "schema_version": "reader_brief_receipt.v1", "run_date": run_date,
+        "context_validated": True,
+        "sha256": {name: hashlib.sha256((run_dir / name).read_bytes()).hexdigest()
+                   for name in ("reader_brief.json", "reader_brief.md", "review.html")},
+    }
+    (run_dir / "reader_brief_receipt.json").write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return {"run_date": run_date, "markdown": str(run_dir / "reader_brief.md"), "html": str(run_dir / "review.html")}
 
 

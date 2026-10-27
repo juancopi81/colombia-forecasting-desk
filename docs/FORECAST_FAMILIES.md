@@ -106,7 +106,11 @@ the official value is known. Missing, delayed or incomparable records remain
 unresolved.
 
 After the record-check window plus 21 days, open family and discretionary rows
-receive `needs_review: true`. This never creates an outcome or automatically
+receive `needs_review: true`. `needs_review_since` records the eligibility date;
+`needs_review_at` records the actual aware flagging timestamp. Historical and
+intraday Friday projections use that recording time, retaining a flag already
+known before a later resolution and excluding flags learned after the cutoff.
+This never creates an outcome or automatically
 voids a forecast. Both the scoreboard and briefs can display the waiting queue.
 An explicitly approved invalidation is available only after that interval:
 

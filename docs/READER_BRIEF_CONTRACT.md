@@ -15,6 +15,14 @@ Run:
 inputs before writing `reader_brief.md` and `review.html`. It never changes a
 ledger or runs index. Its Markdown is the automation's final message verbatim.
 
+A successful finalization also writes `reader_brief_receipt.json`, recording
+contextual validation and SHA-256 hashes of the input JSON, Markdown and HTML.
+The usefulness counter requires that receipt and matching reader JSON/Markdown
+bytes. A draft rejected for unsupported provenance, missing outputs or later
+edited reader content cannot count toward the ten-run review. The HTML hash is
+retained for audit; later rendering of technical detail does not rewrite the
+reader message that was validated and sent.
+
 The schema defines needs_you, headline, changes, coming_up, open_forecasts and
 data_problems. Changes are capped at three, upcoming events at five, and material
 data problems at two. A call requires a recorded forecast ID and its exact

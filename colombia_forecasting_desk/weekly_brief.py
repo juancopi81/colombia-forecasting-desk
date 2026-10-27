@@ -26,7 +26,7 @@ BOGOTA = ZoneInfo("America/Bogota")
 RESOLUTION_FIELDS = {
     "outcome", "resolved_at", "resolution_value", "resolution_url", "resolution_artifact",
     "brier_score", "baseline_brier_score", "brier_improvement_vs_baseline", "void_reason",
-    "voided_at", "needs_review", "needs_review_at",
+    "voided_at", "needs_review", "needs_review_at", "needs_review_since",
 }
 
 
@@ -138,14 +138,16 @@ def _asof_forecast(row: dict[str, Any], cutoff: datetime, gaps: list[str]) -> di
     if row.get("status") in {"resolved", "void"}:
         resolved = _timestamp(row.get("resolved_at") or row.get("voided_at"))
         if not resolved or resolved > cutoff:
-            projected = {key: value for key, value in projected.items() if key not in RESOLUTION_FIELDS}
+            projected = {key: value for key, value in projected.items()
+                         if key not in RESOLUTION_FIELDS - {"needs_review", "needs_review_at", "needs_review_since"}}
             projected["status"] = "open"
             if not resolved:
                 gaps.append(f"Resolution timestamp unavailable: {row.get('forecast_id', 'unknown')}")
-    flagged = _timestamp(row.get("needs_review_at"))
+    flagged = _timestamp(row.get("needs_review_at")) or _timestamp(row.get("needs_review_since"))
     if projected.get("needs_review") and (not flagged or flagged > cutoff):
         projected.pop("needs_review", None)
         projected.pop("needs_review_at", None)
+        projected.pop("needs_review_since", None)
     return projected
 
 

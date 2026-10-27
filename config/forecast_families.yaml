@@ -40,5 +40,5 @@ families:
     comparison: lt
     reference_lag_months: 1
     resolver_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo
-    question: Will DANE report national unemployment for {reference_period} below {threshold}% in the same month last year?
+    question: Will DANE report national unemployment for {reference_period} below {threshold}% (the rate for the same month last year)?
     baseline_rules: [empirical_frequency, uninformative_50_50]

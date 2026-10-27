@@ -99,6 +99,25 @@ def test_later_predictions_resolutions_and_skips_cannot_change_history(tmp_path)
     assert ledger.read_bytes() == original
 
 
+def test_family_review_flags_use_the_canonical_date_without_future_knowledge(tmp_path):
+    make_run(tmp_path)
+    directory = tmp_path / "forecasts"
+    directory.mkdir()
+    rows = []
+    for identity, since in [("eligible", "2026-10-01"), ("future-flag", "2026-10-26")]:
+        row = forecast(identity)
+        row.update(status="open", needs_review=True, needs_review_since=since)
+        row.pop("resolved_at")
+        rows.append(row)
+    (directory / "shadow_forecast_log.jsonl").write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+    facts = build_weekly_facts(tmp_path / "runs", "2026-W43")
+    projected = {row["forecast_id"]: row for row in facts["forecasts"]["internal"]["open"]}
+    assert projected["eligible"]["needs_review"] is True
+    assert projected["eligible"]["needs_review_since"] == "2026-10-01"
+    assert "needs_review" not in projected["future-flag"]
+    assert "needs_review_since" not in projected["future-flag"]
+
+
 def test_frozen_scoreboard_is_preferred_over_live_ledger(tmp_path):
     run = make_run(tmp_path)
     snapshot = json.loads((SHARED / "scoreboard.valid.json").read_text())
@@ -108,6 +127,22 @@ def test_frozen_scoreboard_is_preferred_over_live_ledger(tmp_path):
     facts = build_weekly_facts(tmp_path / "runs", "2026-W43")
     assert facts["forecasts"]["public"]["n_scored"] == 1
     assert facts["forecasts"]["scoreboard_source"].endswith("scoreboard.json")
+
+
+def test_friday_intraday_flags_use_recording_time_and_survive_later_resolution(tmp_path):
+    make_run(tmp_path)
+    directory = tmp_path / "forecasts"
+    directory.mkdir()
+    known = forecast("known", resolved="2026-10-26T15:00:00Z")
+    known.update(needs_review=True, needs_review_since="2026-10-23", needs_review_at="2026-10-23T14:00:00Z")
+    later = forecast("later")
+    later.update(status="open", needs_review=True, needs_review_since="2026-10-01", needs_review_at="2026-10-23T16:00:00Z")
+    (directory / "shadow_forecast_log.jsonl").write_text("\n".join(json.dumps(row) for row in [known, later]) + "\n")
+    facts = build_weekly_facts(tmp_path / "runs", "2026-W43", cutoff_at="2026-10-23T15:00:00Z")
+    rows = {row["forecast_id"]: row for row in facts["forecasts"]["internal"]["open"]}
+    assert rows["known"]["needs_review"]
+    assert "outcome" not in rows["known"]
+    assert "needs_review" not in rows["later"]
 
 
 def test_snapshot_hashes_and_future_views_are_checked(tmp_path):

@@ -7,6 +7,31 @@ folders. For what each section of the HTML review surface means, see
 
 ## Artifact catalog
 
+The [daily reader procedure](DAILY_READER_WORKFLOW.md) adds these opt-in artifacts:
+
+- `reader_brief.json` / `.md` — authored, validated reader output, capped at 250 rendered words
+- `reader_brief_receipt.json` — successful contextual validation and output hashes; required by the ten-run counter
+- `family_evidence_capture.json` — history/release capture results and actionable source notices
+- `family_reference_history.json` — hash-verified current official GEIH history with exact cells and a revised-history caveat
+- `family_release_evidence.json` — exact-period/series/date first-release observations and provenance
+- `sources/family_evidence/<sha>.*` — original official history/bulletin/page bytes used by the intake
+- `family_forecast_slots.json` — deterministic upcoming contracts, baselines, cutoffs and unavailable reasons
+- `family_forecasts.json` — authored calls or explicit skips for enabled due events
+- `scoreboard.json` — dated public/internal scores and observed calendar coverage, also rendered to `forecasts/scoreboard.json` / `.md`
+- `case_updates.json` — candidate official evidence for the running stories
+- `cases_snapshot/` — frozen validated story YAML and SHA-256 manifest
+- `watchlist_hits.json` / `.md` — cross-source matches, review prompts, demo labels and coverage gaps
+- `usefulness_check.json` — valid strict-pass reader-run count and the ten-run qualitative review trigger
+
+Other new durable or refreshable outputs are `cases/*.yaml`,
+`forecasts/family_skips.jsonl`, `data/entity_history/`, and
+`weekly/<ISO-week>/{weekly_facts.json,weekly_brief.json,weekly_brief.md,weekly.html}`.
+Explicit feedback goes to `reviews/usefulness_log.md`; the qualitative ten-run
+review goes to `reviews/usefulness_review.md`. Generated weekly/history outputs
+stay ignored. Forecast prediction fields stay immutable; only declared resolver
+operations may update resolution fields. Historical weekly facts enforce their
+cutoff and use dated snapshots rather than current case state.
+
 - `raw_items.json` — every item fetched from each enabled metasource
 - `cleaned_items.json` — items after HTML stripping, normalization, filtering, and dedupe
 - `clusters.json` — clusters of related items, ranked by simple heuristics

@@ -577,7 +577,7 @@ def resolve_family_forecasts(runs_root: Path, ledger_path: Path, *, as_of: str, 
             resolution_artifact=observation["artifact"], resolution_evidence=observation,
         )
         resolved.append(row["forecast_id"])
-    flagged = flag_shadow_forecasts_for_review(ledger_path, as_of=as_of)
+    flagged = flag_shadow_forecasts_for_review(ledger_path, as_of=as_of, now=clock)
     return {"resolved": resolved, "waiting_for_official_records": waiting, "needs_review": flagged}
 
 
@@ -607,9 +607,14 @@ def _as_of_rows(rows: list[dict[str, Any]], as_of: str) -> list[dict[str, Any]]:
         if is_future or row.get("status") in ("resolved", "void") and not recorded:
             row = {key: value for key, value in row.items() if key not in _RESOLUTION_KEYS}
             row["status"] = "open"
-        if str(row.get("needs_review_since", "")) > as_of:
+        try:
+            future_flag = bool(row.get("needs_review_at")) and _instant(row["needs_review_at"]) >= cutoff
+        except (ValueError, TypeError):
+            future_flag = True
+        if str(row.get("needs_review_since", "")) > as_of or future_flag:
             row.pop("needs_review", None)
             row.pop("needs_review_since", None)
+            row.pop("needs_review_at", None)
         output.append(row)
     return output
 

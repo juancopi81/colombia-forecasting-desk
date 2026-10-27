@@ -1,9 +1,9 @@
 schema_version: case_file.v1
 case_id: security-purchases
 plain_title: Publication rules for security purchases
-plain_summary: A public-order bill includes proposed restrictions on publication of
-  reserved security purchases. The adopted provision and the committee outcome require
-  official records.
+plain_summary: The public-order bill proposes a reserved-procurement procedure. Its
+  revised text removed earlier explicit nonpublication wording but retained a decree
+  reference; the final disclosure effects need the exact adopted text.
 why_it_matters: Publication rules affect public oversight of security spending.
 who_is_affected: Security agencies, suppliers and people monitoring public procurement.
 identifiers:
@@ -18,9 +18,10 @@ identifiers:
   - orden publico
 current_view:
   date: '2026-10-27'
-  text: Official material includes competing reports on the public-order bill. The
-    October 21 debate opportunity does not establish a certified vote or an adopted
-    publication exemption.
+  text: The revised positive report removed explicit nonpublication and no-multiple-offers
+    sentences, narrowed scope and retained the procurement-rule reference. Opposition
+    engages that revision. This does not establish either abolished disclosure exceptions
+    or an enacted provision; the certified vote and adopted text remain unverified.
   confidence: uncertain
 next_trigger:
   date: null
@@ -34,3 +35,7 @@ updates:
     October 21 debate opportunity does not establish a certified vote or an adopted
     publication exemption.
   source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
+- date: '2026-10-27'
+  change: Reconciled the case with the already verified revised proposal, rather than
+    repeating the filed version.
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/10/proyectos-ley/publicaciones/proyecto-36505/PONENCIA-PL-433-26C-296-26S-ORDEN-PA_BLICO-1.pdf

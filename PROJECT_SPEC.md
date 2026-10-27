@@ -451,7 +451,7 @@ Near-term prerequisite: implement the
 bill signals from Senado, Cámara, Gacetas, and legal-resolution sources become
 one clean bill-status record before M2 ranks them.
 
-- [ ] Read daily brief.
+- [x] Produce and read a validated reader-first daily brief, with technical detail collapsed below it.
 - [x] Generate deterministic advisory legislative question ranking from
       structured M1 records.
 - [x] Generate an analyst-leads review surface that keeps non-forecast insights
@@ -479,7 +479,14 @@ one clean bill-status record before M2 ranks them.
 - [ ] Continue shadow collection opportunistically and run the next qualitative
       review after 10 additional resolved, more diverse cases; do not create a
       quota or lower the public M3 gate.
-- [ ] Generate final candidate questions.
+- [x] Generate prospective scheduled rate, inflation, activity and jobs contracts,
+      require calls or written skips, capture official history/first-release
+      evidence and score internal families separately from the public record.
+- [x] Carry eight source-linked stories in dated case snapshots and match a
+      configurable watchlist across official sources and bounded entity history.
+- [x] Produce a dated Friday brief with explicit source gaps and no later knowledge.
+- [ ] Complete the ten-reader-run usefulness review with Juan's explicit feedback.
+- [ ] Generate final candidate questions across the full public-interest universe.
 - [ ] Score questions by interest, forecastability, evidence availability,
       freshness, and risk across all candidate families.
 - [ ] Select a small number of questions for deeper research.

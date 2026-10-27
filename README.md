@@ -38,6 +38,13 @@ Built with Python 3.12 + [`uv`](https://docs.astral.sh/uv/). See
 
 ## Quickstart
 
+The weekday reader workflow now produces a validated brief of at most 250 words,
+routine internal calls on scheduled rate/inflation/activity/jobs releases,
+source-backed running stories, an organization watchlist, and a Friday brief of
+at most 450 words. Start with [the daily procedure](docs/DAILY_READER_WORKFLOW.md).
+The personal watchlist ships with two labeled demonstration organizations;
+replace them in `config/watchlist.yaml`.
+
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
@@ -115,7 +122,14 @@ selected runtime summaries before catalog edits.
 
 ## Status
 
-Currently at **M2.8 — accountable intelligence pass and protected internal
+The October 27 usefulness plan is implemented locally: shared contracts,
+reader-first reviews, forecast families and official evidence intake, repaired
+monetary/jobs inputs, daily story snapshots, bounded entity history and weekly
+briefs. See [the implementation record](docs/plans/2026-10-27-implementation-record.md).
+The first ten reader runs evaluate usefulness; they do not establish calibration.
+The public X experiment remains a separate human decision.
+
+The collection foundation is **M2.8 — accountable intelligence pass and protected internal
 shadow forecasting**, building on M2.7 experimental market-pricing context and the
 M1.20 legislative registry pipeline, M1.21 MinCIT zonas-francas parser, M1.22
 official legal-resolution bridge, M1.23 GDP/ISE Indicator Watch coverage, and
