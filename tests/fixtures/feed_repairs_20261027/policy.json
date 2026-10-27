@@ -1,0 +1,162 @@
+[
+  {
+    "id": 59,
+    "nombre": "Tasa de política monetaria",
+    "categoria": "Tasas de interés",
+    "subcategoria": "Tasa de intervención de política monetaria del Banco de la República",
+    "unidad": "Tasa efectiva anual base 365.",
+    "unidadCorta": "%",
+    "idPeriodicidad": 1,
+    "descripcionPeriodicidad": "Diaria",
+    "idPlan": "TASA_INTERVENCION_BR",
+    "categoriaNivel1": "Tasas de interés y sector financiero",
+    "categoriaNivel2": "Tasas de interés",
+    "categoriaNivel3": "Tasa de política monetaria",
+    "ajusteEstacional": "",
+    "base": "",
+    "descripcion": "Tasa de política monetaria",
+    "descripcionCorta": "Tasa de política monetaria",
+    "fichaTecnica": [
+      "-"
+    ],
+    "fuente": "Banco de la República",
+    "fechaInicial": "13 de febrero  de  1998",
+    "fechaFinal": "27 de octubre  de  2026",
+    "notas": "La tasa de intervención de política monetaria es la tasa de interés mínima que el Banco de la República cobra a las entidades financieras por los préstamos que les hace mediante las operaciones de mercado abierto (OMA) que se otorgan en las subastas de expansión monetaria a un día hábil (plazo overnight). Esta tasa es el principal mecanismo de intervención de política monetaria usado por el Banco de la República para afectar la cantidad de dinero que circula en la economía. La Junta Directiva del Banco de la República define la tasa de intervención de política monetaria y sus decisiones tienen vigencia a partir del día hábil siguiente a la sesión de la Junta.",
+    "fechaUltimoCargue": "27 de octubre de 2026",
+    "geografia": "Nacional",
+    "precio": "*",
+    "periodoReferencia": "",
+    "fecha": "27/10/2026",
+    "valor": 12.25,
+    "numeroDecimales": 2,
+    "feErratas": "-",
+    "definicion": "La tasa de intervención de política monetaria es la tasa de interés mínima que el Banco de la República cobra a las entidades financieras por los préstamos que les hace mediante las operaciones de mercado abierto (OMA) que se otorgan en las subastas de expansión monetaria a un día hábil (plazo overnight). Esta tasa es el principal mecanismo de intervención de política monetaria usado por el Banco de la República para afectar la cantidad de dinero que circula en la economía. La Junta Directiva del Banco de la República define la tasa de intervención de política monetaria y sus decisiones tienen vigencia a partir del día hábil siguiente a la sesión de la Junta.",
+    "tipoVisualizacion": "line",
+    "palabrasClave": "tasa, tasas, tasas, tasa de interes, tasa de interes, interes, tasas de interes, tasas de interes, tasa interes, tasa interes, tasas interes, tasas interes,  interes, intervencion, intervencion, politica, politica, banco, banrep, monetaria, junta, directiva, jdbr, banco de la republica, banco de la republica,  politica monetaria, politica monetaria, oma, decision, decisiones, operaciones de mercado abierto, operacion de mercado abierto, operacion de mercado abierto, tasa de referencia, referencia, emisor, decision, decision, tpm, tasa de politica monetaria, tasa de politica monetaria, tasa de intervencion, tasa de intervencion, tasa de intervencion, expansion, expansion, repos, repos overnight, diaria, tasa de politica monetaria",
+    "isSerie": "SI",
+    "tieneHijos": "NO",
+    "data": [
+      [
+        1790485200000,
+        12.0
+      ],
+      [
+        1790571600000,
+        12.0
+      ],
+      [
+        1790658000000,
+        12.0
+      ],
+      [
+        1790744400000,
+        12.0
+      ],
+      [
+        1790830800000,
+        12.25
+      ],
+      [
+        1790917200000,
+        12.25
+      ],
+      [
+        1791003600000,
+        12.25
+      ],
+      [
+        1791090000000,
+        12.25
+      ],
+      [
+        1791176400000,
+        12.25
+      ],
+      [
+        1791262800000,
+        12.25
+      ],
+      [
+        1791349200000,
+        12.25
+      ],
+      [
+        1791435600000,
+        12.25
+      ],
+      [
+        1791522000000,
+        12.25
+      ],
+      [
+        1791608400000,
+        12.25
+      ],
+      [
+        1791694800000,
+        12.25
+      ],
+      [
+        1791781200000,
+        12.25
+      ],
+      [
+        1791867600000,
+        12.25
+      ],
+      [
+        1791954000000,
+        12.25
+      ],
+      [
+        1792040400000,
+        12.25
+      ],
+      [
+        1792213200000,
+        12.25
+      ],
+      [
+        1792299600000,
+        12.25
+      ],
+      [
+        1792386000000,
+        12.25
+      ],
+      [
+        1792472400000,
+        12.25
+      ],
+      [
+        1792558800000,
+        12.25
+      ],
+      [
+        1792645200000,
+        12.25
+      ],
+      [
+        1792731600000,
+        12.25
+      ],
+      [
+        1792818000000,
+        12.25
+      ],
+      [
+        1792904400000,
+        12.25
+      ],
+      [
+        1792990800000,
+        12.25
+      ],
+      [
+        1793077200000,
+        12.25
+      ]
+    ]
+  }
+]

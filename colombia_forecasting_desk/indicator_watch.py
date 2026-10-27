@@ -32,6 +32,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .cleaner import fold_accents, normalize_whitespace
+from .banrep_tls import banrep_ssl_context
 from .models import CleanedItem, IndicatorComponent, IndicatorObservation, RawItem
 
 
@@ -783,7 +784,7 @@ def manufacturing_observation_from_html(html: str) -> IndicatorObservation | Non
 def labor_market_observation_from_html(html: str) -> IndicatorObservation | None:
     text = _folded_text_from_html(html)
     match = re.search(
-        rf"para\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+la tasa de "
+        rf"para\s+(?:el mes de\s+)?({_MONTH_NAMES})\s+de\s+(20\d{{2}}),\s+la tasa de "
         rf"desocupacion del total nacional fue\s+{_PERCENT}",
         text,
     )
@@ -792,10 +793,19 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
     month_name, year = match.group(1), match.group(2)
     unemployment = _to_float(match.group(3))
     national_context = text[match.end() : match.end() + 900]
+    # Do not borrow a missing national comparator or participation value from
+    # the following thirteen-cities paragraph.
+    national_context = re.split(
+        rf"(?:para|en)\s+(?:{_MONTH_NAMES})\s+de\s+20\d{{2}},\s+la tasa de "
+        r"desocupacion en el total de las 13 ciudades",
+        national_context,
+        maxsplit=1,
+    )[0]
+    unemployment_context = national_context.split("la tasa global de participacion", 1)[0]
     change_match = re.search(
         rf"(disminucion|aumento) de\s+([\d,.]+)\s+puntos porcentuales.*?"
         rf"mismo mes de\s+20\d{{2}}\s+\({_PERCENT}\)",
-        national_context,
+        unemployment_context,
     )
     if change_match:
         change = _to_float(change_match.group(2))
@@ -804,7 +814,7 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
         previous_unemployment = _to_float(change_match.group(3))
     elif re.search(
         r"similar a la (?:registrada|observada).*?mismo mes de\s+20\d{2}",
-        national_context,
+        unemployment_context,
     ):
         change = 0.0
         previous_unemployment = unemployment
@@ -812,14 +822,28 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
         change = None
         previous_unemployment = None
 
+    if previous_unemployment is None:
+        direct_comparison = re.search(
+            rf"mientras que en el mismo mes de\s+{int(year) - 1}\s+fue\s+{_PERCENT}",
+            unemployment_context,
+        )
+        if direct_comparison:
+            previous_unemployment = _to_float(direct_comparison.group(1))
+            if unemployment is not None and previous_unemployment is not None:
+                change = round(unemployment - previous_unemployment, 2)
+
     participation_match = re.search(
         rf"tasa global de participacion se ubico en\s+{_PERCENT}.*?"
         rf"(?:frente a|en)\s+(?:{_MONTH_NAMES})\s+de\s+20\d{{2}}\s+\({_PERCENT}\)",
         national_context,
+    ) or re.search(
+        rf"tasa global de participacion se ubico en\s+{_PERCENT}.*?"
+        rf"(?:en tanto que|mientras que) en\s+(?:{_MONTH_NAMES})\s+de\s+{int(year) - 1}\s+fue\s+{_PERCENT}",
+        national_context,
     )
     occupation_match = re.search(
         rf"tasa de ocupacion (?:fue|en)\s+{_PERCENT}.*?"
-        rf"(?:mismo mes del ano anterior|(?:{_MONTH_NAMES})\s+de\s+20\d{{2}})"
+        rf"(?:mismo mes del ano anterior|mismo mes de\s+20\d{{2}}|(?:{_MONTH_NAMES})\s+de\s+20\d{{2}})"
         rf"\s+\({_PERCENT}\)",
         national_context,
     )
@@ -889,15 +913,32 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
             )
     definition = _definition_map()["labor_market"]
     period = _month_period(month_name, year)
+    values["series_variant"] = "national_total_original"
+    if previous_unemployment is not None:
+        values["national_unemployment_previous_year_period"] = (
+            f"{int(year) - 1:04d}-{period[-2:]}"
+        )
     headline = (
         f"DANE GEIH {period}: national unemployment {unemployment:.2f}%, "
         f"participation {participation:.2f}%, occupation {occupation:.2f}%."
     )
-    release_date = _release_date_from_text(national_context) or _latest_release_date(
-        html
-    )
+    # The same page includes RELAB and other labor operations with newer dates.
+    # Resolve GEIH's clock and documents only from its own current-period rows.
+    soup = BeautifulSoup(html, "html.parser")
+    period_month = int(period[-2:])
+    month_abbr = next(key for key, value in _MONTH_ABBR_ES.items() if value == period_month)
+    geih_rows = []
+    for row in soup.find_all("tr"):
+        if any(
+            "/GEIH/" in str(anchor.get("href", ""))
+            and re.search(rf"-{month_abbr}{year}\.(?:pdf|xlsx)(?:$|[?#])", str(anchor["href"]), re.I)
+            for anchor in row.find_all("a", href=True)
+        ):
+            geih_rows.append(str(row))
+    document_html = "<table>" + "".join(geih_rows) + "</table>" if geih_rows else html
+    release_date = _release_date_from_text(national_context) or _latest_release_date(document_html)
     values["official_documents"] = _current_document_links_from_html(
-        html,
+        document_html,
         source_url=definition.source_url,
         release_date=release_date,
     )
@@ -1667,8 +1708,8 @@ def policy_rate_ibr_observation_from_rows(
     ibr_rows: Iterable[dict[str, Any]],
     as_of: datetime | None = None,
 ) -> IndicatorObservation | None:
-    policy_latest = _latest_banrep_row(policy_rows, as_of)
-    ibr_latest = _latest_banrep_row(ibr_rows, as_of)
+    policy_latest = _latest_banrep_row(_policy_ibr_dated_rows(policy_rows), as_of)
+    ibr_latest = _latest_banrep_row(_policy_ibr_dated_rows(ibr_rows), as_of)
     if policy_latest is None or ibr_latest is None:
         return None
     policy_date, policy = policy_latest
@@ -1696,8 +1737,31 @@ def policy_rate_ibr_observation_from_rows(
             "ibr_overnight_nominal_pct": ibr_rate,
             "ibr_date": ibr_date.strftime("%Y-%m-%d"),
             "ibr_policy_spread_pp": spread,
+            "policy_rate_source_url": BANREP_POLICY_RATE_SOURCE_URL,
+            "ibr_source_url": BANREP_IBR_SOURCE_URL,
         },
     )
+
+
+def _policy_ibr_dated_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Read SUAMECA's nested series without mistaking its current header for history."""
+    dated = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        data = row.get("data")
+        if not isinstance(data, list):
+            dated.append(row)
+            continue
+        for point in data:
+            if not isinstance(point, list) or len(point) < 2:
+                continue
+            try:
+                stamp = datetime.fromtimestamp(float(point[0]) / 1000, timezone.utc)
+            except (ValueError, TypeError, OverflowError, OSError):
+                continue
+            dated.append({"fecha": stamp.strftime("%d/%m/%Y"), "valor": point[1]})
+    return dated
 
 
 def banrep_tes_curve_component_from_rows(
@@ -2692,10 +2756,13 @@ def fetch_structured_indicator_observations(
     now: datetime | None = None,
 ) -> list[IndicatorObservation]:
     with httpx.Client(timeout=STRUCTURED_INDICATOR_TIMEOUT) as client:
-        observations = [
-            _fetch_trm_observation(client),
-            _fetch_policy_rate_ibr_observation(client, as_of=now),
-        ]
+        observations = [_fetch_trm_observation(client)]
+        # Limit the issuer-chain repair to the two policy/IBR series. Other
+        # sources, including the experimental TES curve, keep their own path.
+        with httpx.Client(
+            timeout=STRUCTURED_INDICATOR_TIMEOUT, verify=banrep_ssl_context()
+        ) as policy_client:
+            observations.append(_fetch_policy_rate_ibr_observation(policy_client, as_of=now))
         observations.extend(
             _fetch_dane_html_observation(client, indicator_id, url, parser)
             for indicator_id, url, parser in _DANE_HTML_INDICATORS
