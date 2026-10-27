@@ -1,0 +1,46 @@
+{
+  "schema_version": "reader_brief.v1",
+  "run_date": "2026-10-27",
+  "needs_you": {
+    "required": false,
+    "action": null,
+    "by": null
+  },
+  "headline": "Friday brings decisions on interest rates and new jobs data.",
+  "changes": [
+    {
+      "title": "Tobacco and vape tax bill",
+      "what_happened": "A favorable report prepares the bill for its final Senate debate (PL 243 Senado).",
+      "why_it_matters": "It proposes a COP 5,100 tax per pack of 20, with annual increases above inflation.",
+      "who_is_affected": "Smokers, producers, and health and sports budgets.",
+      "confidence": "confirmed",
+      "source_url": "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1638#project-proyecto-de-ley-243-de-2026-senado-y-136-de-2025-camara-y-290-de-2025-camara-por-medio-de",
+      "case_id": "tobacco-nicotine-tax"
+    }
+  ],
+  "coming_up": [
+    {
+      "date": "2026-10-30",
+      "event": "BanRep interest-rate decision",
+      "our_call": null,
+      "no_call_reason": "The desk will record its call by Thursday."
+    },
+    {
+      "date": "2026-10-30",
+      "event": "September unemployment release",
+      "our_call": null,
+      "no_call_reason": "A comparable current official unemployment value is still unavailable."
+    }
+  ],
+  "open_forecasts": [
+    {
+      "forecast_id": "shadow_20261026_camara_pl012_first_debate_approval",
+      "plain_question": "Will the food-tax repeal bill pass its House committee vote (PL 012)?",
+      "probability": 0.55,
+      "resolves_by": "2026-10-30"
+    }
+  ],
+  "data_problems": [
+    "The policy-rate feed is unavailable; the September 30 board communiqué confirms 12.25%."
+  ]
+}
