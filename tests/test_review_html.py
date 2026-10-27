@@ -8,6 +8,37 @@ import pytest
 from colombia_forecasting_desk import review_html as rh
 
 
+def test_valid_reader_brief_leads_and_details_are_collapsed():
+    from bs4 import BeautifulSoup
+    fixture = Path(__file__).parent / "fixtures" / "reader_brief" / "oct27.json"
+    brief = json.loads(fixture.read_text())
+    art = _art(**{"_run_date": "2026-10-27", "reader_brief.json": brief})
+    page = rh.render_daily_review_html(art)
+    soup = BeautifulSoup(page, "html.parser")
+    assert soup.select_one(".wrap").find().get("class") == ["reader-brief"]
+    details = soup.select("details.reader-details")
+    assert len(details) == 8
+    assert all(not item.has_attr("open") for item in details)
+    assert "overflow-wrap:anywhere" in page and "overflow-x:auto" in page
+
+
+def test_missing_or_invalid_reader_brief_preserves_legacy_bytes():
+    art = _art()
+    legacy = rh.render_daily_review_html(art)
+    assert 'class="reader-brief"' not in legacy
+    assert "READER_CSS" not in legacy
+    art["reader_brief.json"] = {"schema_version": "reader_brief.v1"}
+    assert rh.render_daily_review_html(art) == legacy
+
+
+def test_reader_brief_for_another_date_does_not_change_review():
+    art = _art()
+    legacy = rh.render_daily_review_html(art)
+    fixture = Path(__file__).parent / "fixtures" / "reader_brief" / "oct27.json"
+    art["reader_brief.json"] = json.loads(fixture.read_text())
+    assert rh.render_daily_review_html(art) == legacy
+
+
 # --------------------------------------------------------------------------- #
 # Builders
 # --------------------------------------------------------------------------- #

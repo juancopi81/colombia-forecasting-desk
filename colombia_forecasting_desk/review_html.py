@@ -40,6 +40,7 @@ from .agent_analysis import validate_agent_analysis
 from .brief import _indicator_alerts
 from .m3_case_file import extract_m3_case_file, validate_evidence_pack_markdown
 from .models import IndicatorComponent, IndicatorObservation
+from .reader_brief import render_reader_brief_html, validate_reader_brief
 
 SCHEMA_VERSION = "review_html.v1"
 DEFAULT_WINDOW = 14
@@ -73,6 +74,7 @@ JSON_ARTIFACTS = (
     "m3_preflight_opportunities.json",
     "agent_analysis.json",
     "source_health.json",
+    "reader_brief.json",
 )
 
 # Ordered list of files the daily view links back to, when present.
@@ -2630,6 +2632,30 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
     else:
         queue_section = ""
 
+    brief = art.get("reader_brief.json")
+    if brief is not None and not validate_reader_brief(brief, run_date=run_date):
+        def details(label: str, content: str) -> str:
+            return f'<details class="reader-details"><summary>{_esc(label)}</summary>{content}</details>'
+
+        body = (
+            render_reader_brief_html(brief)
+            + details("Daily analysis and decisions", masthead + _render_banner(decision)
+                      + stats + why_section + _render_agent_intelligence(art, index=3)
+                      + insight_section + inv_section + queue_section)
+            + details("Forecasts and upcoming events", _render_shadow_forecasts(art, index=4)
+                      + _render_forecast_resolution_queue(art, index=5)
+                      + _render_active_research_packs(art, index=6)
+                      + _render_m3_preflight_opportunities(art, index=7))
+            + details("Economic indicators", _render_official_indicator_moves(art, index=8))
+            + details("Source coverage", _render_source_caveats(art, index=11))
+            + details("Indicator comparisons", _render_tension_cards(art, index=12))
+            + details("Market context", _render_market_pricing(art, index=13))
+            + details("Cross-source context", _render_bundles(art, index=14))
+            + details("Source files", _render_links(art, index=15))
+            + _footer()
+        )
+        return _page(f"Daily Review — {run_date}", body, reader_mode=True)
+
     body = (
         masthead
         + _render_banner(decision)
@@ -2857,19 +2883,42 @@ def _footer() -> str:
     )
 
 
-def _page(title: str, body: str) -> str:
+def _page(title: str, body: str, *, reader_mode: bool = False) -> str:
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n'
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"<title>{_esc(title)}</title>\n"
-        f"<style>{CSS}</style>\n"
+        f"<style>{CSS + (READER_CSS if reader_mode else '')}</style>\n"
         "</head>\n"
         '<body>\n<div class="wrap">\n'
         f"{body}\n"
         "</div>\n</body>\n</html>\n"
     )
+
+
+READER_CSS = """
+html,body{max-width:100%;overflow-wrap:anywhere}
+.wrap{width:100%;min-width:0}
+.reader-brief{padding-bottom:28px;border-bottom:2px solid var(--rule-strong)}
+.reader-brief h1{font-size:clamp(25px,4vw,36px);line-height:1.2;margin:12px 0 22px}
+.reader-brief h2{font-family:var(--sans);font-size:16px;margin:22px 0 8px}
+.reader-brief p,.reader-brief ul{margin:10px 0}
+.reader-brief ul{padding-left:24px}
+.reader-brief li{margin:10px 0}
+.reader-brief__attention{font-family:var(--sans);font-weight:700;color:var(--ink)}
+.reader-details{min-width:0;margin-top:18px;border:1px solid var(--rule);border-radius:8px;padding:14px 18px}
+.reader-details>summary{cursor:pointer;font-family:var(--sans);font-weight:650}
+.reader-details .masthead{margin-top:22px}
+.reader-details .section{margin-top:24px}
+.reader-details .title{font-size:28px}
+.reader-details *{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.reader-details .pill{white-space:normal}
+.reader-details .table{display:block;overflow-x:auto;width:100%;max-width:100%}
+.reader-details pre{white-space:pre-wrap}
+@media (max-width:680px){.reader-details{padding:12px}.wrap{padding:24px 16px 48px}}
+"""
 
 
 CSS = """
