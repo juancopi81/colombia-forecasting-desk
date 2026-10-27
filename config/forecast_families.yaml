@@ -1,0 +1,44 @@
+schema_version: forecast_families.v1
+window_days: [1, 7]
+resolution_check_days: 3
+families:
+  banrep_rate_decision:
+    enabled: true
+    indicator_id: policy_rate_ibr
+    value_key: policy_rate_pct
+    series_variant: policy_rate
+    comparison: gt
+    resolver_url: https://www.banrep.gov.co/es/comunicados-junta
+    question: Will BanRep set its policy rate above {threshold}% at the {event_date} decision?
+    baseline_rules: [survey_share, empirical_frequency, uninformative_50_50]
+  ipc_annual_up:
+    enabled: true
+    indicator_id: ipc_inflation
+    value_key: annual_variation_pct
+    series_variant: headline_annual
+    comparison: gt
+    reference_lag_months: 1
+    resolver_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica
+    question: Will DANE report annual inflation for {reference_period} above {threshold}%?
+    baseline_rules: [empirical_frequency, uninformative_50_50]
+  ise_annual_up:
+    enabled: true
+    indicator_id: ise_activity
+    value_key: annual_growth_pct
+    series_variant: original_total_annual
+    comparison: gt
+    reference_lag_months: 2
+    resolver_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise
+    question: Will DANE report original-series annual ISE growth for {reference_period} above {threshold}%?
+    baseline_rules: [empirical_frequency, uninformative_50_50]
+  unemployment_down_yoy:
+    enabled: false
+    enable_when_observed: true
+    indicator_id: labor_market
+    value_key: national_unemployment_rate_pct
+    series_variant: national_original_unemployment
+    comparison: lt
+    reference_lag_months: 1
+    resolver_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo
+    question: Will DANE report national unemployment for {reference_period} below {threshold}% in the same month last year?
+    baseline_rules: [empirical_frequency, uninformative_50_50]

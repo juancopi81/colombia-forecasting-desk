@@ -78,7 +78,7 @@ def _append_shadow_idempotently(
     if existing is not None:
         comparable_keys = set(row) - {"status"}
         differs = any(existing.get(key) != row.get(key) for key in comparable_keys)
-        if differs or existing.get("status") not in {"open", "resolved"}:
+        if differs or existing.get("status") not in {"open", "resolved", "void"}:
             raise ShadowForecastError(
                 f"Existing forecast_id {forecast_id} differs from this analysis."
             )

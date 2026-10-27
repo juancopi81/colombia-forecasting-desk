@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     print(args.ledger)
     print(f"rows: {len(rows)}")
     print(f"issues: {len(issues)}")
+    print(f"void and unscored: {sum(row.get('status') == 'void' for row in rows)}")
+    print(f"needs review: {sum(row.get('status') == 'open' and row.get('needs_review') is True for row in rows)}")
     for issue in issues:
         location = f"row {issue.row_number}: " if issue.row_number else ""
         print(f"- {location}{issue.code}: {issue.message}")

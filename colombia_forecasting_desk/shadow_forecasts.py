@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import fcntl
 import json
 import os
@@ -13,7 +13,7 @@ import unicodedata
 from urllib.parse import urlparse
 
 SCHEMA_VERSION = "shadow_forecast.v1"
-ALLOWED_STATUSES = {"open", "resolved"}
+ALLOWED_STATUSES = {"open", "resolved", "void"}
 RESOLUTION_FIELDS = (
     "outcome",
     "resolved_at",
@@ -174,6 +174,19 @@ def validate_shadow_forecast(row: dict[str, Any]) -> list[ShadowForecastIssue]:
             )
     if row.get("status") == "resolved":
         issues.extend(_resolved_row_issues(row))
+    if row.get("status") == "void":
+        if not _nonempty_text(row.get("void_reason")) or not _is_aware_datetime(row.get("voided_at")) or row.get("void_human_approved") is not True:
+            issues.append(ShadowForecastIssue("invalid_void", "Voiding needs an explicit human approval, reason and timezone-aware timestamp."))
+        if any(row.get(field) is not None for field in ("outcome", "brier_score", "baseline_brier_score", "brier_improvement_vs_baseline")):
+            issues.append(ShadowForecastIssue("scored_void", "A void forecast must remain unscored."))
+    if "needs_review" in row and not isinstance(row["needs_review"], bool):
+        issues.append(ShadowForecastIssue("invalid_review_flag", "needs_review must be boolean."))
+    if row.get("forecast_family"):
+        event = row.get("family_event")
+        if not isinstance(event, dict) or not _is_aware_datetime(event.get("cutoff_at")):
+            issues.append(ShadowForecastIssue("invalid_family_event", "Family forecasts require an exact pre-event cutoff."))
+        elif _is_aware_datetime(row.get("created_at")) and datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")) >= datetime.fromisoformat(event["cutoff_at"].replace("Z", "+00:00")):
+            issues.append(ShadowForecastIssue("post_event_forecast", "A family forecast must be created before its event cutoff."))
     return issues
 
 
@@ -216,6 +229,11 @@ def append_shadow_forecast(path: Path, row: dict[str, Any]) -> None:
                 "Semantic duplicate: normalized question and resolution_deadline "
                 "already exist in the shadow ledger."
             )
+        event_key = forecast_event_key(row)
+        if event_key and any(forecast_event_key(existing) == event_key for existing in rows):
+            raise ShadowForecastError("Duplicate family event already exists in the shadow ledger.")
+        if not row.get("forecast_family") and any(existing.get("run_date") == row["run_date"] and not existing.get("forecast_family") for existing in rows):
+            raise ShadowForecastError("Only one discretionary shadow forecast is allowed per run.")
         _atomic_append_json_line(path, row)
 
 
@@ -300,6 +318,8 @@ def resolve_shadow_forecast(
     resolved_at: str,
     resolution_value: str,
     resolution_url: str,
+    resolution_artifact: str | None = None,
+    resolution_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Explicitly resolve one open row using only caller-supplied evidence."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -345,6 +365,12 @@ def resolve_shadow_forecast(
                 ),
             }
         )
+        if resolution_artifact is not None:
+            resolved["resolution_artifact"] = resolution_artifact
+        if resolution_evidence is not None:
+            resolved["resolution_evidence"] = resolution_evidence
+        if current.get("needs_review"):
+            resolved["needs_review"] = False
         issues = validate_shadow_forecast(resolved)
         if issues:
             raise ShadowForecastError(
@@ -353,6 +379,77 @@ def resolve_shadow_forecast(
         rows[index] = resolved
         _atomic_write_json_rows(path, rows)
         return resolved
+
+
+def forecast_event_key(row: dict[str, Any]) -> str | None:
+    """Identify a scheduled family event, including an older discretionary call.
+
+    Headline IPC never absorbs a core-inflation question. Other unrelated
+    discretionary questions remain outside the family identity vocabulary.
+    """
+    if _nonempty_text(row.get("slot_id")):
+        return row["slot_id"]
+    question = unicodedata.normalize("NFKD", str(row.get("question", ""))).encode("ascii", "ignore").decode().lower()
+    day = str(row.get("resolution_deadline", ""))[:10]
+    if _parse_iso_date(day) is None:
+        return None
+    family = None
+    if ("banrep" in question or "banco de la republica" in question) and ("policy rate" in question or "tasa" in question):
+        family = "banrep_rate_decision"
+    elif ("ise" in question.split() or "ise " in question) and "dane" in question:
+        family = "ise_annual_up"
+    elif ("inflation" in question or "ipc" in question) and "dane" in question and not any(word in question for word in ("core", "excluding", "sin alimentos", "regulated")):
+        family = "ipc_annual_up"
+    elif "unemployment" in question and "dane" in question and "national" in question:
+        family = "unemployment_down_yoy"
+    return f"{family}:{day}" if family else None
+
+
+def flag_shadow_forecasts_for_review(path: Path, *, as_of: str) -> list[str]:
+    """Flag overdue records without inferring a negative outcome or voiding."""
+    day = date.fromisoformat(as_of)
+    if not path.exists():
+        return []
+    changed = []
+    with path.with_name(f".{path.name}.lock").open("a+", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        rows, issues = _read_ledger(path)
+        if issues:
+            raise ShadowForecastError(_issue_summary(issues))
+        for row in rows:
+            threshold = date.fromisoformat(row["resolution_check_window_end"]) + timedelta(days=21)
+            if row["status"] == "open" and day >= threshold and not row.get("needs_review"):
+                row["needs_review"] = True
+                row["needs_review_since"] = threshold.isoformat()
+                changed.append(row["forecast_id"])
+        if changed:
+            _atomic_write_json_rows(path, rows)
+    return changed
+
+
+def void_shadow_forecast(path: Path, *, forecast_id: str, reason: str, voided_at: str, human_approved: bool = False) -> dict[str, Any]:
+    """Explicit, human-approved invalidation; predictions remain intact and unscored."""
+    if human_approved is not True or not _nonempty_text(reason) or not _is_aware_datetime(voided_at):
+        raise ShadowForecastError("Voiding requires explicit human approval, a written reason and an aware timestamp.")
+    with path.with_name(f".{path.name}.lock").open("a+", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        rows, issues = _read_ledger(path)
+        if issues:
+            raise ShadowForecastError(_issue_summary(issues))
+        row = next((row for row in rows if row["forecast_id"] == forecast_id), None)
+        if row is None or row["status"] != "open":
+            raise ShadowForecastError("Only a known open forecast can be voided.")
+        earliest = date.fromisoformat(row["resolution_check_window_end"]) + timedelta(days=21)
+        if datetime.fromisoformat(voided_at.replace("Z", "+00:00")).date() < earliest:
+            raise ShadowForecastError("Voiding is unavailable before the record-check window plus 21 days.")
+        row.update(status="void", void_reason=reason.strip(), voided_at=voided_at, void_human_approved=True)
+        if row.get("needs_review"):
+            row["needs_review"] = False
+        issues = validate_shadow_forecast(row)
+        if issues:
+            raise ShadowForecastError(_issue_summary(issues))
+        _atomic_write_json_rows(path, rows)
+        return row
 
 
 def _read_ledger(

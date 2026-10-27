@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from scripts.finalize_agent_analysis import finalize
-from colombia_forecasting_desk.shadow_forecasts import resolve_shadow_forecast
+from colombia_forecasting_desk.shadow_forecasts import resolve_shadow_forecast, void_shadow_forecast
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -168,6 +168,24 @@ def test_finalize_appends_shadow_once_and_is_idempotent(tmp_path: Path) -> None:
     assert first["shadow_action"] == "appended"
     assert second["shadow_action"] == "already_recorded"
     assert paths["ledger"].read_bytes() == original
+
+
+def test_finalize_is_idempotent_after_explicit_approved_void(tmp_path: Path) -> None:
+    paths = _prepare(tmp_path)
+    kwargs = dict(run_date=str(paths["run_date"]), runs_dir=paths["runs_dir"], ledger_path=paths["ledger"], experiment_config=paths["config"], experiment_output_dir=paths["output"])
+    finalize(**kwargs)
+    row = json.loads(paths["ledger"].read_text())
+    void_shadow_forecast(paths["ledger"], forecast_id=row["forecast_id"], reason="Juan approved: declared official series withdrawn.", voided_at="2026-11-23T17:00:00Z", human_approved=True)
+    original = paths["ledger"].read_bytes()
+    result = finalize(**kwargs)
+    assert result["shadow_action"] == "already_recorded"
+    assert paths["ledger"].read_bytes() == original
+    summary = json.loads((paths["output"] / "shadow_experiment_summary.json").read_text())
+    assert summary["shadow_forecasts"]["created"] == 1
+    assert summary["shadow_forecasts"]["void"] == 1
+    assert summary["shadow_forecasts"]["resolved_with_brier"] == 0
+    assert summary["shadow_forecasts"]["invalid_log_rows_ignored"] == 0
+    assert "Void forecasts (unscored)" in (paths["output"] / "shadow_experiment_summary.md").read_text()
     assert (paths["runs_dir"] / str(paths["run_date"]) / "agent_analysis.md").exists()
     assert (paths["runs_dir"] / str(paths["run_date"]) / "review.html").exists()
     assert (paths["output"] / "shadow_experiment_summary.json").exists()
