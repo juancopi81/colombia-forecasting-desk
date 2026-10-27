@@ -1,0 +1,42 @@
+# Demonstrations only. Replace these with your own organizations, places or topics.
+# Other examples:
+# - watch_id: example-place
+#   kind: place
+#   label: Medellín
+#   why: Follow local public decisions.
+#   identifiers: {divipola: ['05001'], names: ['Medellín']}
+# - watch_id: example-bill
+#   kind: bill
+#   label: Public-order bill
+#   why: Follow procurement transparency.
+#   identifiers: {bills: ['PL 433/2026 Cámara']}
+settings:
+  window_months: 24
+  group_limit: 500
+  contract_id_limit: 500
+  buyer_limit: 5
+  thresholds:
+    supplier_share: 0.25
+    repeat_direct_award: 10
+    large_addition_ratio: 0.50
+    value_outlier_cop: 1000000000000
+entries:
+  - watch_id: demo-antioquia
+    kind: public_entity
+    label: Department of Antioquia (demo)
+    active: true
+    demo: true
+    why: Demonstrate a departmental procurement history; this is not Juan's personal selection.
+    identifiers:
+      nit: '890900286-0'
+      names: ['Departamento de Antioquia', 'Gobernación de Antioquia']
+      divipola: ['05']
+  - watch_id: demo-colombia-telecomunicaciones
+    kind: company
+    label: Colombia Telecomunicaciones (demo)
+    active: true
+    demo: true
+    why: Demonstrate a large organizational supplier with verified public contracts.
+    identifiers:
+      nit: '830122566-1'
+      names: ['Colombia Telecomunicaciones S.A. ESP BIC', 'Colombia Telecomunicaciones SA ESP']

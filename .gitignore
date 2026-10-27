@@ -25,3 +25,5 @@ runs/*/
 runs/review_index.html
 # Generated weekly evidence and reader briefs
 weekly/*/
+# Separate, refreshable organization history cache
+data/entity_history/
