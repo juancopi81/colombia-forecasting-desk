@@ -11,6 +11,7 @@ the public forecast ledger keep their existing human-review gate.
 After the strict scan passes and before writing the reader brief:
 
 ```sh
+./.venv/bin/python scripts/capture_family_evidence.py --date YYYY-MM-DD
 ./.venv/bin/python scripts/plan_family_forecasts.py --date YYYY-MM-DD
 # Author runs/YYYY-MM-DD/family_forecasts.json against the planned slots.
 ./.venv/bin/python scripts/append_family_forecasts.py --date YYYY-MM-DD --model ACTUAL_MODEL --reasoning-effort ACTUAL_EFFORT
@@ -151,3 +152,77 @@ explained as disabled skips, and a call takes precedence over prior skips.
 
 These producers import the frozen schemas from Workstream 0. They add no runtime
 dependency and leave ordinary daily rendering opt-in until integration.
+
+## Production evidence intake
+
+`capture_family_evidence.py` is an explicit network command. Put it immediately
+after the live strict scan, before planning calls and resolving earlier calls.
+It needs the same live-network execution authorization as that scan. By default
+it discovers the GEIH annex when a labor release is due in 1–7 days, and exact
+dated technical bulletins for due open DANE family rows. It records actionable
+notices in `family_evidence_capture.json`; exit status 2 means some requested
+evidence was unavailable or rejected. Keep that slot disabled or forecast open
+and show the material gap. The command itself never records a forecast/outcome.
+
+### GEIH historical comparators
+
+```sh
+./.venv/bin/python scripts/capture_family_evidence.py --date YYYY-MM-DD --history
+# Explicit fallback when the captured labor card has no annex link:
+./.venv/bin/python scripts/capture_family_evidence.py --date YYYY-MM-DD --history-url OFFICIAL_ANNEX_URL
+```
+
+The default discovers `anex-GEIH-<month><year>.xlsx` in the labor card's official
+document links. It resolves the workbook relationship for the exact `Total
+nacional` worksheet and reads only the first monthly section's TD row, with its
+merged year headers and Spanish month columns. It never substitutes city or
+quarterly tables. Preserved bytes, SHA-256 and exact cell locators back every
+derived observation in `family_reference_history.json`. Raw values remain
+available, while comparators use DANE's published one-decimal percentage,
+consistently with the first-release bulletin. The history is explicitly current
+revised/backcast history with a methodology caveat, not an initial-release
+resolver. The planner rehashes and reparses it and uses only evidence already
+captured by the run's Bogotá date.
+
+In the August 2026 annex, September 2025 is `Total nacional!KL17`; raw
+8.173482473735278 becomes the explicitly declared 8.2% comparator. That is an
+observation from the source, not a number hardcoded into the planner. The
+history also supplies the empirical annual-decline baseline where comparable
+months exist.
+
+### Next-morning first-release capture
+
+The normal morning schedule can resolve a release on the next run using a dated
+original technical bulletin, never a latest revised annex. Intake discovers
+`bol-IPC`, `bol-ISE` or `bol-GEIH` for the exact target month in the captured
+official document links. When IPC's card lacks links, it follows the captured
+official operation page and preserves that discovery page. A targeted follow-up
+is also executable:
+
+```sh
+./.venv/bin/python scripts/capture_family_evidence.py --date YYYY-MM-DD --slot-id FAMILY:EVENT_DATE --release-url OFFICIAL_BULLETIN_URL
+```
+
+Intake matches the filename's operation/period, the bulletin's own publication
+date and the predeclared event, then extracts the exact headline annual IPC,
+original-series annual total ISE, or national monthly GEIH statement. It rejects
+wrong dates/periods/series/geographies, a correction of this bulletin, and HTTP
+or PDF modification metadata later than the release date. Generic notes about
+revisions to earlier periods and provisional-data methodology are allowed.
+
+Original bytes and `family_release_evidence.json` preserve the URL, SHA-256,
+publication date, capture time, value and text fingerprint. The offline resolver
+rehashes and reparses this stored PDF before recording an outcome, so next-day
+resolution works even if the current indicator card has changed. Missing,
+ambiguous, modified or unreadable original bulletins remain open with a specific
+follow-up notice. A changed current-card value is never treated as a first
+release merely because it was the first value this workflow captured.
+
+Live read-only parser checks on October 27 recovered September IPC 6.29% from
+the October 7 bulletin, August ISE −0.04% from the October 19 bulletin, and August
+national GEIH 9.4% from the September 30 bulletin. No historical forecast was
+created or resolved by those parser checks.
+
+`family_evidence.capture_geih_history` and `capture_first_release` perform the
+explicit network intake. `reference_history_for_run` and
+`verified_release_for_row` recheck preserved bytes without network access.

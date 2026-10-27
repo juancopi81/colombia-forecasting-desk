@@ -247,6 +247,15 @@ def plan_family_forecasts(run_dir: Path, *, config_path: Path = DEFAULT_CONFIG, 
     raw_items = _read(run_dir / "raw_items.json", [])
     if not isinstance(preflight, dict) or not isinstance(raw_items, list):
         raise ValueError("Invalid preflight or raw items artifact")
+    from .family_evidence import reference_history_for_run
+    reference_history = reference_history_for_run(run_dir)
+    if reference_history:
+        labor = deepcopy(by_id.get("labor_market", {}))
+        labor_values = labor.setdefault("values", {})
+        labor_values["history"] = reference_history["rows"]
+        labor_values["history_source_url"] = reference_history["source_url"]
+        labor_values["history_caveat"] = reference_history["caveat"]
+        by_id["labor_market"] = labor
     survey = by_id.get("banrep_eme_expectations") or _survey_context(raw_items)
     slots, notices = [], []
     events = _events(preflight, raw_items)
@@ -333,6 +342,7 @@ def plan_family_forecasts(run_dir: Path, *, config_path: Path = DEFAULT_CONFIG, 
             "days_until_event": days, "enabled": bool(enabled), "missing_evidence": missing,
             "baseline": baseline, "calendar_url": event.get("calendar_url"),
             "calendar_ref": event["calendar_ref"], "policy_rate_provenance": provenance,
+            "comparator_provenance": {"source_url": reference_history["source_url"], "source_sha256": reference_history["source_sha256"], "precision_decimal_places": 1, "caveat": reference_history["caveat"]} if reference_history and family == "unemployment_down_yoy" else None,
         }
         slots.append(slot)
     artifact = {"schema_version": "family_forecast_slots.v1", "run_date": run_day.isoformat(), "slots": slots, "notices": sorted(set(notices)), "calendar_coverage": "observed_artifacts_only"}
@@ -532,6 +542,7 @@ def resolve_family_forecasts(runs_root: Path, ledger_path: Path, *, as_of: str, 
         raise ValueError("Existing shadow ledger is invalid")
     runs = sorted(path for path in runs_root.iterdir() if path.is_dir() and re.fullmatch(r"\d{4}-\d{2}-\d{2}", path.name) and path.name <= as_of) if runs_root.exists() else []
     resolved, waiting = [], []
+    from .family_evidence import verified_release_for_row
     for row in rows:
         if row.get("status") != "open" or not row.get("forecast_family") or row["resolution_deadline"] > as_of:
             continue
@@ -540,7 +551,7 @@ def resolve_family_forecasts(runs_root: Path, ledger_path: Path, *, as_of: str, 
             continue
         observation = None
         for run in runs:
-            observation = _banrep_resolution(row, run) if row["forecast_family"] == "banrep_rate_decision" else _card_resolution(row, run)
+            observation = _banrep_resolution(row, run) if row["forecast_family"] == "banrep_rate_decision" else verified_release_for_row(row, run) or _card_resolution(row, run)
             if observation:
                 break
         if observation is None:
@@ -548,6 +559,9 @@ def resolve_family_forecasts(runs_root: Path, ledger_path: Path, *, as_of: str, 
             continue
         try:
             if _instant(observation["published_at"]) > clock:
+                waiting.append(row["forecast_id"])
+                continue
+            if observation.get("captured_at") and _instant(observation["captured_at"]) > clock:
                 waiting.append(row["forecast_id"])
                 continue
         except (ValueError, TypeError):
