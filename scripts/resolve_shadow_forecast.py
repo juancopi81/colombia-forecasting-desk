@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
 from colombia_forecasting_desk.shadow_forecasts import (  # noqa: E402
     ShadowForecastError,
     resolve_shadow_forecast,
+    void_shadow_forecast,
 )
 
 DEFAULT_LEDGER = REPO_ROOT / "forecasts" / "shadow_forecast_log.jsonl"
@@ -27,13 +28,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     parser.add_argument("--forecast-id", required=True)
-    parser.add_argument("--outcome", required=True, choices=("YES", "NO"))
-    parser.add_argument("--resolved-at", required=True)
-    parser.add_argument("--resolution-value", required=True)
-    parser.add_argument("--resolution-url", required=True)
+    parser.add_argument("--outcome", choices=("YES", "NO"))
+    parser.add_argument("--resolved-at")
+    parser.add_argument("--resolution-value")
+    parser.add_argument("--resolution-url")
+    parser.add_argument("--resolution-artifact")
+    parser.add_argument("--void", action="store_true")
+    parser.add_argument("--reason")
+    parser.add_argument("--human-approved", action="store_true", help="Assert Juan explicitly approved voiding this particular forecast.")
     args = parser.parse_args(argv)
 
     try:
+        if args.void:
+            if args.outcome or not args.resolved_at:
+                raise ShadowForecastError("--void needs --resolved-at and cannot have an outcome.")
+            row = void_shadow_forecast(args.ledger, forecast_id=args.forecast_id, reason=args.reason or "", voided_at=args.resolved_at, human_approved=args.human_approved)
+            print(f"void and unscored: {row['forecast_id']}")
+            return 0
+        if not all((args.outcome, args.resolved_at, args.resolution_value, args.resolution_url)):
+            raise ShadowForecastError("Resolution requires --outcome, --resolved-at, --resolution-value and --resolution-url.")
         row = resolve_shadow_forecast(
             args.ledger,
             forecast_id=args.forecast_id,
@@ -41,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             resolved_at=args.resolved_at,
             resolution_value=args.resolution_value,
             resolution_url=args.resolution_url,
+            resolution_artifact=args.resolution_artifact,
         )
     except ShadowForecastError as exc:
         print(f"error: {exc}", file=sys.stderr)

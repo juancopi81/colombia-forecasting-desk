@@ -45,3 +45,13 @@ shadow_experiment:
   require_named_baseline: true
   require_human_review_before_public_migration: true
   public_forecast_log_mutation: prohibited
+
+family_forecasts:
+  required_for_due_slots: true
+  skip_requires_reason: true
+  forecast_window_days: [1, 7]
+  pre_event_only: true
+  first_official_release_only: true
+  automatic_voiding: false
+  # Family calls are separate from the discretionary one-per-run allowance.
+  ledger: forecasts/shadow_forecast_log.jsonl

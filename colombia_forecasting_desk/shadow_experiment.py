@@ -250,6 +250,8 @@ def _valid_shadow_forecast(payload: Any) -> bool:
         date.fromisoformat(str(payload.get("run_date")))
     except ValueError:
         return False
+    if payload.get("status") == "void":
+        return bool(payload.get("void_reason")) and bool(payload.get("voided_at")) and payload.get("void_human_approved") is True and all(payload.get(key) is None for key in ("outcome", "brier_score", "baseline_brier_score", "brier_improvement_vs_baseline"))
     return payload.get("status") in {"open", "resolved"}
 
 
@@ -316,6 +318,7 @@ def _shadow_forecast_summary(
 ) -> dict[str, Any]:
     open_forecasts = [row for row in forecasts if row["status"] == "open"]
     resolved_forecasts = [row for row in forecasts if row["status"] == "resolved"]
+    void_forecasts = [row for row in forecasts if row["status"] == "void"]
     complete_baselines = sum(_has_complete_baseline(row) for row in forecasts)
     brier_scores = [
         float(row["brier_score"])
@@ -341,7 +344,7 @@ def _shadow_forecast_summary(
         comparable_scores.append(
             (float(model_brier), float(baseline_brier), float(improvement))
         )
-    return {
+    summary = {
         "created": len(forecasts),
         "open": len(open_forecasts),
         "resolved": len(resolved_forecasts),
@@ -366,6 +369,11 @@ def _shadow_forecast_summary(
         ),
         "invalid_log_rows_ignored": invalid_rows,
     }
+    # Preserve historical JSON and Markdown exactly when no forecast is void.
+    if void_forecasts:
+        summary["void"] = len(void_forecasts)
+        summary["void_forecasts"] = [{"forecast_id": row["forecast_id"], "question": row.get("question", ""), "reason": row["void_reason"]} for row in void_forecasts]
+    return summary
 
 
 def _valid_brier_score(value: Any) -> bool:
@@ -483,7 +491,7 @@ def render_shadow_experiment_markdown(summary: dict[str, Any]) -> str:
         else f"{comparable_model_brier:.4f}"
     )
 
-    return "\n".join(
+    rendered = "\n".join(
         (
             "# Shadow Forecast Experiment",
             "",
@@ -543,6 +551,10 @@ def render_shadow_experiment_markdown(summary: dict[str, Any]) -> str:
             "",
         )
     )
+    if forecasts.get("void"):
+        rendered += "\n## Void forecasts (unscored)\n\n"
+        rendered += "\n".join(f"- {row['forecast_id']}: {row['reason']}" for row in forecasts["void_forecasts"]) + "\n"
+    return rendered
 
 
 def write_shadow_experiment_summary(
