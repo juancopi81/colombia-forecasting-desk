@@ -1,0 +1,67 @@
+{
+  "schema_version": "weekly_brief.v1",
+  "week": "2026-W43",
+  "as_of": "2026-10-23",
+  "big_picture": "August activity weakened while September inflation remained above 6%. Budget cuts and a budget decree for next year added a fiscal story ahead of the next rate decision.",
+  "top_stories": [
+    {
+      "title": "Activity contracted in August",
+      "what_happened": "DANE's activity index fell 0.04% from a year earlier and 3.11% from July after seasonal adjustment; year-to-date output still grew 2.27%.",
+      "why_it_matters": "One weak month does not establish a continuing recession, while inflation above target complicates the policy backdrop.",
+      "who_is_affected": "Businesses, workers and households.",
+      "source_url": "https://www.dane.gov.co/files/operaciones/ISE/bol-ISE-ago2026.pdf",
+      "evidence_refs": [
+        {
+          "artifact": "runs/2026-10-19/official_followup.md",
+          "locator": "Verified result and parser correction"
+        }
+      ]
+    },
+    {
+      "title": "A spending cut now and next year’s budget by decree",
+      "what_happened": "The spending-cut decree reduces 2026 appropriations by COP 13.81 trillion (Decreto 1585), while the next budget decree sets 2027 revenue and spending at COP 634.95 trillion (Decreto 1599).",
+      "why_it_matters": "Funding for commitments already legally formalized is protected; this is not proof of cash savings. The government cites a failure to reconcile Congress's two budget texts.",
+      "who_is_affected": "Public agencies, contractors and people receiving public services.",
+      "source_url": "https://svrpubindc.imprenta.gov.co/diario?edicion=53.666",
+      "evidence_refs": [
+        {
+          "artifact": "runs/2026-10-23/official_followup.md",
+          "locator": "Verified change"
+        }
+      ]
+    },
+    {
+      "title": "Security-purchase transparency remains disputed",
+      "what_happened": "Three lawmakers asked to shelve the public-order bill over implementation and oversight concerns (PL 433 Cámara / 296 Senado).",
+      "why_it_matters": "The revised clause removed explicit nonpublication language but kept a reserved-procurement reference. The October 21 session was scheduled, but no certified result or adopted text had been established.",
+      "who_is_affected": "Security agencies, suppliers and people monitoring public spending.",
+      "source_url": "https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1588",
+      "evidence_refs": [
+        {
+          "artifact": "runs/2026-10-20/official_followup.md",
+          "locator": "Verified change"
+        },
+        {
+          "artifact": "runs/2026-10-22/official_followup.md",
+          "locator": "Verified change"
+        }
+      ]
+    }
+  ],
+  "our_calls": "No calls or resolutions this week. The historical public record is 4 right-side calls out of 6; the internal record is 2 of 3. None were open by Friday. These small samples do not establish calibration.",
+  "next_week": [
+    {
+      "date": "2026-10-30",
+      "event": "BanRep interest-rate decision",
+      "family_id": "banrep_rate_decision",
+      "our_call": null,
+      "no_call_reason": "No call had been recorded by Friday."
+    }
+  ],
+  "patterns": [],
+  "data_problems": [
+    "The policy-rate and analyst-survey feeds remained unavailable; the DANE calendar captured no jobs-release clock for next week.",
+    "Case and watchlist snapshots did not yet exist for this historical week."
+  ],
+  "question": "Did anything here change what you believe, plan or want to check?"
+}
