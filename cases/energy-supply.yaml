@@ -1,0 +1,35 @@
+schema_version: case_file.v1
+case_id: energy-supply
+plain_title: Gas and electricity supply
+plain_summary: Supply rules, spot electricity prices and reservoirs can reveal pressure
+  on households and productive activity. Price movements alone do not prove a shortage.
+why_it_matters: Restrictions and supply costs can affect essential services and production.
+who_is_affected: Households, industrial users, generators and distributors.
+identifiers:
+  bills: []
+  decrees: []
+  indicator_ids:
+  - energy_bundle
+  nits: []
+  keywords:
+  - racionamiento
+  - abastecimiento de gas
+  - embalses
+current_view:
+  date: '2026-10-27'
+  text: Track official supply measures alongside electricity and reservoir observations.
+    An exact restriction, affected group or compliance date needs the complete official
+    rule before a forecast.
+  confidence: uncertain
+next_trigger:
+  date: null
+  event: A new official supply measure or a material reservoir or price change appears.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: Track official supply measures alongside electricity and reservoir observations.
+    An exact restriction, affected group or compliance date needs the complete official
+    rule before a forecast.
+  source_url: https://www.minenergia.gov.co/

@@ -1,0 +1,34 @@
+schema_version: case_file.v1
+case_id: food-tax-repeal
+plain_title: Repeal of the ultra-processed food tax
+plain_summary: A House proposal would repeal the ultra-processed food tax. The committee
+  vote and any later enactment are different milestones.
+why_it_matters: Repeal could affect food prices and public revenue.
+who_is_affected: Consumers, food producers, retailers and the public budget.
+identifiers:
+  bills:
+  - PL 012/2026 Cámara
+  decrees: []
+  indicator_ids: []
+  nits: []
+  keywords:
+  - ultraprocesados
+current_view:
+  date: '2026-10-27'
+  text: The October 26 committee opportunity supported an internal 55% forecast. Timely
+    approval or definitive nonapproval remains unverified in the declared official
+    records.
+  confidence: uncertain
+next_trigger:
+  date: null
+  event: Certified committee records establish the first-debate outcome.
+forecast_ids:
+- shadow_20261026_camara_pl012_first_debate_approval
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: The October 26 committee opportunity supported an internal 55% forecast.
+    Timely approval or definitive nonapproval remains unverified in the declared official
+    records.
+  source_url: https://www.camara.gov.co/ultraprocesados/

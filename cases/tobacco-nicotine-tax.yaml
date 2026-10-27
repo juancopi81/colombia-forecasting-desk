@@ -1,0 +1,36 @@
+schema_version: case_file.v1
+case_id: tobacco-nicotine-tax
+plain_title: Tobacco and vape tax bill
+plain_summary: A proposal would update tobacco and nicotine taxes, including a specific
+  charge per pack and earmarked revenue. A favorable report is evidence of a proposed
+  vote, not enactment.
+why_it_matters: Tax changes could affect prices, revenue and health funding.
+who_is_affected: Consumers, manufacturers, retailers and territorial health services.
+identifiers:
+  bills:
+  - PL 243/2026 Senado
+  - PL 136/2025 Cámara
+  - PL 290/2025 Cámara
+  decrees: []
+  indicator_ids: []
+  nits: []
+  keywords:
+  - tabaco
+  - nicotina
+  - vapeador
+current_view:
+  date: '2026-10-27'
+  text: The latest official report favors the bill before the final Senate stage.
+    A vote date and the adopted text remain unverified.
+  confidence: likely
+next_trigger:
+  date: null
+  event: The Senate schedules a vote or publishes its adopted text.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: The latest official report favors the bill before the final Senate stage.
+    A vote date and the adopted text remain unverified.
+  source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1638

@@ -1,0 +1,36 @@
+schema_version: case_file.v1
+case_id: budget-spending
+plain_title: The spending cut and next year’s budget
+plain_summary: The government reduced 2026 appropriations and issued the 2027 budget
+  by decree. Implementation and legal questions remain separate from the existence
+  of the instruments.
+why_it_matters: Budget authority can change public services and project funding.
+who_is_affected: Public bodies, contractors and users of public services.
+identifiers:
+  bills: []
+  decrees:
+  - Decreto 1585/2026
+  - Decreto 1599/2026
+  indicator_ids: []
+  nits: []
+  keywords:
+  - presupuesto general
+current_view:
+  date: '2026-10-27'
+  text: The complete official edition checked on October 23 records a COP 13.8 trillion
+    2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis
+    for issuance; execution and legal validity need separate evidence.
+  confidence: confirmed
+next_trigger:
+  date: null
+  event: Official allocations, execution data or a court decision change the implementation
+    picture.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: The complete official edition checked on October 23 records a COP 13.8 trillion
+    2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis
+    for issuance; execution and legal validity need separate evidence.
+  source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.666

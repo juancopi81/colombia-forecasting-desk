@@ -1,0 +1,33 @@
+schema_version: case_file.v1
+case_id: interest-rates-inflation
+plain_title: Interest rates and inflation
+plain_summary: The central bank balances persistent inflation against the effects
+  of expensive borrowing.
+why_it_matters: Policy decisions affect credit costs and household purchasing power.
+who_is_affected: Borrowers, savers, firms and public borrowers.
+identifiers:
+  bills: []
+  decrees: []
+  indicator_ids:
+  - ipc_inflation
+  - policy_rate_ibr
+  nits: []
+  keywords:
+  - Banco de la República
+  - inflación
+current_view:
+  date: '2026-10-27'
+  text: September annual inflation is 6.29%. The September 30 board decision raised
+    the policy rate to 12.25%; the next decision is October 30.
+  confidence: confirmed
+next_trigger:
+  date: '2026-10-30'
+  event: The central bank announces its next policy-rate decision.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: September annual inflation is 6.29%. The September 30 board decision raised
+    the policy rate to 12.25%; the next decision is October 30.
+  source_url: https://banrep.gov.co/es/noticias/junta-directiva/junta-directiva-septiembre-2026

@@ -1,0 +1,35 @@
+schema_version: case_file.v1
+case_id: economic-activity
+plain_title: Economic activity and demand
+plain_summary: Monthly activity, factories, shops and trade reveal whether growth
+  is broad or concentrated.
+why_it_matters: Weak output can affect employment, tax revenue and business demand.
+who_is_affected: Workers, consumers, firms and public budgets.
+identifiers:
+  bills: []
+  decrees: []
+  indicator_ids:
+  - ise_activity
+  - manufacturing
+  - retail_sales
+  nits: []
+  keywords:
+  - ISE
+  - manufactura
+  - comercio minorista
+current_view:
+  date: '2026-10-27'
+  text: The August activity index was 0.04% below a year earlier. Factory and retail
+    readings diverge; one weak month does not establish a sustained contraction.
+  confidence: confirmed
+next_trigger:
+  date: null
+  event: The next official activity, manufacturing and retail releases arrive.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: The August activity index was 0.04% below a year earlier. Factory and retail
+    readings diverge; one weak month does not establish a sustained contraction.
+  source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise

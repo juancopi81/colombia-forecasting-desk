@@ -1,0 +1,35 @@
+schema_version: case_file.v1
+case_id: pension-overseas-investment
+plain_title: Pension funds’ overseas investment rules
+plain_summary: An October decree changes the rules governing mandatory pension funds’
+  investment in overseas assets. Operative limits and transition requirements need
+  the complete official text.
+why_it_matters: Portfolio rules can affect retirement savings and fund management.
+who_is_affected: Pension savers, pension fund managers and supervised institutions.
+identifiers:
+  bills: []
+  decrees:
+  - Decreto 1490/2026
+  indicator_ids: []
+  nits: []
+  keywords:
+  - inversion en activos en el exterior
+current_view:
+  date: '2026-10-27'
+  text: The official October 6 decree concerns overseas investment rules for mandatory
+    pension funds. The case tracks implementation without inferring a market effect
+    or a compliance deadline from its title.
+  confidence: confirmed
+next_trigger:
+  date: null
+  event: The complete rule or supervisory guidance establishes the next implementation
+    step.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: The official October 6 decree concerns overseas investment rules for mandatory
+    pension funds. The case tracks implementation without inferring a market effect
+    or a compliance deadline from its title.
+  source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.650

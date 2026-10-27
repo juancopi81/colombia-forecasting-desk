@@ -1,0 +1,36 @@
+schema_version: case_file.v1
+case_id: security-purchases
+plain_title: Publication rules for security purchases
+plain_summary: A public-order bill includes proposed restrictions on publication of
+  reserved security purchases. The adopted provision and the committee outcome require
+  official records.
+why_it_matters: Publication rules affect public oversight of security spending.
+who_is_affected: Security agencies, suppliers and people monitoring public procurement.
+identifiers:
+  bills:
+  - PL 433/2026 Cámara
+  - PL 296/2026 Senado
+  decrees: []
+  indicator_ids: []
+  nits: []
+  keywords:
+  - compras reservadas
+  - orden publico
+current_view:
+  date: '2026-10-27'
+  text: Official material includes competing reports on the public-order bill. The
+    October 21 debate opportunity does not establish a certified vote or an adopted
+    publication exemption.
+  confidence: uncertain
+next_trigger:
+  date: null
+  event: The official committee record or adopted bill text is published.
+forecast_ids: []
+status: active
+park_after_days: 21
+updates:
+- date: '2026-10-27'
+  change: Official material includes competing reports on the public-order bill. The
+    October 21 debate opportunity does not establish a certified vote or an adopted
+    publication exemption.
+  source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
