@@ -59,7 +59,7 @@ metasources:
 
   - id: banrep_eme_expectations
     name: Banco de la Republica - Encuesta mensual de expectativas (EME)
-    url: https://www.banrep.gov.co/es/taxonomy/term/3996
+    url: https://suameca.banrep.gov.co/estadisticas-economicas-back/rest/estadisticaEconomicaRestService/consultaMenuXopcion?opcion=ENCUESTAS
     type: economic_indicator
     country_relevance: high
     access_status: html_public
@@ -71,7 +71,7 @@ metasources:
     enabled: true
     onboarding_status: working
     max_items: 1
-    notes: "Official analyst-consensus baseline for inflation, the policy rate, and TRM. The parser discovers the newest archive entry and XLSX, extracts compact label-based summaries, and records explicit staleness. Use as a baseline input, never as a conclusion."
+    notes: "Official SUAMECA survey menu discovers the dated current EME XLSX (the old website archive stops at June 2026 and its detail page blocks automated access). The parser records fieldwork, age and unknown exact publication dates explicitly. Point estimates are context, never outcome probabilities. Verified issuer-chain completion is scoped to this source."
 
   - id: dane_rss
     name: DANE — RSS Noticias

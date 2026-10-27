@@ -762,7 +762,7 @@ def _parse_banrep_eme_inflation(
     start: int | None = None
     for index, row in enumerate(rows):
         label = fold_accents((row.get("A") or "").strip().lower())
-        if label == "expectativas de inflacion total":
+        if label in {"expectativas de inflacion total", "expectativas de inflacion"}:
             start = index + 1
             break
     if start is None:
@@ -1009,6 +1009,81 @@ def _fetch_banrep_eme_expectations(
             metadata=metadata,
         )
     ]
+
+
+def _fetch_banrep_eme_portal(
+    source: Metasource, client: httpx.Client, fetched_at: str
+) -> list[RawItem]:
+    """Discover the current XLSX from the public portal, avoiding the retired archive."""
+    response = _http_get(client, source.url)
+    menu = response.json()
+    documents: list[dict[str, Any]] = []
+
+    def collect(nodes: Any) -> None:
+        if not isinstance(nodes, list):
+            return
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            if str(node.get("enlace_pagina_externa", "")).strip() == "17000":
+                documents.extend(doc for doc in node.get("listaDocumento", []) if isinstance(doc, dict))
+            collect(node.get("menuHijos"))
+
+    collect(menu)
+    workbook_url = None
+    period = None
+    for document in documents:
+        candidate = str(document.get("nombreAdjunto", ""))
+        parsed_url = urlsplit(candidate)
+        match = re.search(r"/res_inf_([a-z]{3})(20\d{2})\.xlsx$", parsed_url.path, re.I)
+        if parsed_url.scheme != "https" or parsed_url.hostname != "suameca.banrep.gov.co" or not match:
+            continue
+        month = _MONTH_ABBR_ES.get(match.group(1).lower())
+        if month:
+            workbook_url = candidate
+            period = f"{match.group(2)}-{month:02d}"
+            break
+    if not workbook_url or not period:
+        raise ValueError("BanRep EME portal has no official dated current-results workbook")
+    workbook_response = _http_get(client, workbook_url)
+    parsed = _parse_banrep_eme_xlsx(
+        workbook_response.content, release_date=f"{period}-01T00:00:00Z"
+    )
+    if parsed is None or not parsed.get("fieldwork_end"):
+        raise ValueError("BanRep EME portal workbook lacks required consensus or fieldwork dates")
+    if parsed["fieldwork_end"][:7] != period or parsed["fieldwork_end"] > fetched_at[:10]:
+        raise ValueError("BanRep EME workbook fieldwork dates do not match its non-future survey period")
+    # Menu document dates are migration metadata (2024), not survey publication
+    # dates. Keep publication unknown; fieldwork is a conservative age anchor.
+    freshness = _banrep_eme_freshness(parsed["fieldwork_end"], fetched_at)
+    expectations = parsed["expectations"]
+    policy = expectations["policy_rate"]
+    trm = expectations["trm"]["nearest"]
+    inflation = expectations["inflation"].get("year_end") or next(iter(expectations["inflation"].values()))
+    title = f"BanRep EME consensus baseline - {period}"
+    return [RawItem(
+        id=_make_id(source.id, workbook_url, title), source_id=source.id,
+        source_name=source.name, source_type=source.type, url=workbook_url,
+        title=title, fetched_at=fetched_at, published_at=None,
+        raw_text=(f"{title}. Official consensus baseline, not a conclusion. "
+                  f"Policy-rate median for {policy['horizon_date']}: {policy['median_pct']:.2f}%. "
+                  f"TRM median for {trm['horizon_period']}: {trm['median_cop_per_usd']:.2f} COP/USD. "
+                  f"Inflation mean for {inflation['horizon_period']}: {inflation['mean_pct']:.2f}%. "
+                  f"Fieldwork ended {parsed['fieldwork_end']}; exact publication date unavailable. "
+                  "Point estimates are not outcome probabilities."),
+        metadata={
+            "content_extraction": "banrep_eme_portal_xlsx", "event_type": "consensus_baseline",
+            "baseline_role": "consensus_only", "survey_period": period,
+            "release_date": None, "fieldwork_start": parsed["fieldwork_start"],
+            "fieldwork_end": parsed["fieldwork_end"], "archive_url": source.url,
+            "workbook_url": workbook_url, "expectations": expectations,
+            "publication_date_known": False, "freshness_basis": "fieldwork_end",
+            "file_last_modified": workbook_response.headers.get("last-modified"),
+            "participant_counts": {"policy_rate": policy.get("participants"),
+                                   "trm": trm.get("participants"), "inflation": inflation.get("participants")},
+            **freshness,
+        },
+    )]
 
 
 def _extract_banrep_minutas_links(

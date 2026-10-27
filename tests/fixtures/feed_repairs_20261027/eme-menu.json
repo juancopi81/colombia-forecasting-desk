@@ -1,0 +1,995 @@
+[
+  {
+    "id": 10001,
+    "idPadre": 0,
+    "nombre": "1. Encuestas sobre expectativas económicas",
+    "clasificacionMenu": "ENCUESTAS",
+    "idCarguePlan": " ",
+    "mostrarHijos": "N",
+    "direccion_a_tabla": "N",
+    "idMenuJson": " ",
+    "idSubmenuJson": " ",
+    "enlace_reporte_tabla": " ",
+    "enlace_pagina_externa": " ",
+    "enlace_dashboard": " ",
+    "ordenPublicacion": "9999999",
+    "ordenMenu": "10001",
+    "urlAcceso": " ",
+    "menuHijos": [
+      {
+        "id": 100011,
+        "idPadre": 10001,
+        "nombre": "1.1. Encuesta mensual de expectativas de analistas económicos (EME) \u003cbr\u003e\u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Mensual (disponible desde: septiembre de 2003)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17000",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100011",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 1132,
+            "idSerie": 17000,
+            "tipo": "DATOS",
+            "descripcion": "Serie histórica (disponible desde 2001)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_analistas_economicos/series_historicas.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 801,
+            "idSerie": 17000,
+            "tipo": "DATOS",
+            "descripcion": "Últimos datos disponibles o consulta por mes de datos de la encuesta (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_analistas_economicos/res_inf_oct2026.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 802,
+            "idSerie": 17000,
+            "tipo": "DATOS",
+            "descripcion": "Gráficos último mes disponible (PDF)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_analistas_economicos/eme-graficas.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 1133,
+            "idSerie": 17000,
+            "tipo": "DATOS",
+            "descripcion": "Rankings históricos (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "/estadisticas-economicas/detalle-encuestas?encuesta\u003dRANKING_HISTORICO_ENCUESTA_MENSUAL_EXPECTATIVAS",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 804,
+            "idSerie": 17000,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_expectativas_economicas_eme/guia_metodologica_OE_EME_2025.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 803,
+            "idSerie": 17000,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_expectativas_economicas_eme/ficha_metodologica_OE_EME_2025.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100012,
+        "idPadre": 10001,
+        "nombre": "1.2. Encuesta mensual de expectativas económicas de empresarios (EMEE) \u003cbr\u003e\u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Mensual (disponible desde: septiembre de 2020)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17001",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100012",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 807,
+            "idSerie": 17001,
+            "tipo": "DATOS",
+            "descripcion": "Resultados por actividad económica (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_expectativas_economicas_empresarios/encuesta_mensual_expectativas_por_actividad_economica.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 806,
+            "idSerie": 17001,
+            "tipo": "DATOS",
+            "descripcion": "Resultados submuestra 5 sectores (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_expectativas_economicas_empresarios/encuesta_mensual_expectativas_5_sectores.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 805,
+            "idSerie": 17001,
+            "tipo": "DATOS",
+            "descripcion": "Resultados para el total de la muestra (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_expectativas_economicas_empresarios/encuesta_mensual_expectativas_total.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 809,
+            "idSerie": 17001,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/guia-metodologica-encuesta-mensual-emee.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 808,
+            "idSerie": 17001,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/ficha-tecnica-encuesta-mensual-emee.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100013,
+        "idPadre": 10001,
+        "nombre": "1.3. Encuesta trimestral de expectativas económicas (ETE) \u003cbr\u003e\u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible desde: septiembre de 2000)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17002",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100013",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 812,
+            "idSerie": 17002,
+            "tipo": "DATOS",
+            "descripcion": "Reportes de la encuesta de expectativas económicas",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/es/publicaciones-serie/2457/Encuesta de expectativas",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 811,
+            "idSerie": 17002,
+            "tipo": "DATOS",
+            "descripcion": "Reporte Encuesta trimestral de expectativas (pdf)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_trimestral_expectativas_economicas_ete/encuesta_trimestral_de_expectativas.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 810,
+            "idSerie": 17002,
+            "tipo": "DATOS",
+            "descripcion": "Series históricas Encuesta Trimestral de Expectativas (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_trimestral_expectativas_economicas_ete/encuesta_trimestral_de_expectativas.xlsx",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 813,
+            "idSerie": 17002,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/paginas/encuesta-expectativas-trimestral-ficha-metodologica.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 815,
+            "idSerie": 17002,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "¿Cómo leer los resultados?",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/paginas/encuesta-expectativas-trimestral-leer-resultados.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 814,
+            "idSerie": 17002,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/encuesta-expectativas-trimestral-guia-metodologica.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100014,
+        "idPadre": 10001,
+        "nombre": "1.4. Encuesta de proyecciones macroeconómicas de analistas locales y extranjeros \u003cbr\u003e\u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible de junio de 2004 a abril de 2020)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17003",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100014",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 816,
+            "idSerie": 17003,
+            "tipo": "DATOS",
+            "descripcion": "Pronósticos de analistas (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/paginas/Pronosticos_analistas_informe_inflacion.xls",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 10002,
+    "idPadre": 0,
+    "nombre": "2. Encuestas del sector financiero",
+    "clasificacionMenu": "ENCUESTAS",
+    "idCarguePlan": " ",
+    "mostrarHijos": "N",
+    "direccion_a_tabla": "N",
+    "idMenuJson": " ",
+    "idSubmenuJson": " ",
+    "enlace_reporte_tabla": " ",
+    "enlace_pagina_externa": " ",
+    "enlace_dashboard": " ",
+    "ordenPublicacion": "9999999",
+    "ordenMenu": "10002",
+    "urlAcceso": " ",
+    "menuHijos": [
+      {
+        "id": 100021,
+        "idPadre": 10002,
+        "nombre": "2.1. Encuesta de endeudamiento externo y cupos \u003cbr\u003e \u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible desde: abril de 2014)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17004",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100021",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 818,
+            "idSerie": 17004,
+            "tipo": "DATOS",
+            "descripcion": "Informes y cuestionarios trimestrales",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/es/publicaciones-investigaciones/informe-evolucion-endeudamiento-bancos",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 820,
+            "idSerie": 17004,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/guia-metodologica-evolucion-endeudamiento-externo.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 819,
+            "idSerie": 17004,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/sites/default/files/ficha-metodologica-evolucion-endeudamiento-externo.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100022,
+        "idPadre": 10002,
+        "nombre": "2.2. Encuesta de percepción sobre riesgos del sistema financiero \u003cbr\u003e \u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Semestral (disponible desde: 2013)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17005",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100022",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 821,
+            "idSerie": 17005,
+            "tipo": "DATOS",
+            "descripcion": "Informes y resultados semestrales",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/es/publicaciones-investigaciones/encuesta-percepcion-riesgo-sistema-financiero",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 823,
+            "idSerie": 17005,
+            "tipo": "DATOS",
+            "descripcion": "Porcentaje de cobertura (Excel)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://doi.org/n488",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 825,
+            "idSerie": 17005,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://repositorio.banrep.gov.co/server/api/core/bitstreams/744aa79b-9944-4820-83fb-c948e87f5612/content",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 824,
+            "idSerie": 17005,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://repositorio.banrep.gov.co/server/api/core/bitstreams/bf014be1-1d93-4b5b-939b-6fa99cf7cc5d/content",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100023,
+        "idPadre": 10002,
+        "nombre": "2.3. Encuesta sobre la situación actual del microcrédito en Colombia \u003cbr\u003e \u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible desde: diciembre de 2012)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17006",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100023",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 827,
+            "idSerie": 17006,
+            "tipo": "DATOS",
+            "descripcion": "Reportes y gráficos trimestrales",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/es/publicaciones-investigaciones/reporte-situacion-microcredito-colombia",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100024,
+        "idPadre": 10002,
+        "nombre": "2.4. Encuesta de la situación del Crédito en Colombia \u003cbr\u003e \u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible desde: abril de 2008)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17007",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100024",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 831,
+            "idSerie": 17007,
+            "tipo": "CUESTIONARIOS_PREGUNTAS",
+            "descripcion": "Cuestionario de marzo y septiembre",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-cuestionario-septiembre-marzo.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 834,
+            "idSerie": 17007,
+            "tipo": "CUESTIONARIOS_PREGUNTAS",
+            "descripcion": "Preguntas frecuentes",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-preguntas-frecuentes.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 833,
+            "idSerie": 17007,
+            "tipo": "CUESTIONARIOS_PREGUNTAS",
+            "descripcion": "Cuestionario de diciembre",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-cuestionario-diciembre.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 832,
+            "idSerie": 17007,
+            "tipo": "CUESTIONARIOS_PREGUNTAS",
+            "descripcion": "Cuestionario de junio",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-cuestionario-junio.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 826,
+            "idSerie": 17007,
+            "tipo": "DATOS",
+            "descripcion": "Reportes y datos trimestrales",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/publicaciones-investigaciones/reporte-situacion-credito-colombia",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 843,
+            "idSerie": 17007,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha Metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-ficha-metodologica.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 835,
+            "idSerie": 17007,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Guía Metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-guia-metodologica.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 828,
+            "idSerie": 17007,
+            "tipo": "GENERALIDADES",
+            "descripcion": "Resumen",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-resumen.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 830,
+            "idSerie": 17007,
+            "tipo": "GENERALIDADES",
+            "descripcion": "Instrucciones de diligenciamiento",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-instrucciones-diligenciamiento.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 829,
+            "idSerie": 17007,
+            "tipo": "GENERALIDADES",
+            "descripcion": "Presentación",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuestas_creditos_DEFI/encuesta-credito-presentacion.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 10003,
+    "idPadre": 0,
+    "nombre": "3. Otras encuestas",
+    "clasificacionMenu": "ENCUESTAS",
+    "idCarguePlan": " ",
+    "mostrarHijos": "N",
+    "direccion_a_tabla": "N",
+    "idMenuJson": " ",
+    "idSubmenuJson": " ",
+    "enlace_reporte_tabla": " ",
+    "enlace_pagina_externa": " ",
+    "enlace_dashboard": " ",
+    "ordenPublicacion": "9999999",
+    "ordenMenu": "10003",
+    "urlAcceso": " ",
+    "menuHijos": [
+      {
+        "id": 100031,
+        "idPadre": 10003,
+        "nombre": "3.1. Encuesta de Tráfico Fronterizo (ETF) \u003cbr\u003e \u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trimestral (disponible desde: 2000)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17008",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100031",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 836,
+            "idSerie": 17008,
+            "tipo": "DATOS",
+            "descripcion": "Frecuencia semanal del viaje en la semana de la encuesta",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "/estadisticas-economicas-back/reporte-dv.html?path\u003detf_frecuencia_semanal_del_viaje",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 837,
+            "idSerie": 17008,
+            "tipo": "DATOS",
+            "descripcion": "Número de viajeros y vehículos que transitan",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "/estadisticas-economicas-back/reporte-dv.html?path\u003detf_numero_de_viajeros_y_vehiculos_que_transitan",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 838,
+            "idSerie": 17008,
+            "tipo": "DATOS",
+            "descripcion": "Porcentaje de viajeros por motivo viaje",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "/estadisticas-economicas-back/reporte-dv.html?path\u003detf_porcentaje_de_viajeros_por_motivo_viaje",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 839,
+            "idSerie": 17008,
+            "tipo": "DATOS",
+            "descripcion": " Viajeros que pernoctan, que no pernoctan y promedio de viajes ",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "/estadisticas-economicas-back/reporte-dv.html?path\u003detf_viajeros_que_percnotan_y_no_percnotan",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 842,
+            "idSerie": 17008,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Metodología",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/sector_externo_tasas_cambio_derivados/encuesta_trafico_fronterizo/Metodologia_web.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 840,
+            "idSerie": 17008,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Fechas de recolección de la Encuesta de Tráfico Fronterizo (ETF)",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_trafico_fronterizo/calendario_recoleccion_etf.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 841,
+            "idSerie": 17008,
+            "tipo": "DOCUMENTOS",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/sector_externo_tasas_cambio_derivados/encuesta_trafico_fronterizo/ficha_metodologica_etf.pdf",
+            "fecha": {
+              "year": 2024,
+              "month": 7,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 1172,
+            "idSerie": 17008,
+            "tipo": "FICHA_METODOLOGICA",
+            "descripcion": "Ficha metodológica",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/sector_externo_tasas_cambio_derivados/encuesta_trafico_fronterizo/ficha_metodologica_etf.pdf",
+            "fecha": {
+              "year": 2025,
+              "month": 0,
+              "dayOfMonth": 21,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          },
+          {
+            "id": 1173,
+            "idSerie": 17008,
+            "tipo": "GUIA_METODOLOGICA",
+            "descripcion": "Metodología",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://suameca.banrep.gov.co/archivos/sector_externo_tasas_cambio_derivados/encuesta_trafico_fronterizo/Metodologia_web.pdf",
+            "fecha": {
+              "year": 2025,
+              "month": 0,
+              "dayOfMonth": 21,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 100032,
+        "idPadre": 10003,
+        "nombre": "3.2. Encuesta trienal del Banco de Pagos Internacionales (BIS) sobre el mercado cambiario y de derivados \u003cbr\u003e\u003cspan class\u003d\"span-fecha-periodicidad\"\u003ePeriodicidad: Trienal (disponible desde: 2001)\u003c/span\u003e",
+        "clasificacionMenu": "ENCUESTAS",
+        "idCarguePlan": " ",
+        "mostrarHijos": "N",
+        "direccion_a_tabla": "N",
+        "idMenuJson": " ",
+        "idSubmenuJson": " ",
+        "enlace_reporte_tabla": " ",
+        "enlace_pagina_externa": "17009",
+        "enlace_dashboard": " ",
+        "ordenPublicacion": "9999999",
+        "ordenMenu": "100032",
+        "urlAcceso": " ",
+        "menuHijos": [],
+        "listaDocumento": [
+          {
+            "id": 1134,
+            "idSerie": 17009,
+            "tipo": "DATOS",
+            "descripcion": "Publicaciones",
+            "estado": "ACTIVO",
+            "nombreAdjunto": "https://www.banrep.gov.co/es/estadisticas/encuesta-bis",
+            "fecha": {
+              "year": 2024,
+              "month": 9,
+              "dayOfMonth": 8,
+              "hourOfDay": 0,
+              "minute": 0,
+              "second": 0
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

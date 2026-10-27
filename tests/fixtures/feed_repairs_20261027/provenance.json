@@ -1,0 +1,9 @@
+{
+  "retrieved_on": "2026-10-27",
+  "labor_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/mercado-laboral/empleo-y-desempleo",
+  "eme_menu_url": "https://suameca.banrep.gov.co/estadisticas-economicas-back/rest/estadisticaEconomicaRestService/consultaMenuXopcion?opcion=ENCUESTAS",
+  "eme_workbook_url": "https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_analistas_economicos/res_inf_oct2026.xlsx",
+  "issuer_url": "https://cacerts.digicert.com/GeoTrustEVRSACAG2.crt",
+  "issuer_pem_sha256": "6053e228335711fa84b563c214750b909d686ea61f0964b5697993b34c1df184",
+  "note": "Labor fixture retains current national/city paragraphs, GEIH current rows and a newer RELAB row. The workbook is the downloaded official aggregate results file. Portal document dates are migration metadata; exact EME publication date is unknown."
+}

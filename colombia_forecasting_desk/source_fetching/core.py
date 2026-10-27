@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..observability import RunTrace
+from ..banrep_tls import banrep_ssl_context
 from .common import *
 from .camara import *
 from .corte import *
@@ -19,6 +20,9 @@ from .socrata import *
 
 def fetch_html(source: Metasource, client: httpx.Client) -> list[RawItem]:
     fetched_at = _now_iso()
+    if source.id == "banrep_eme_expectations" and urlsplit(source.url).hostname == "suameca.banrep.gov.co":
+        with httpx.Client(timeout=30, follow_redirects=True, verify=banrep_ssl_context()) as eme_client:
+            return _fetch_banrep_eme_portal(source, eme_client, fetched_at)
     if source.id == "corte_constitucional_comunicados":
         return _fetch_corte_comunicados_api(source, client, fetched_at)
     if source.id == "dian_proyectos_normas":
