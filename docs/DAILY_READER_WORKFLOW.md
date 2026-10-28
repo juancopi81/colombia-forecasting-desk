@@ -126,6 +126,10 @@ The final weekday message is `reader_brief.md` verbatim. Counts, validation logs
 and the old pilot retrospective stay in supporting artifacts. Avoid appending
 another process report after the reader brief.
 
+After the brief (on Fridays, after the weekly brief), write the Spanish X draft
+with `prompts/x_post_es.md` and add it below the brief. It is the only addition
+to the final message; Juan reviews it and posts it by hand.
+
 ## Fridays and usefulness
 
 On Fridays, capture the current timezone-aware timestamp and build that ISO
@@ -137,7 +141,8 @@ week's facts with that timestamp as `--cutoff-at`:
 ./.venv/bin/python scripts/finalize_weekly_brief.py --week YYYY-Www
 ```
 
-The Friday final message is `weekly_brief.md` verbatim, at most 450 words. Use
+The Friday final message is `weekly_brief.md` verbatim, at most 450 words,
+followed only by the X draft. Use
 dated case snapshots and archived first-release evidence, never live cases or
 later resolutions to rewrite a past week. A retrospective demo is labeled with
 its historical cutoff; it is not a new forecast. Missing inputs remain explicit

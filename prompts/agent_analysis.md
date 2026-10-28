@@ -89,8 +89,10 @@ rate when available. If no informative baseline exists, use
 "persistence" merely because the latest observation lies on the forecast
 threshold.
 
-The shadow forecast is internal. Do not publish it, write an X post, create a
-public recommendation, or change `forecasts/forecast_log.jsonl`.
+The shadow forecast is internal. In this pass, do not publish it, write an X
+post, create a public recommendation, or change `forecasts/forecast_log.jsonl`.
+Only the later Spanish X draft (`prompts/x_post_es.md`) may quote it, for Juan
+to review and post by hand.
 
 If no clean shadow forecast exists, set `shadow_forecast` to `null` and choose
 `promote_to_m3`, `insight_only`, or `abstain` as appropriate. Abstention is
