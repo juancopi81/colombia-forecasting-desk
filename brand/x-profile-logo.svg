@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <defs><radialGradient id="bg" cx="50%" cy="42%" r="70%">
+    <stop offset="0" stop-color="#16305A"/><stop offset="1" stop-color="#070F1F"/>
+  </radialGradient></defs>
+  <rect width="1000" height="1000" fill="url(#bg)"/>
+  <path d="M266.65 778.35 A330.0 330.0 0 0 1 493.09 215.07" stroke="#FFCD1F" stroke-width="92.0" fill="none"/><path d="M506.91 215.07 A330.0 330.0 0 0 1 802.17 412.36" stroke="#2F6BFF" stroke-width="92.0" fill="none"/><path d="M807.46 425.13 A330.0 330.0 0 0 1 733.35 778.35" stroke="#EE2A35" stroke-width="92.0" fill="none"/><circle cx="266.65" cy="778.35" r="46.0" fill="#FFCD1F"/><circle cx="733.35" cy="778.35" r="46.0" fill="#EE2A35"/><line x1="458.0" y1="806.0" x2="542.0" y2="670.0" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/><circle cx="452.0" cy="696.0" r="23" fill="none" stroke="#FFFFFF" stroke-width="15"/><circle cx="548.0" cy="780.0" r="23" fill="none" stroke="#FFFFFF" stroke-width="15"/><g transform="rotate(40.50 500.0 545.0)"><path d="M470.0 545.0 L492.0 305.0 Q500.0 289.0 508.0 305.0 L530.0 545.0 Z" fill="#FFFFFF"/></g><circle cx="500.0" cy="545.0" r="48" fill="#FFFFFF"/><circle cx="500.0" cy="545.0" r="18" fill="#0B1830"/>
+</svg>
