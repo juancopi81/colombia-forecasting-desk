@@ -27,8 +27,9 @@ def main(argv=None) -> int:
         if not run_dir.is_dir():
             raise ValueError("run directory does not exist")
         payload = build_watchlist_hits(run_dir, load_watchlist(args.watchlist), cache_dir=args.cache_dir, metasources_path=args.metasources)
+        rendered = render_watchlist_hits(payload)
         (run_dir / "watchlist_hits.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        (run_dir / "watchlist_hits.md").write_text(render_watchlist_hits(payload), encoding="utf-8")
+        (run_dir / "watchlist_hits.md").write_text(rendered, encoding="utf-8")
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

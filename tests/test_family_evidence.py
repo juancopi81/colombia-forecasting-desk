@@ -33,9 +33,13 @@ def workbook(*, national=True, first_td=True):
     rows.extend([row(28, {"A": "Total 13 ciudades"}), row(30, {"A": "Tasa de Desocupación (TD)", "C": 1.1}), row(51, {"A": "Actualizado el 30 de septiembre de 2026"})])
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        archive.writestr("xl/workbook.xml", '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + ("Total nacional" if national else "Total 13 ciudades") + '" sheetId="99" r:id="rId37"/></sheets></workbook>')
-        archive.writestr("xl/_rels/workbook.xml.rels", '<Relationships><Relationship Id="rId37" Target="/xl/worksheets/custom.xml"/></Relationships>')
-        archive.writestr("xl/worksheets/custom.xml", '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' + "".join(rows) + '</sheetData></worksheet>')
+        def write_xml(name, content):
+            # Repeated mocked downloads must have identical source bytes even
+            # when the test crosses a ZIP timestamp's two-second boundary.
+            archive.writestr(zipfile.ZipInfo(name, date_time=(2026, 9, 30, 0, 0, 0)), content)
+        write_xml("xl/workbook.xml", '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + ("Total nacional" if national else "Total 13 ciudades") + '" sheetId="99" r:id="rId37"/></sheets></workbook>')
+        write_xml("xl/_rels/workbook.xml.rels", '<Relationships><Relationship Id="rId37" Target="/xl/worksheets/custom.xml"/></Relationships>')
+        write_xml("xl/worksheets/custom.xml", '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' + "".join(rows) + '</sheetData></worksheet>')
     return buffer.getvalue()
 
 

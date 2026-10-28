@@ -14,9 +14,11 @@ import yaml
 
 from .config_loader import load_metasources
 from .legal_identity import parse_legal_act_records
+from .plain_language import describe_datasets, validate_plain_text
 from .schemas.watchlist_hits import KINDS, validate
 
 ARTIFACTS = ("raw_items.json", "cleaned_items.json", "legislative_reconciler.json", "indicator_watch.json", "analyst_leads.json", "m2_review_packet.json")
+ARTIFACT_NAMES = dict(zip(ARTIFACTS, ("Collected official records", "Cleaned official records", "Reconciled bills", "Official indicators", "Candidate findings", "Review findings")))
 _NIT_FIELDS = {"nit", "registry_key", "nit_entidad", "nit_de_la_entidad", "documento_proveedor", "identificacion_del_contratista", "documento_contratista"}
 _DOCUMENT_FIELDS = {"tipodocproveedor", "tipo_identifi_del_contratista", "tipo_documento", "tipo_documento_proveedor"}
 _BILL = re.compile(r"\b(?:pl|proyecto de ley)\s*(?:no\.?\s*)?0*(\d+)\s*(?:/|de\s*)\s*(20\d{2})\s*(camara|senado)\b")
@@ -156,7 +158,9 @@ def match_record(entry: dict, record: dict, *, divipola: list[dict] = ()) -> str
         keys = lambda texts: {(x["kind"], x["number"], x["year"]) for x in parse_legal_act_records(re.sub(r"(Decreto\s*\d+)/(20\d{2})", r"\1 de \2", texts, flags=re.I))}
         if keys(haystack) & keys(" ".join(identifiers["decrees"])):
             return "decree"
-    codes = {normalize_divipola(c) for c in identifiers.get("divipola", [])}
+    # A public body's location is not its identity. Geographic identifiers and
+    # catalog aliases are used only by entries explicitly watching a place.
+    codes = {normalize_divipola(c) for c in identifiers.get("divipola", [])} if entry["kind"] == "place" else set()
     if codes:
         for key, value in fields:
             if key in {"cod_mpio", "codigo_municipio", "divipola", "divipola_code", "cod_dpto", "codigo_departamento"} and normalize_divipola(value) in codes:
@@ -173,6 +177,34 @@ def match_record(entry: dict, record: dict, *, divipola: list[dict] = ()) -> str
     if any(re.search(r"(?<!\w)" + re.escape(normalize_name(word)) + r"(?!\w)", normalized) for word in identifiers.get("keywords", [])):
         return "keyword_candidate"
     return None
+
+
+def _hit_key(hit: dict) -> tuple[str, str, str]:
+    return hit["watch_id"], hit["source_id"], hit["url"]
+
+
+def _pattern_key(pattern: dict) -> tuple[str, str, str]:
+    return pattern["watch_id"], pattern["pattern_id"], json.dumps(pattern["numbers"], sort_keys=True, ensure_ascii=False)
+
+
+def _previous_reports(run_dir: Path) -> tuple[set, set, list[str]]:
+    """Only earlier dated reports establish what the reader already received."""
+    hits, patterns, dates = set(), set(), []
+    for previous in sorted(run_dir.parent.iterdir()):
+        try:
+            day = date.fromisoformat(previous.name).isoformat()
+        except ValueError:
+            continue
+        path = previous / "watchlist_hits.json"
+        if day >= run_dir.name or not path.is_file():
+            continue
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if validate(payload) or payload["run_date"] != day:
+            raise ValueError(f"Cannot establish previously reported hits from {path}")
+        hits.update(_hit_key(hit) for hit in payload["hits"])
+        patterns.update(_pattern_key(pattern) for pattern in payload["patterns"])
+        dates.append(day)
+    return hits, patterns, dates
 
 
 def _records(payload):
@@ -195,10 +227,13 @@ def build_watchlist_hits(run_dir: Path, config: dict, *, cache_dir: Path, metaso
         official_ids = {source.id for source in load_metasources(metasources_path) if source.trust_role not in {"media_signal", "polling_signal"}}
     catalog_path = cache_dir / "divipola.json"
     catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {}
-    payload = {"schema_version": "watchlist_hits.v1", "run_date": run_date, "hits": [], "patterns": [], "coverage_gaps": [], "demo_watch_ids": []}
+    prior_hits, prior_patterns, prior_dates = _previous_reports(run_dir)
+    payload = {"schema_version": "watchlist_hits.v1", "run_date": run_date, "hits": [], "patterns": [], "coverage_gaps": [], "demo_watch_ids": [],
+               "previous_report_dates": prior_dates, "previously_reported_hits": 0, "previously_reported_patterns": 0,
+               "watch_labels": {entry["watch_id"]: entry["label"] for entry in config["entries"]}}
     if catalog:
         payload["divipola_vintage"] = {key: catalog.get(key) for key in ("vintage", "rows_updated_at", "fetched_at", "source_url")}
-    if any(entry["identifiers"].get("divipola") for entry in config["entries"]) and not catalog.get("rows"):
+    if any(entry["kind"] == "place" and entry["identifiers"].get("divipola") for entry in config["entries"]) and not catalog.get("rows"):
         payload["coverage_gaps"].append("DANE DIVIPOLA cache unavailable; only configured names and exact codes can match.")
     seen = set()
     for entry in config["entries"]:
@@ -225,6 +260,9 @@ def build_watchlist_hits(run_dir: Path, config: dict, *, cache_dir: Path, metaso
                 if key in seen:
                     continue
                 seen.add(key)
+                if key in prior_hits:
+                    payload["previously_reported_hits"] += 1
+                    continue
                 # Contract text can name an individual even when a place/topic
                 # was the match. Do not copy any supplier identity into hits.
                 procurement = source_id.startswith("secop")
@@ -241,7 +279,11 @@ def build_watchlist_hits(run_dir: Path, config: dict, *, cache_dir: Path, metaso
             except ValueError:
                 fetched_day = "9999"
             if history.get("as_of", "9999") <= run_date and fetched_day <= run_date:
-                payload["patterns"].extend(history.get("patterns", []))
+                for pattern in history.get("patterns", []):
+                    if _pattern_key(pattern) in prior_patterns:
+                        payload["previously_reported_patterns"] += 1
+                    else:
+                        payload["patterns"].append({**pattern, "plain_text": describe_datasets(pattern["plain_text"])})
                 payload["coverage_gaps"].extend(f"{entry['watch_id']}: {gap}" for gap in history.get("coverage_gaps", []))
                 payload.setdefault("history_vintages", []).append({"watch_id": entry["watch_id"], "as_of": history.get("as_of"), "fetched_at": history.get("fetched_at")})
                 if history["as_of"] < run_date:
@@ -262,11 +304,22 @@ def render_watchlist_hits(payload: dict) -> str:
     if payload.get("demo_watch_ids"):
         lines += ["Includes clearly labeled demo organizations; replace them with your own watchlist.", ""]
     for hit in payload["hits"]:
-        lines.append(f"- [{hit['title']}]({hit['url']}) — {hit['summary']} Match: {hit['matched_on']}.")
+        match = {"nit": "organization identifier", "divipola": "official place code", "name_candidate": "possible name match", "keyword_candidate": "possible topic match", "bill": "exact bill", "decree": "exact decree"}.get(hit["matched_on"], "record match")
+        lines.append(f"- [{hit['title']}]({hit['url']}) — {hit['summary']} Basis: {match}.")
     if not payload["hits"]:
-        lines.append("No matching records were captured in these daily artifacts.")
+        lines.append("No new matching records were captured in these daily artifacts.")
     for pattern in payload["patterns"]:
         lines.extend(["", f"- {pattern['plain_text']} {pattern['caveat']}"])
     if payload.get("coverage_gaps"):
-        lines += ["", "Data coverage:"] + [f"- {gap}" for gap in payload["coverage_gaps"]]
-    return "\n".join(lines) + "\n"
+        lines += ["", "Data coverage:"]
+        for gap in payload["coverage_gaps"]:
+            for identity, label in payload.get("watch_labels", {}).items():
+                gap = gap.replace(identity, label)
+            for filename, label in ARTIFACT_NAMES.items():
+                gap = gap.replace(filename, label)
+            lines.append(f"- {gap}")
+    rendered = describe_datasets("\n".join(lines) + "\n")
+    issues = validate_plain_text(rendered)
+    if issues:
+        raise ValueError("; ".join(issues))
+    return rendered

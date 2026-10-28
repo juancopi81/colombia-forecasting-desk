@@ -23,7 +23,8 @@ current_view:
 next_trigger:
   date: '2026-10-30'
   event: The central bank announces its next policy-rate decision.
-forecast_ids: []
+forecast_ids:
+- family_banrep_rate_decision_2026-10-30
 status: active
 park_after_days: 21
 updates:

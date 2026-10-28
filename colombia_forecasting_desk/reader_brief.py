@@ -28,6 +28,11 @@ def _quiet(brief: dict[str, Any]) -> bool:
     )
 
 
+def _separate_open_forecasts(brief: dict[str, Any]) -> list[dict[str, Any]]:
+    upcoming_ids = {item["our_call"]["forecast_id"] for item in brief["coming_up"] if item.get("our_call")}
+    return [row for row in brief["open_forecasts"] if row["forecast_id"] not in upcoming_ids]
+
+
 def _markdown(brief: dict[str, Any]) -> str:
     if _quiet(brief):
         return "Nothing needs you today.\n"
@@ -51,9 +56,10 @@ def _markdown(brief: dict[str, Any]) -> str:
             view = (f"Our call: {_percent(call['probability'])} — {_md(call['outcome'])}."
                     if call else _md(item["no_call_reason"]))
             lines.append(f"- {item['date']} — {_md(item['event'])}. {view}")
-    if brief["open_forecasts"]:
+    open_forecasts = _separate_open_forecasts(brief)
+    if open_forecasts:
         lines.extend(["", "**Open forecasts**"])
-        for item in brief["open_forecasts"]:
+        for item in open_forecasts:
             lines.append(f"- {_md(item['plain_question'])} {_percent(item['probability'])}; "
                          f"official record due {item['resolves_by']}.")
     if brief["data_problems"]:
@@ -172,9 +178,10 @@ def render_reader_brief_html(brief: dict[str, Any]) -> str:
                     if call else esc(item["no_call_reason"]))
             parts.append(f'<li>{esc(item["date"])} — {esc(item["event"])}. {view}</li>')
         parts.append("</ul>")
-    if brief["open_forecasts"]:
+    open_forecasts = _separate_open_forecasts(brief)
+    if open_forecasts:
         parts.append("<h2>Open forecasts</h2><ul>")
-        for item in brief["open_forecasts"]:
+        for item in open_forecasts:
             parts.append(f'<li>{esc(item["plain_question"])} {_percent(item["probability"])}; '
                          f'official record due {esc(item["resolves_by"])}.</li>')
         parts.append("</ul>")

@@ -36,6 +36,23 @@ def test_truly_quiet_day_is_one_line(brief):
     assert "Data problems" in render_reader_brief(brief)
 
 
+def test_upcoming_call_is_shown_once_in_markdown_and_html(brief):
+    call = brief["open_forecasts"][0]
+    brief["coming_up"][0].update(our_call={"forecast_id": call["forecast_id"], "probability": call["probability"], "outcome": "The committee approves the food-tax repeal."}, no_call_reason=None)
+    for rendered in (render_reader_brief(brief), render_reader_brief_html(brief)):
+        assert rendered.count("55%") == 1
+        assert "Open forecasts" not in rendered
+    brief["coming_up"][0].update(our_call=None, no_call_reason="This is a different upcoming event.")
+    assert "Open forecasts" in render_reader_brief(brief)
+
+
+def test_duplicate_hidden_call_still_has_to_match_the_ledger(brief):
+    call = brief["open_forecasts"][0]
+    brief["coming_up"][0].update(our_call={"forecast_id": call["forecast_id"], "probability": .8, "outcome": "The committee approves the food-tax repeal."}, no_call_reason=None)
+    row = {**call, "status": "open", "run_date": "2026-10-26", "resolution_check_window_end": call["resolves_by"]}
+    assert any("probability differs" in issue for issue in validate_reader_brief(brief, forecast_rows=[row]))
+
+
 def test_total_visible_words_include_headings_and_labels(brief):
     brief["changes"][0]["why_it_matters"] = " ".join(["costs"] * 250)
     issues = validate_reader_brief(brief)

@@ -30,6 +30,10 @@ probability; otherwise the upcoming item has a one-sentence no_call_reason.
 The complete rendered Markdown, including labels and headings, is capped at
 250 visible words. A day without any changed item, event, open forecast, material
 data problem or required action renders one line: "Nothing needs you today."
+An upcoming call is displayed only under Coming up. If the same forecast ID is
+also present in the authored open-forecast list, both renderers omit that
+duplicate from Open forecasts. Validation still checks both authored references
+against the recorded probability and status before rendering.
 
 Source URLs must use HTTPS and be present in another JSON artifact in that run;
 the brief cannot establish its own provenance. The finalizer checks forecast IDs,

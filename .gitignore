@@ -15,6 +15,9 @@ wheels/
 .pytest_cache/
 .coverage
 
+# Local investigation and validation scratch files
+tmp/
+
 # Local Playwright MCP scratch files
 .playwright-mcp/
 

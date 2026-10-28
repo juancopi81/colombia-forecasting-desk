@@ -11,11 +11,12 @@ from pathlib import Path
 import httpx
 
 from .entities import nit_variants, normalize_nit
+from .plain_language import describe_datasets, format_cop, validate_plain_text
 from .source_fetching.socrata import _http_get
 
 DATASETS = {
-    "secop_ii": {"id": "jbjy-vk9h", "date": "fecha_de_firma", "buyer": "nit_entidad", "buyer_numeric": True, "supplier": "documento_proveedor", "doctype": "tipodocproveedor", "value": "valor_del_contrato", "key": "id_contrato"},
-    "secop_i": {"id": "f789-7hwg", "date": "fecha_de_firma_del_contrato", "buyer": "nit_de_la_entidad", "supplier": "identificacion_del_contratista", "doctype": "tipo_identifi_del_contratista", "value": "cuantia_contrato", "key": "uid"},
+    "secop_ii": {"id": "jbjy-vk9h", "date": "fecha_de_firma", "buyer": "nit_entidad", "buyer_numeric": True, "supplier": "documento_proveedor", "supplier_name": "proveedor_adjudicado", "doctype": "tipodocproveedor", "value": "valor_del_contrato", "key": "id_contrato"},
+    "secop_i": {"id": "f789-7hwg", "date": "fecha_de_firma_del_contrato", "buyer": "nit_de_la_entidad", "supplier": "identificacion_del_contratista", "supplier_name": "nom_razon_social_contratista", "doctype": "tipo_identifi_del_contratista", "value": "cuantia_contrato", "key": "uid"},
 }
 CAVEAT = "Direct contracting is legal for many contract types; this is a prompt for review, not a claim of wrongdoing."
 
@@ -122,7 +123,7 @@ def _summary(log: QueryLog, dataset: dict, where: str, label: str, outlier: int)
 
 def _pattern(entry: dict, kind: str, text: str, numbers: dict, urls: list[str], *, suffix: str = "", caveat: str = CAVEAT) -> dict:
     identity = hashlib.sha256((entry["watch_id"] + kind + suffix).encode()).hexdigest()[:16]
-    return {"pattern_id": identity, "watch_id": entry["watch_id"], "kind": kind, "plain_text": text,
+    return {"pattern_id": identity, "watch_id": entry["watch_id"], "kind": kind, "plain_text": describe_datasets(text),
             "numbers": numbers, "evidence_urls": list(dict.fromkeys(urls)), "caveat": caveat, "demo": bool(entry.get("demo"))}
 
 
@@ -179,7 +180,7 @@ def _contract_history(log: QueryLog, entry: dict, dataset: dict, base_where: str
         other = log.get(dataset["id"], label + " persons or unknown types aggregate", select=f"count(*) as records,sum({dataset['value']}) as value_cop", where=f"({base_where}) and ({dataset['doctype']} is null or upper({dataset['doctype']}) not in ('NIT','N.I.T.'))")
         natural = {key: _number((other or [{}])[0].get(key)) for key in ("records", "value_cop")} if other is not None else {"status": "unknown"}
         direct_group = field
-        direct_where = f"({base_where}) and {org} and upper(modalidad_de_contratacion) like '%DIRECTA%'"
+        direct_where = f"({base_where}) and upper(modalidad_de_contratacion) like '%DIRECTA%'"
     else:
         field = dataset["buyer"]
         rows = log.get(dataset["id"], label + " buyers", select=f"{field} as buyer_id,count(distinct {dataset['key']}) as contracts,sum({dataset['value']}) as value_cop", where=base_where, group=field, order="contracts DESC", limit=limit)
@@ -200,11 +201,37 @@ def _contract_history(log: QueryLog, entry: dict, dataset: dict, base_where: str
         natural = None
         direct_group = field
         direct_where = f"({base_where}) and upper(modalidad_de_contratacion) like '%DIRECTA%'"
-    direct = log.get(dataset["id"], label + " repeat direct awards", select=f"{direct_group} as organization_id,count(distinct {dataset['key']}) as contracts", where=direct_where, group=direct_group, order="contracts DESC", limit=limit)
-    direct_count = sum(1 for row in _unambiguous_groups(direct or [], "organization_id", log, label + " direct-award groups") if (_number(row.get("contracts"), default=0) >= int(thresholds.get("repeat_direct_award", 10))))
-    if direct_count:
-        patterns.append(_pattern(entry, "repeat_direct_award", f"{direct_count} recorded organizational ID groups have at least {thresholds.get('repeat_direct_award', 10)} direct awards in {label} during the window.", {"id_groups": direct_count, "minimum_awards": int(thresholds.get("repeat_direct_award", 10))}, [log.url(label + " repeat direct awards")], suffix=label, caveat=CAVEAT + " Verify supplier and buyer aliases before combining ID groups."))
     result = {"summary": summary, "organizations": groups, "patterns": patterns}
+    if entry["kind"] == "public_entity":
+        # The denominator includes ALL of this buyer's direct awards. Names and
+        # IDs are fetched only for the organizational-document subset.
+        totals = log.get(dataset["id"], label + " direct-award denominator", select=f"count(distinct {dataset['key']}) as contracts", where=direct_where)
+        denominator = _number((totals or [{}])[0].get("contracts")) if totals is not None else None
+        direct = log.get(dataset["id"], label + " repeat direct awards", select=f"{direct_group} as organization_id,min({dataset['supplier_name']}) as organization_name,count(distinct {dataset['key']}) as contracts", where=f"({direct_where}) and {org}", group=direct_group, order="contracts DESC,organization_id", limit=limit)
+        named = []
+        if denominator is None:
+            log.gaps.append(f"{label}: buyer's total direct awards unavailable; supplier shares are unknown")
+        for row in _unambiguous_groups(direct or [], "organization_id", log, label + " direct-award groups"):
+            contracts = _number(row.get("contracts"))
+            name = " ".join(str(row.get("organization_name") or "").split())
+            if not name:
+                log.gaps.append(f"{label}: an organizational supplier has no reported name; omitted from the named direct-award screen")
+                continue
+            if not isinstance(contracts, int) or denominator is None:
+                continue
+            if contracts <= 0 or denominator < contracts:
+                log.gaps.append(f"{label}: inconsistent direct-award counts; an organizational supplier share was withheld")
+                continue
+            named.append({"organization_nit": row["canonical_nit"], "organization_name": name, "contracts": contracts, "share": contracts / denominator, "denominator_contracts": denominator})
+        top = sorted(named, key=lambda row: (-row["contracts"], row["organization_name"], row["organization_nit"]))[:5]
+        result["direct_awards"] = {"contracts": denominator, "top_organizations": top, "status": "observed" if denominator is not None and direct is not None else "unknown"}
+        for supplier in top:
+            patterns.append(_pattern(entry, "repeat_direct_award", f"{supplier['organization_name']} received {supplier['contracts']:,} direct-award contracts, {supplier['share']:.1%} of {entry['label']}'s {denominator:,} direct awards recorded in {label} during the window.", supplier, [log.url(label + " repeat direct awards"), log.url(label + " direct-award denominator")], suffix=label+supplier["organization_nit"], caveat=CAVEAT + " Shares include all the buyer's direct awards; only organizational suppliers are named. Names are as reported in the official records."))
+    else:
+        direct = log.get(dataset["id"], label + " repeat direct awards", select=f"{direct_group} as organization_id,count(distinct {dataset['key']}) as contracts", where=direct_where, group=direct_group, order="contracts DESC", limit=limit)
+        direct_count = sum(1 for row in _unambiguous_groups(direct or [], "organization_id", log, label + " direct-award groups") if (_number(row.get("contracts"), default=0) >= int(thresholds.get("repeat_direct_award", 10))))
+        if direct_count:
+            patterns.append(_pattern(entry, "repeat_direct_award", f"{direct_count} public buyers each recorded at least {thresholds.get('repeat_direct_award', 10)} direct awards to {entry['label']} in {label} during the window.", {"buyers": direct_count, "minimum_awards": int(thresholds.get("repeat_direct_award", 10))}, [log.url(label + " repeat direct awards")], suffix=label))
     if natural is not None:
         result["persons_or_unknown_types_aggregate"] = natural
     return result
@@ -293,13 +320,15 @@ def fetch_divipola(client: httpx.Client, *, fetched_at: str | None = None) -> di
 
 def render_entity_history(history: dict) -> str:
     show = lambda value: "unknown" if value is None else str(value)
-    lines = [f"# {history['label']}", "", f"{'Demo organization. ' if history.get('demo') else ''}Window: {history['window_start']} through {history['as_of']}; fetched {history['fetched_at']}.", "", "Each SECOP dataset is reported separately. Values are COP; sums refer to reported rows."]
+    fetched = datetime.fromisoformat(history["fetched_at"].replace("Z", "+00:00")).strftime("%Y-%m-%d at %H:%M %z")
+    lines = [f"# {history['label']}", "", f"{'Demo organization. ' if history.get('demo') else ''}Window: {history['window_start']} through {history['as_of']}; fetched {fetched}.", "", "Each SECOP dataset is reported separately. Money totals refer to reported rows; displayed amounts are rounded."]
+    labels = {"secop_ii": "SECOP II contracts", "secop_i": "SECOP I contracts", "secop_ii_additions": "SECOP II contract additions", "sanctions": "Recorded sanctions"}
     for key, dataset in history["datasets"].items():
-        lines += ["", f"## {key.replace('_', ' ')}", ""]
+        lines += ["", f"## {labels.get(key, key.replace('_', ' '))}", ""]
         if "summary" in dataset:
             row = dataset["summary"]
             if row.get("status") == "observed":
-                lines.append(f"{row.get('contracts')} distinct contracts, {row.get('records')} rows. Reported value sum: {show(row.get('value_cop'))}; population median of reported rows: {show(row.get('median_value_cop'))}; maximum: {show(row.get('max_value_cop'))}.")
+                lines.append(f"{row.get('contracts'):,} distinct contracts, {row.get('records'):,} rows. Reported value sum: {format_cop(row.get('value_cop'))}; middle reported contract value: {format_cop(row.get('median_value_cop'))}; largest: {format_cop(row.get('max_value_cop'))}.")
                 if row.get("value_outlier"):
                     lines.append("A large value outlier is present; check the source before interpreting the sum.")
                 lines.append(f"[Official aggregate]({row['evidence_url']})")
@@ -320,4 +349,8 @@ def render_entity_history(history: dict) -> str:
     lines += ["", "## Coverage and caveats", ""] + [f"- {text}" for text in notes[:16]]
     if len(notes) > 16:
         lines.append(f"- {len(notes) - 16} additional coverage notes are retained in the local history cache.")
-    return "\n".join(lines) + "\n"
+    rendered = describe_datasets("\n".join(lines) + "\n")
+    issues = validate_plain_text(rendered)
+    if issues:
+        raise ValueError("; ".join(issues))
+    return rendered

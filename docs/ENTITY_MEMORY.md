@@ -52,6 +52,9 @@ Names are compared with accent, punctuation and common legal-suffix
 normalization. Exact NIT, bill/chamber/year, decree/year and DIVIPOLA matches
 take precedence. Name and keyword matches are explicitly labeled candidates.
 Names alone do not merge entities or establish wrongdoing.
+Geographic codes and catalog place-name aliases apply only to `kind: place`.
+A public entity uses its configured organization names and NIT; locating it in
+Antioquia does not make a mention of Universidad de Antioquia an identity match.
 
 Places use the official DANE-supplied
 [DIVIPOLA dataset](https://www.datos.gov.co/resource/gdxc-w37w.json). Its codes,
@@ -65,6 +68,14 @@ MinCIT zones, Diario Oficial, Gacetas, MinHacienda decrees and bills without
 changing collection. Media/polling sources are excluded by their configured
 trust role. Repeated artifact copies of the same source URL are deduplicated,
 while distinct official document fragments remain separate records.
+Before reporting, the matcher reads earlier dated `watchlist_hits.json` files
+under the same runs root. A previously reported watch ID/source/URL combination
+is suppressed, including static registry fragments. Same-day reruns remain
+deterministic and later reports never suppress an earlier day's output. An
+unreadable earlier report blocks output rather than silently resetting this
+history. Unchanged history patterns are also suppressed; a changed set of
+underlying numbers can produce an updated pattern. Suppression counts and the
+dates checked stay in JSON, outside the reader text.
 
 ## History and quantitative screens
 
@@ -95,6 +106,14 @@ Screens cover supplier shares of distinct contracts or reported value, repeated
 direct awards, SECOP I monetary additions relative to original recorded value,
 and later contracts for a configured supplier with a recorded sanction. They
 are review prompts. Direct contracting is legal for many contract types.
+For a watched public buyer, the direct-award screen names up to five leading
+organizational suppliers, with distinct contract counts and each supplier's
+share of all that buyer's direct awards in the same dataset and signature
+window. The denominator includes natural-person and unknown-document awards;
+their identities are never downloaded. Supplier names are fetched only inside
+the organizational-document filter, using the name reported for that ID.
+Ambiguous aliases and missing names are withheld, with a coverage note. A
+missing denominator never becomes zero or an estimated share.
 
 Each contract summary includes reported-row sums, distinct ID counts, maximum
 values and the exact population median of reported values. The median uses the
@@ -103,6 +122,10 @@ there is no sample median masquerading as a population estimate. Duplicate
 source rows are disclosed, and value-share screening is suppressed when row
 counts and distinct contract counts differ. Large values are flagged using a
 configurable threshold.
+Reader reports use amounts such as `COP 7.47 trillion`; exact numeric values
+remain in the cache. Dataset codes stay in evidence URLs and JSON, while
+visible text uses SECOP I/II names. Both entity reports and `watchlist_hits.md`
+must pass the shared plain-language validator before they are written.
 
 Natural-person/unknown document types are aggregated on the server, without
 grouping by their names or IDs. Only organizational NIT groups enter supplier

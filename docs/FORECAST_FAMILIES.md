@@ -85,6 +85,24 @@ treated as adjacent months. For BanRep, hike-after-hike frequencies apply to
 the YES event only when the latest decision was a hike; persistence of a cut
 does not estimate a hike probability. Missing history degrades to 50/50.
 
+For new unemployment rows, a latest year-on-year rise of at least 0.5 percentage
+points selects the historical next-month frequency after rises of that size.
+Both the condition and the following month's annual comparison must be known,
+adjacent and published by the forecast date. The condition must be the exact
+month preceding the target release, not an older observation across a gap.
+Without that condition or comparable pairs, use the unconditional official
+frequency, then 50/50 if no frequency exists. The conditional baseline records
+the threshold, current annual change, observed pairs, YES count and sample size.
+
+The saved September 30 national history, inspected on October 28, yields 13
+next-month declines in 72 pairs after annual rises of at least 0.5 points
+(18.1%), versus 177 declines in 296 annual comparisons overall (59.8%). These
+are descriptive frequencies from revised/backcast official history, with
+methodology and pandemic limitations. They are not calibrated probabilities
+or a reason to replace a recorded forecast. The October 27 unemployment call
+keeps its original probability and unconditional baseline; rerunning the
+planner or appender never rewrites that row.
+
 ## Resolution and delayed records
 
 The resolver matches event date, reference period, exact value key and series

@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: economic-activity
-plain_title: Economic activity and demand
-plain_summary: Monthly activity, factories, shops and trade reveal whether growth
-  is broad or concentrated.
+plain_title: Economic activity and jobs
+plain_summary: Monthly activity, factories, shops, trade and employment reveal whether
+  growth is broad and whether it is reaching workers.
 why_it_matters: Weak output can affect employment, tax revenue and business demand.
 who_is_affected: Workers, consumers, firms and public budgets.
 identifiers:
@@ -12,6 +12,7 @@ identifiers:
   - ise_activity
   - manufacturing
   - retail_sales
+  - labor_market
   nits: []
   keywords:
   - ISE
@@ -23,9 +24,11 @@ current_view:
     readings diverge; one weak month does not establish a sustained contraction.
   confidence: confirmed
 next_trigger:
-  date: null
-  event: The next official activity, manufacturing and retail releases arrive.
-forecast_ids: []
+  date: '2026-10-30'
+  event: September national unemployment is released; the next activity, factory
+    and retail releases will update the output picture.
+forecast_ids:
+- family_unemployment_down_yoy_2026-10-30
 status: active
 park_after_days: 21
 updates:

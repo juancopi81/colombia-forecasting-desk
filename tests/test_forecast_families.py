@@ -149,6 +149,63 @@ def test_empirical_baseline_uses_only_comparable_pre_forecast_official_history()
     assert result["window"]["end"] == "2026-09"
 
 
+def unemployment_card():
+    values = {"2024-01": 10, "2024-02": 10, "2024-03": 10, "2024-04": 10,
+              "2025-01": 10.5, "2025-02": 9.9, "2025-03": 10.6, "2025-04": 10.7,
+              "2025-08": 8.6, "2025-09": 8.2, "2026-08": 9.4}
+    history = [{"period": period, "national_unemployment_rate_pct": value, "published_at": "2026-09-30"} for period, value in values.items()]
+    return card("labor_market", period="2026-08", key="national_unemployment_rate_pct", value=9.4, history=history, history_source_url=DANE)
+
+
+def test_unemployment_baseline_conditions_on_prior_annual_rise_and_next_month():
+    observation = unemployment_card()
+    baseline = baseline_for_slot("unemployment_down_yoy", observation, threshold=8.2, as_of=NOW.date(), reference_period="2026-09")
+    assert baseline["rule"] == "momentum_conditional_frequency"
+    assert baseline["probability"] == .5
+    assert baseline["window"]["n"] == 2
+    assert baseline["window"]["yes"] == 1
+    assert baseline["condition"] == {"period": "2026-08", "year_on_year_change_pp": .8, "minimum_rise_pp": .5}
+    assert [pair["condition_period"] for pair in baseline["comparisons"]] == ["2025-01", "2025-03"]
+    assert baseline["comparisons"][0]["condition_change_pp"] == .5
+    assert "revisions" in baseline["caveat"]
+
+
+def test_unemployment_momentum_requires_the_exact_latest_month_and_available_pairs():
+    observation = unemployment_card()
+    for change in ("small_rise", "missing_condition_month", "missing_following_months"):
+        changed = deepcopy(observation)
+        if change == "small_rise":
+            next(row for row in changed["values"]["history"] if row["period"] == "2026-08")["national_unemployment_rate_pct"] = 8.7
+        elif change == "missing_condition_month":
+            changed["values"]["history"] = [row for row in changed["values"]["history"] if row["period"] != "2026-08"]
+        else:
+            changed["values"]["history"] = [row for row in changed["values"]["history"] if row["period"] not in {"2025-02", "2025-04"}]
+        baseline = baseline_for_slot("unemployment_down_yoy", changed, threshold=8.2, as_of=NOW.date(), reference_period="2026-09")
+        assert baseline["rule"] == "empirical_frequency"
+
+
+def test_unemployment_momentum_excludes_outcomes_published_after_the_forecast():
+    observation = unemployment_card()
+    observation["values"]["history"].append({"period": "2026-09", "national_unemployment_rate_pct": 7.0, "published_at": "2026-10-31"})
+    baseline = baseline_for_slot("unemployment_down_yoy", observation, threshold=8.2, as_of=NOW.date(), reference_period="2026-09")
+    assert baseline["window"]["n"] == 2
+    assert not any(row["period"] == "2026-09" for row in baseline["inputs"])
+    assert baseline_for_slot("unemployment_down_yoy", observation, threshold=8.2, as_of=NOW.date(), reference_period="2026-10")["rule"] == "empirical_frequency"
+
+
+def test_new_momentum_rule_does_not_rewrite_an_existing_forecast_baseline(tmp_path):
+    run = setup_run(tmp_path, cards=[unemployment_card()], events=[calendar("labor")])
+    planned = prepare(run)
+    assert planned["slots"][0]["baseline"]["rule"] == "momentum_conditional_frequency"
+    planned["slots"][0]["baseline"] = {"label": "previous_unconditional_baseline", "probability": .6, "rule": "empirical_frequency", "rationale": "A previously recorded comparator.", "inputs": [], "window": None}
+    write(run / "family_forecast_slots.json", planned)
+    append(run)
+    before = ledger(tmp_path).read_bytes()
+    write(run / "family_forecast_slots.json", plan_family_forecasts(run))
+    assert append(run)["already_recorded"]
+    assert ledger(tmp_path).read_bytes() == before
+
+
 def test_append_is_idempotent_across_days_and_preserves_predictions(tmp_path):
     run = setup_run(tmp_path)
     prepare(run)

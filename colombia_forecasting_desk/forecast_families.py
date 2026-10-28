@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 import fcntl
 import hashlib
 import json
@@ -184,7 +185,41 @@ def _history(card: dict[str, Any], key: str, as_of: date) -> list[dict[str, Any]
     return sorted(result, key=lambda row: row["period"])
 
 
-def baseline_for_slot(family: str, card: dict[str, Any], *, threshold: float | None, as_of: date, survey: dict[str, Any] | None = None) -> dict[str, Any]:
+def _unemployment_momentum(rows: list[dict[str, Any]], card: dict[str, Any], reference_period: str | None) -> dict[str, Any] | None:
+    """Condition next month's outcome on the latest observed annual rise."""
+    if not rows:
+        return None
+    key = "national_unemployment_rate_pct"
+    by_period = {row["period"]: row for row in rows}
+    # No gap may silently turn an older condition into the target's momentum.
+    latest = _month_shift(reference_period, -1) if reference_period else str(card.get("period") or rows[-1]["period"])
+    deltas = {period: Decimal(str(row[key])) - Decimal(str(by_period[prior][key]))
+              for period, row in by_period.items() if (prior := _month_shift(period, -12)) in by_period}
+    rise = deltas.get(latest)
+    minimum = Decimal("0.5")
+    if rise is None or rise < minimum:
+        return None
+    comparisons = [
+        {"condition_period": period, "outcome_period": following, "condition_change_pp": float(delta),
+         "outcome_change_pp": float(deltas[following]), "yes": deltas[following] < 0}
+        for period, delta in sorted(deltas.items())
+        if delta >= minimum and (following := _month_shift(period, 1)) in deltas and following <= latest
+    ]
+    if not comparisons:
+        return None
+    yes = sum(pair["yes"] for pair in comparisons)
+    values = card.get("values") or {}
+    return {"label": "official_momentum_conditional_yes_frequency", "probability": yes / len(comparisons),
+            "rationale": f"After a year-on-year national unemployment rise of at least 0.5 percentage points, the next month's rate fell year-on-year in {yes} of {len(comparisons)} comparable observed pairs. The latest applicable annual change ({latest}) is +{rise} percentage points. This is a historical comparator, not the forecast probability.",
+            "rule": "momentum_conditional_frequency", "inputs": rows,
+            "condition": {"period": latest, "year_on_year_change_pp": float(rise), "minimum_rise_pp": 0.5},
+            "comparisons": comparisons,
+            "window": {"start": comparisons[0]["condition_period"], "end": comparisons[-1]["outcome_period"], "n": len(comparisons), "yes": yes},
+            "source_url": values.get("history_source_url") or card.get("source_url"),
+            "caveat": values.get("history_caveat") or "Official historical observations may include revisions and methodology changes; this is not an archived first-release estimate."}
+
+
+def baseline_for_slot(family: str, card: dict[str, Any], *, threshold: float | None, as_of: date, survey: dict[str, Any] | None = None, reference_period: str | None = None) -> dict[str, Any]:
     fallback = {"label": "uninformative_50_50", "probability": 0.5, "rationale": "No published outcome distribution or comparable official historical frequency is available; 50/50 is explicitly uninformative.", "rule": "uninformative_50_50", "inputs": [], "window": None}
     if family == "banrep_rate_decision" and isinstance(survey, dict) and _observed(survey) and _official_url(survey.get("source_url"), family):
         values = survey.get("values") or {}
@@ -202,6 +237,10 @@ def baseline_for_slot(family: str, card: dict[str, Any], *, threshold: float | N
                 return {"label": "published_analyst_yes_share", "probability": yes / total, "rationale": f"{yes} of {total} surveyed analysts expect the stated YES outcome; no probability is inferred from a median.", "rule": "survey_share", "inputs": distribution, "window": {"published_at": survey["release_date"], "event_date": horizon}, "source_url": survey["source_url"]}
     key = {"banrep_rate_decision": "policy_rate_pct", "ipc_annual_up": "annual_variation_pct", "ise_annual_up": "annual_growth_pct", "unemployment_down_yoy": "national_unemployment_rate_pct"}[family]
     rows = _history(card, key, as_of)
+    if family == "unemployment_down_yoy":
+        momentum = _unemployment_momentum(rows, card, reference_period)
+        if momentum:
+            return momentum
     comparisons: list[bool] = []
     if family == "banrep_rate_decision":
         # Persistence only estimates P(hike) when the latest decision was a hike.
@@ -324,7 +363,7 @@ def plan_family_forecasts(run_dir: Path, *, config_path: Path = DEFAULT_CONFIG, 
         question = definition["question"].format(threshold=threshold_text, reference_period=reference, event_date=event_day.isoformat())
         direction = "strictly above" if definition["comparison"] == "gt" else "strictly below"
         opposite = "at or below" if definition["comparison"] == "gt" else "at or above"
-        baseline = baseline_for_slot(family, card, threshold=threshold, as_of=run_day, survey=survey)
+        baseline = baseline_for_slot(family, card, threshold=threshold, as_of=run_day, survey=survey, reference_period=reference)
         if baseline["rule"] == "survey_share" and baseline["window"]["event_date"] != event_day.isoformat():
             baseline = baseline_for_slot(family, card, threshold=threshold, as_of=run_day, survey=None)
         slot = {

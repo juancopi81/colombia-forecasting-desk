@@ -83,7 +83,11 @@ with paired baseline sample sizes and no calibration claim from small samples.
 Read candidate evidence and edit `cases/*.yaml` only when it warrants a changed
 view. Keep prior dated updates and sources; a repeated source is not a new
 development. Identify proposals, adopted text and certified outcomes separately.
-Then validate and freeze today's state:
+Link each newly recorded family forecast ID into the corresponding case's
+`forecast_ids`: rate/inflation calls belong in the interest-rates case, and
+activity/jobs calls belong in the economic-activity case. Keep existing IDs and
+do not modify an already frozen historical snapshot. Then validate and freeze
+today's state:
 
 ```bash
 ./.venv/bin/python scripts/validate_cases.py
@@ -109,6 +113,9 @@ family calls, scoreboard, case updates and watchlist hits. Explain at most three
 changes, affected people and upcoming calls in plain words. Include waiting
 official records and material data problems. Keep the complete rendered brief
 at or below 250 words. A genuinely quiet day is one line.
+Show a call once: upcoming calls belong under Coming up; other outstanding
+calls belong under Open forecasts. Both renderers suppress repeated forecast
+IDs across those sections while still validating every authored reference.
 
 ```bash
 ./.venv/bin/python scripts/finalize_reader_brief.py --date YYYY-MM-DD

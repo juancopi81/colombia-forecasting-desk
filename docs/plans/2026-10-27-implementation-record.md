@@ -108,3 +108,45 @@ is **1/10**, separate from the completed old shadow pilot. Usefulness and any
 topic narrowing require Juan's explicit feedback; no such answer has been
 invented. Source publication dates or first-release evidence that remain
 unavailable stay unknown and cannot produce an automatic negative outcome.
+
+## October 28 follow-ups
+
+Completed on the single local branch `codex/desk-followups`, without a push:
+
+- Public entities match their configured names/NITs, without geographic code
+  or place-name aliases. Earlier reported watch ID/source/URL combinations and
+  unchanged historical patterns are suppressed; later runs cannot affect a
+  historical report, and same-day reruns remain stable.
+- Entity reports and the daily watchlist use English money units and dataset
+  names, and must pass the shared plain-language validator. A public buyer's
+  direct-award screen names up to five organizational suppliers with distinct
+  contract counts and shares of all that buyer's direct awards. Unknown
+  denominators, ambiguous aliases and source limits remain explicit.
+- New unemployment rows condition the comparator on the exact latest annual
+  rise when it reaches 0.5 percentage points. The preserved official history
+  reproduces 13 next-month declines in 72 such pairs (18.1%), compared with
+  177/296 overall (59.8%). Existing rows retain their original baselines.
+- The two family IDs are linked in the rates and activity/jobs cases. Both
+  brief renderers show a call only once across Coming up and Open forecasts.
+  `tmp/` is ignored. All five completed `/private/tmp/cfd-desk-*` worktrees were
+  removed after verifying their commits were merged; useful untracked and
+  ignored artifacts were archived with hashes under the local follow-up tmp
+  directory before removal.
+
+Validation: **906 tests passed**, including new regression coverage for the
+above behavior. A pre-existing mocked workbook fixture now fixes its ZIP entry
+timestamps so repeated source downloads have identical bytes; the production
+same-day source freeze remains unchanged. `git diff --check` passed.
+
+The actual October 28 strict scan passed with zero errors and one untagged-item
+warning. Live history queries completed without failures, and the named
+Antioquia screen used 2,360 direct awards as its denominator. The updated daily
+matcher emitted zero new hits for the demo entries. All reports passed plain
+language checks. The October 27 and 28 HTML/Markdown briefs show each recorded
+call once; today's brief is 89 words. The usefulness count is now **2/10**.
+The first scheduled Friday run remains October 30.
+
+Both forecast ledgers were byte-for-byte unchanged after the follow-up and
+today's workflow. The existing food-tax outcome remains unverified after one
+fresh official resolver check; no forecast, outcome or user feedback was
+invented.

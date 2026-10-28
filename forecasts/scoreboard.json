@@ -1,11 +1,12 @@
 {
-  "as_of": "2026-10-27",
+  "as_of": "2026-10-28",
   "caveat": "Descriptive scores only; these samples do not establish calibration. Public and internal forecasts remain separate. A 50/50 call has no directional success or failure.",
   "coverage": {
     "complete_calendar_coverage": false,
     "notice": "Missed-event counts cover captured family calendar slots only. Zero detected misses does not establish complete calendar coverage; unavailable calendars remain unknown.",
     "planned_run_dates": [
-      "2026-10-27"
+      "2026-10-27",
+      "2026-10-28"
     ],
     "scope": "observed_calendar_slots"
   },

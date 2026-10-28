@@ -28,7 +28,9 @@ unread finding. Use confirmed, likely or uncertain confidence accurately.
 Every upcoming event has either our_call or a one-sentence no_call_reason. A call
 must use the exact recorded forecast ID and probability. Never invent a call,
 backdate one or change one while writing a brief. List open forecasts waiting for
-official records, including rows flagged for review. Use their recorded
+official records, including rows flagged for review. A call already shown under
+Coming up must not be repeated under Open forecasts; that section is for other
+outstanding calls. Use their recorded
 resolution_check_window_end as resolves_by, falling back to resolution_deadline.
 Mention missing official records explicitly; silence never means NO. Public and
 internal forecasts remain distinct in the scoreboard, and no brief authoring or
