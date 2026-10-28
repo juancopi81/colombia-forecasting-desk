@@ -17,7 +17,9 @@ Include, in this order and only when present:
 2. Upcoming calls: open calls whose official event falls after today and within
    seven days. Name the event, the reference value and the estimated
    probability of the stated outcome.
-3. Public consultations with an official comment deadline and link.
+3. Public consultations with an official comment deadline and link. Say that
+   the issuing agency takes comments from anyone, so readers don't mistake it
+   for replying on X.
 
 Leave out calls whose event has passed but whose record is pending (they become
 results once resolved), watchlist or procurement patterns about named companies
@@ -57,4 +59,10 @@ Example of a results post:
 
     • Desempleo de septiembre (DANE): [valor oficial]. Le dimos 35% de probabilidad a que bajara del 8,2%, y [sí ocurrió / no ocurrió].
 
+    🤖 Hecho con IA · No es asesoría financiera
+
+Example of a consultation post:
+
+    📝 Consulta pública hasta el 3 de noviembre: MinHacienda recibe comentarios de cualquier persona sobre un borrador de decreto para cooperativas de ahorro y crédito (servicios compartidos y corresponsales).
+    https://www.minhacienda.gov.co/normativa/proyectos-de-decretos/2026
     🤖 Hecho con IA · No es asesoría financiera
