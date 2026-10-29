@@ -7,19 +7,24 @@ plain_summary: The government reduced 2026 appropriations and issued the 2027 bu
 why_it_matters: Budget authority can change public services and project funding.
 who_is_affected: Public bodies, contractors and users of public services.
 identifiers:
-  bills: []
+  bills:
+  - PL 401/2026 Cámara
+  - PL 280/2026 Senado
   decrees:
   - Decreto 1585/2026
   - Decreto 1599/2026
-  indicator_ids: []
+  indicator_ids:
+  - fiscal_tax_pulse
   nits: []
   keywords:
   - presupuesto general
 current_view:
-  date: '2026-10-27'
+  date: '2026-10-29'
   text: The complete official edition checked on October 23 records a COP 13.8 trillion
     2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis
-    for issuance; execution and legal validity need separate evidence.
+    for issuance. New October 28 reports favor a separate supplementary 2026 budget
+    bill with modifications; they do not establish adoption. Execution and legal
+    validity need separate evidence.
   confidence: confirmed
 next_trigger:
   date: null
@@ -29,6 +34,11 @@ forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-10-29'
+  change: October 28 Gacetas 1663 and 1664 publish positive first-debate reports with
+    modifications for the supplementary 2026 budget bill. The captured excerpts
+    establish a report, not adoption, exact allocations or cash execution.
+  source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1664
 - date: '2026-10-27'
   change: The complete official edition checked on October 23 records a COP 13.8 trillion
     2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis

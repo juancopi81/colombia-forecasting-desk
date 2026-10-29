@@ -9,7 +9,7 @@ identifiers:
   bills: []
   decrees: []
   indicator_ids:
-  - energy_bundle
+  - energy_system
   nits: []
   keywords:
   - racionamiento
