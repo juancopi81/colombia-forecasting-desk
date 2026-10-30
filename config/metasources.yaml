@@ -102,7 +102,7 @@ metasources:
     enabled: true
     onboarding_status: working
     max_items: 20
-    notes: "Official DANE publication clock. The RSS parser reads the scheduled Bogotá timestamp from each title rather than the historical feed pubDate, keeps only current/future high-value economic releases, and preserves both the calendar-event URL and the linked operation page for resolver research."
+    notes: "Official DANE publication clock. Short RSS is augmented with the advertised annual calendar list over a bounded 60-day horizon, using explicit Bogotá clocks and preserving event identity. Nearest max_items events are retained; incomplete collection, conflicting schedules and truncation are explicit. RSS operation-page links are preserved where available."
 
   - id: dane_comunicados_prensa
     name: DANE — Comunicados de prensa y presentaciones

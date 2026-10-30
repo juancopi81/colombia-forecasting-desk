@@ -36,7 +36,7 @@ def card(identity="ipc_inflation", *, period="2026-08", value=6.0, key="annual_v
 
 
 def calendar(family="ipc", day=EVENT, reference="2026-09"):
-    return {"id": f"calendar_{family}", "source_id": "banrep_junta_calendar" if family == "banrep" else "dane_publication_calendar", "title": "Official scheduled release", "url": BANREP if family == "banrep" else DANE, "metadata": {"event_type": "banrep_policy_rate_decision" if family == "banrep" else "dane_economic_release", "release_family": family, "scheduled_date": day, "scheduled_at_local": day + "T10:00:00-05:00", "reference_period": day if family == "banrep" else reference}}
+    return {"id": f"calendar_{family}", "source_id": "banrep_junta_calendar" if family == "banrep" else "dane_publication_calendar", "title": "Mercado Laboral (GEIH)" if family == "labor" else "Official scheduled release", "url": BANREP if family == "banrep" else DANE, "metadata": {"event_type": "banrep_policy_rate_decision" if family == "banrep" else "dane_economic_release", "release_family": family, "scheduled_date": day, "scheduled_at_local": day + "T10:00:00-05:00", "reference_period": day if family == "banrep" else reference}}
 
 
 def setup_run(tmp_path, *, cards=None, events=None):
@@ -92,7 +92,7 @@ def test_planner_fully_specifies_exact_slot_and_fallback_baseline(tmp_path):
 def test_failed_rate_is_explicit_and_labor_is_disabled(tmp_path):
     run = setup_run(tmp_path, cards=[], events=[calendar("banrep"), calendar("labor")])
     result = plan_family_forecasts(run)
-    assert result["notices"] == ["BanRep slot unavailable: no current policy rate"]
+    assert "BanRep slot unavailable: no current policy rate" in result["notices"]
     assert len(result["slots"]) == 1
     assert not result["slots"][0]["enabled"]
     assert "2025-09" in " ".join(result["slots"][0]["missing_evidence"])
@@ -463,3 +463,28 @@ def test_planner_and_scoreboard_clis_accept_explicit_roots(tmp_path):
     assert load_cli("plan_family_forecasts").main(["--date", run.name, "--runs-dir", str(run.parent)]) == 0
     assert load_cli("build_scoreboard").main(["--date", run.name, "--repo-root", str(tmp_path)]) == 0
     assert json.loads((tmp_path / "forecasts/scoreboard.json").read_text())["as_of"] == run.name
+
+
+def test_thematic_labor_release_never_becomes_national_job_slot(tmp_path):
+    event = calendar('labor')
+    event['title'] = '30 Oct 2026 14:00 : GEIH - Población fuera de la fuerza laboral'
+    run = setup_run(tmp_path, cards=[unemployment_card()], events=[event])
+    write(run / 'm3_preflight_opportunities.json', {'opportunities': [{
+        'opportunity_id': 'dane_labor_release_2026-10-30_thematic',
+        'event_date': EVENT,
+        'title': 'DANE GEIH - Población fuera de la fuerza laboral release on 2026-10-30',
+    }]})
+    assert not plan_family_forecasts(run)['slots']
+    write(run / 'raw_items.json', [])
+    assert not plan_family_forecasts(run)['slots']
+    write(run / 'm3_preflight_opportunities.json', {'opportunities': [{
+        'opportunity_id': 'dane_labor_release_2026-10-30_headline',
+        'event_date': EVENT,
+        'title': 'DANE Mercado Laboral (GEIH) release on 2026-10-30',
+    }]})
+    assert plan_family_forecasts(run)['slots'][0]['family_id'] == 'unemployment_down_yoy'
+
+
+def test_healthy_banrep_does_not_hide_missing_dane_calendar(tmp_path):
+    run = setup_run(tmp_path, cards=[card('policy_rate_ibr', key='policy_rate_pct', value=12.25)], events=[calendar('banrep')])
+    assert any('DANE calendar has no captured events' in n for n in plan_family_forecasts(run)['notices'])

@@ -746,3 +746,12 @@ def test_banrep_preflight_fails_closed_when_resolver_source_missing(tmp_path) ->
             "reason": "resolver_source_missing_from_config",
         }
     ]
+
+
+def test_dane_calendar_incomplete_collection_reaches_preflight_caveats():
+    event = _dane_calendar_event()
+    event = replace(event, metadata={**event.metadata, 'calendar_coverage': 'incomplete',
+        'calendar_coverage_notices': ['DANE future-calendar collection incomplete; missing events remain unknown.']})
+    result = build_m3_preflight_opportunities([event], run_date='2026-08-11')
+    assert result['opportunities']
+    assert any(c['detector'] == 'dane_economic_release' and 'incomplete' in c['reason'] for c in result['caveats'])

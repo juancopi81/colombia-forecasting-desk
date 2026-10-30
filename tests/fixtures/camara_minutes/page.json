@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "data": {
+    "items": [{
+      "id": "240886",
+      "tipo_publicacion": "Actas de Comisión",
+      "numero": "N°027",
+      "fecha": "16 de Junio del 2026",
+      "fecha_iso": "2026-06-16",
+      "titulo": "Actas de Comisión N° N°027 - 16/06/2026",
+      "descripcion": "",
+      "enlace": "/wp-content/uploads/2026/07/actas/240886/Acta-N°27-SESION-ORDINARIA-DEL-16-DE-JUNIO-DE-2026.pdf",
+      "gaceta_numero": "827",
+      "gaceta_anio": "2026",
+      "gaceta_enlace": "https://svrpubindc.imprenta.gov.co/senado/",
+      "gaceta_fecha": null
+    }],
+    "total": 1,
+    "total_pages": 1
+  }
+}

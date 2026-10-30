@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from urllib.parse import parse_qsl, urlencode, urlunsplit
+
 from .common import *
 from .html import *
 
 
 DANE_PUBLICATION_CALENDAR_SOURCE_ID = "dane_publication_calendar"
+DANE_PUBLICATION_CALENDAR_PAGE_URL = "https://www.dane.gov.co/index.php/calendario"
+DANE_PUBLICATION_CALENDAR_HORIZON_DAYS = 60
 DANE_PUBLICATION_CALENDAR_TIMEZONE = "America/Bogota"
 DANE_PUBLICATION_CALENDAR_OFFSET = timezone(timedelta(hours=-5))
 DANE_PUBLICATION_CALENDAR_MONTHS = {
@@ -135,6 +140,9 @@ def _transform_dane_publication_calendar_items(
     items: list[RawItem],
     source: Metasource,
     fetched_at: str,
+    *,
+    apply_limit: bool = True,
+    include_past: bool = False,
 ) -> list[RawItem]:
     fetched_at_dt = _parse_dane_calendar_reference_time(fetched_at)
     if fetched_at_dt is None:
@@ -147,13 +155,13 @@ def _transform_dane_publication_calendar_items(
             continue
         scheduled_at, release_title = parsed_title
         release_family = _dane_calendar_release_family(release_title)
-        if release_family is None or scheduled_at < fetched_at_dt:
+        if release_family is None or (not include_past and scheduled_at < fetched_at_dt):
             continue
 
         scheduled_at_iso = scheduled_at.isoformat()
         metadata = {
             **item.metadata,
-            "content_extraction": "dane_publication_calendar_rss",
+            "content_extraction": item.metadata.get("content_extraction", "dane_publication_calendar_rss"),
             "event_type": "dane_economic_release",
             "calendar": DANE_PUBLICATION_CALENDAR_SOURCE_ID,
             "calendar_event_url": item.url,
@@ -182,9 +190,148 @@ def _transform_dane_publication_calendar_items(
         )
 
     calendar_items.sort(key=lambda item: item.published_at or "")
-    if source.max_items is not None and source.max_items >= 0:
+    if apply_limit and source.max_items is not None and source.max_items >= 0:
         return calendar_items[: source.max_items]
     return calendar_items
+
+
+def _dane_annual_link(soup: BeautifulSoup, base_url: str, year: int) -> str | None:
+    for link in soup.select("a[href]"):
+        url = urljoin(base_url, link["href"])
+        parts = urlsplit(url)
+        if parts.hostname not in {"www.dane.gov.co", "dane.gov.co"}:
+            continue
+        if re.fullmatch(rf"/index.php/calendario/year\.listevents/{year}/\d{{2}}/\d{{2}}/-", parts.path):
+            # The official annual page advertises limit=0 as its Todas option.
+            query = [(k, v) for k, v in parse_qsl(parts.query) if k not in {"limit", "start"}]
+            return urlunsplit(parts._replace(query=urlencode(query + [("limit", "0")])))
+    return None
+
+
+def _parse_dane_annual_calendar(
+    html_text: str, url: str, source: Metasource, fetched_at: str,
+) -> tuple[list[RawItem], BeautifulSoup, list[str]]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    body = soup.select_one("#jevents_body")
+    if body is None or _detect_bot_block(html_text):
+        raise RssParseError("DANE annual calendar body unavailable")
+    event_links = body.select('a.ev_link_row[href*="icalrepeat.detail"]')
+    if not event_links:
+        raise RssParseError("DANE annual calendar has no verifiable event tables; coverage is unknown")
+    notices: list[str] = []
+    if any(re.fullmatch(r"[1-9]\d*", dict(parse_qsl(urlsplit(a["href"]).query)).get("start", "0"))
+           for a in body.select('a[href*="year.listevents"]')):
+        notices.append("DANE annual calendar is still paginated; coverage is incomplete.")
+    items = []
+    month_labels = {v: k for k, v in DANE_PUBLICATION_CALENDAR_MONTHS.items() if k != "sept"}
+    for link in event_links:
+        title = normalize_whitespace(link.get_text(" ", strip=True))
+        if _dane_calendar_release_family(title) is None:
+            continue
+        event_url = urljoin(url, link["href"])
+        parts = urlsplit(event_url)
+        date_match = re.search(r"/icalrepeat\.detail/(\d{4})/(\d{2})/(\d{2})/", parts.path)
+        table = link.find_parent("table")
+        row = table.find("tr") if table else None
+        caption = normalize_whitespace(row.get_text(" ", strip=True)) if row else ""
+        clock = re.search(r"\b(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)\b", fold_accents(caption), re.I)
+        if parts.hostname not in {"www.dane.gov.co", "dane.gov.co"} or not date_match or not clock:
+            notices.append("DANE annual calendar contains an economic event without a verified local clock.")
+            continue
+        day, month_name, year, hour, minute, meridiem = clock.groups()
+        month = MONTHS_ES.get(month_name.lower())
+        try:
+            if not month or not 1 <= int(hour) <= 12:
+                raise ValueError("invalid local clock")
+            scheduled = datetime(int(year), month, int(day), int(hour) % 12 + (12 if meridiem.lower() == "pm" else 0), int(minute), tzinfo=DANE_PUBLICATION_CALENDAR_OFFSET)
+            if (scheduled.year, scheduled.month, scheduled.day) != tuple(map(int, date_match.groups())):
+                raise ValueError("calendar clock and event URL disagree")
+        except ValueError:
+            notices.append("DANE annual calendar has a conflicting or invalid economic-event date.")
+            continue
+        rss_title = f"{scheduled.day:02} {month_labels[month].title()} {scheduled.year} {scheduled:%H:%M} : {title}"
+        items.append(RawItem(
+            id=_make_id(source.id, event_url, rss_title), source_id=source.id,
+            source_name=source.name, source_type=source.type, url=event_url,
+            title=rss_title, fetched_at=fetched_at, published_at=None,
+            raw_text=f"{caption}: {title}. Official DANE annual publication calendar.",
+            metadata={"content_extraction": "dane_publication_calendar_annual_html", "calendar_list_url": url},
+        ))
+    return items, soup, notices
+
+
+def _fetch_dane_publication_calendar(source: Metasource, client: httpx.Client) -> list[RawItem]:
+    fetched_at = _now_iso()
+    now = _parse_dane_calendar_reference_time(fetched_at)
+    if now is None:
+        raise RssParseError("DANE calendar retrieval clock unavailable")
+    local_now = now.astimezone(DANE_PUBLICATION_CALENDAR_OFFSET)
+    horizon = local_now.date() + timedelta(days=DANE_PUBLICATION_CALENDAR_HORIZON_DAYS)
+    notices: list[str] = []
+    items: list[RawItem] = []
+    checked: list[str] = []
+    try:
+        response = _http_get(client, source.url)
+        if _detect_bot_block(response.text):
+            raise BotBlockError("DANE RSS bot block")
+        parsed = feedparser.parse(response.content)
+        items = _parse_rss_entries(parsed, source, fetched_at) or _recover_rss_entries(response.text, source, fetched_at)
+        if not items:
+            notices.append("DANE RSS returned no event entries; calendar-list evidence is used separately.")
+    except (httpx.HTTPError, BotBlockError, RssParseError) as exc:
+        notices.append(f"DANE RSS unavailable ({type(exc).__name__}); calendar-list evidence is used separately.")
+    try:
+        response = _http_get(client, DANE_PUBLICATION_CALENDAR_PAGE_URL)
+        annual_soup = BeautifulSoup(response.text, "html.parser")
+        base_url = str(response.url)
+        for year in range(local_now.year, horizon.year + 1):
+            annual_url = _dane_annual_link(annual_soup, base_url, year)
+            if annual_url is None:
+                raise RssParseError(f"official annual navigation missing for {year}")
+            response = _http_get(client, annual_url)
+            if len(response.content) > 2_000_000:
+                raise RssParseError("annual calendar exceeds bounded response size")
+            annual_items, annual_soup, annual_notices = _parse_dane_annual_calendar(response.text, str(response.url), source, fetched_at)
+            items.extend(annual_items)
+            notices.extend(annual_notices)
+            checked.append(str(response.url))
+            base_url = str(response.url)
+    except (httpx.HTTPError, BotBlockError, RssParseError) as exc:
+        notices.append(f"DANE future-calendar collection incomplete ({type(exc).__name__}: {exc}). Missing events remain unknown.")
+
+    transformed = _transform_dane_publication_calendar_items(items, source, fetched_at, apply_limit=False, include_past=True)
+    merged: dict[str, RawItem] = {}
+    conflicted: set[str] = set()
+    for item in transformed:
+        identity = canonicalize_url(item.url)
+        if identity in conflicted:
+            continue
+        prior = merged.get(identity)
+        if prior is not None:
+            prior_title = _parse_dane_calendar_title(prior.title)[1]
+            title = _parse_dane_calendar_title(item.title)[1]
+            if prior.published_at != item.published_at or fold_accents(prior_title.lower()) != fold_accents(title.lower()):
+                conflicted.add(identity)
+                del merged[identity]
+                notices.append(f"DANE calendar sources disagree for {identity}; event withheld.")
+            # RSS is first and retains its operation URL and existing item ID.
+            continue
+        merged[identity] = item
+    result = sorted((item for item in merged.values()
+                     if datetime.fromisoformat(item.published_at) >= now
+                     and item.metadata["scheduled_date"] <= horizon.isoformat()),
+                    key=lambda item: (item.published_at or "", item.url))
+    found = len(result)
+    if source.max_items is not None and source.max_items >= 0 and found > source.max_items:
+        result = result[:source.max_items]
+        notices.append(f"DANE calendar output truncated to {source.max_items} of {found} economic events in the {DANE_PUBLICATION_CALENDAR_HORIZON_DAYS}-day window; coverage is incomplete.")
+    if not result and notices:
+        raise RssParseError("; ".join(sorted(set(notices))))
+    coverage = {"calendar_coverage": "incomplete" if notices else "bounded_official_calendar",
+                "calendar_coverage_notices": sorted(set(notices)),
+                "calendar_checked_urls": checked, "calendar_horizon_end": horizon.isoformat(),
+                "calendar_events_before_limit": found}
+    return [replace(item, metadata={**item.metadata, **coverage}) for item in result]
 
 
 def _parse_rss_entries(parsed: Any, source: Metasource, fetched_at: str) -> list[RawItem]:
@@ -388,6 +535,8 @@ def _augment_eltiempo_colombia_rss_items(
 
 
 def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
+    if source.id == DANE_PUBLICATION_CALENDAR_SOURCE_ID:
+        return _fetch_dane_publication_calendar(source, client)
     fetched_at = _now_iso()
     response = _http_get(client, source.url)
     marker = _detect_bot_block(response.text)
@@ -397,9 +546,6 @@ def fetch_rss(source: Metasource, client: httpx.Client) -> list[RawItem]:
     items = _parse_rss_entries(parsed, source, fetched_at)
     if not items:
         items = _recover_rss_entries(response.text, source, fetched_at)
-
-    if source.id == DANE_PUBLICATION_CALENDAR_SOURCE_ID:
-        return _transform_dane_publication_calendar_items(items, source, fetched_at)
 
     if source.id == "eltiempo_colombia":
         augmented = _augment_eltiempo_colombia_rss_items(

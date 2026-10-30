@@ -43,6 +43,18 @@ its slot because the rate feed failed. If no current official rate exists, it
 emits `BanRep slot unavailable: no current policy rate` instead of disappearing
 silently. Source gaps and absent calendar captures never establish a quiet day.
 
+DANE's short RSS is augmented with its advertised annual calendar list, using
+explicit event dates and Bogotá times over the next 60 days. At most the current
+and next annual lists are read. Collection retains the nearest configured
+`max_items`, records truncation and failed list reads, and withholds conflicting
+dates/times for the same event URL. These coverage notices flow into preflight,
+family planning and weekly facts; bounded collection never certifies that the
+official future schedule is complete. Calendar pages are agenda evidence only,
+not first-release or resolution evidence.
+The national unemployment family accepts only recognized headline GEIH release
+titles. Thematic GEIH releases remain research opportunities and cannot create
+national-monthly forecast slots through either raw-calendar or preflight input.
+
 If an official calendar supplies a timezone-aware time, that is the cutoff.
 A date-only calendar uses the conservative start of that date in Bogotá and
 records that this is a conservative cutoff, not an official publication time.

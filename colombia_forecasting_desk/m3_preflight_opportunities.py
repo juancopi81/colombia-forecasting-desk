@@ -72,6 +72,18 @@ class PreflightInputError(ValueError):
     """Raised when a run folder cannot support preflight artifact generation."""
 
 
+def dane_calendar_coverage_notices(raw_items: list[dict[str, Any]]) -> list[str]:
+    records = [item for item in raw_items if item.get("source_id") == DANE_CALENDAR_SOURCE_ID]
+    if not records:
+        return ["DANE calendar has no captured events; this does not establish an empty future schedule."]
+    notices = {notice for item in records
+               for notice in (item.get("metadata") or {}).get("calendar_coverage_notices", [])
+               if isinstance(notice, str)}
+    if not any((item.get("metadata") or {}).get("calendar_coverage") for item in records):
+        notices.add("DANE calendar horizon coverage was not recorded; a short feed does not establish the future schedule.")
+    return sorted(notices)
+
+
 def build_m3_preflight_opportunities(
     raw_items: list[Any] | None = None,
     indicator_watch: list[Any] | None = None,
@@ -150,6 +162,11 @@ def build_m3_preflight_opportunities(
             window_days=research_window_days,
         )
     )
+    if DANE_CALENDAR_SOURCE_ID in source_by_id or any(
+        item.get("source_id") == DANE_CALENDAR_SOURCE_ID for item in raw_records
+    ):
+        caveats.extend({"detector": DANE_EVENT_TYPE, "reason": notice}
+                       for notice in dane_calendar_coverage_notices(raw_records))
 
     opportunities = sorted(
         opportunities,

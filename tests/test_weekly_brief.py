@@ -261,3 +261,33 @@ def test_finalizer_writes_only_after_provenance_validation(tmp_path, brief):
     with pytest.raises(ValueError, match="not in the dated facts"):
         module.finalize(week="2026-W43", weekly_dir=folder.parent)
     assert (folder / "weekly.html").read_bytes() == original
+
+
+def test_dane_calendar_gaps_survive_weekly_facts_only_before_cutoff(tmp_path):
+    run = make_run(tmp_path)
+    write_json(run / 'm3_preflight_opportunities.json', {'generated_at': '2026-10-23T15:30:00Z', 'opportunities': [], 'caveats': [
+        {'detector': 'dane_economic_release', 'reason': 'Annual calendar truncated; future coverage incomplete.'},
+        {'detector': 'dane_economic_release', 'reason': 'Later notice', 'recorded_at': '2026-10-23T17:30:00Z'},
+    ]})
+    facts = build_weekly_facts(tmp_path / 'runs', '2026-W43', cutoff_at='2026-10-23T16:00:00Z')
+    assert any('Annual calendar truncated' in gap for gap in facts['coverage_gaps'])
+    assert not any('Later notice' in gap for gap in facts['coverage_gaps'])
+    early = build_weekly_facts(tmp_path / 'runs', '2026-W43', cutoff_at='2026-10-23T15:00:00Z')
+    assert not any('Annual calendar truncated' in gap for gap in early['coverage_gaps'])
+
+
+def test_weekly_calendar_identity_deduplicates_copies_but_keeps_distinct_events(tmp_path):
+    run = make_run(tmp_path)
+    urls = [f'https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/10/30/{i}/-/geih' for i in (1, 2)]
+    write_json(run / 'raw_items.json', [{'id': f'event-{i}', 'source_id': 'dane_publication_calendar',
+        'title': f'GEIH thematic release {i}', 'url': url, 'fetched_at': '2026-10-23T15:00:00Z',
+        'metadata': {'scheduled_date': '2026-10-30', 'release_family': 'labor', 'calendar_event_url': url}}
+        for i, url in enumerate(urls)])
+    write_json(run / 'm3_preflight_opportunities.json', {'generated_at': '2026-10-23T15:00:00Z',
+        'opportunities': [{'opportunity_id': f'dane_labor_release_2026-10-30_{i}',
+        'event_date': '2026-10-30', 'title': f'DANE thematic release {i}',
+        'source_evidence': [{'source_id': 'dane_publication_calendar', 'url': url + '?utm_source=calendar'}]}
+        for i, url in enumerate(urls)]})
+    facts = build_weekly_facts(tmp_path / 'runs', '2026-W43', cutoff_at='2026-10-23T16:00:00Z')
+    assert len(facts['events']) == 2
+    assert {x['source_url'] for x in facts['events']} == set(urls)

@@ -21,6 +21,8 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from .schemas import require_valid
+from .cleaner import fold_accents, normalize_whitespace
+from .m3_preflight_opportunities import dane_calendar_coverage_notices
 from .shadow_forecasts import (
     ShadowForecastError, append_shadow_forecast, read_shadow_forecast_ledger,
     resolve_shadow_forecast, flag_shadow_forecasts_for_review, forecast_event_key,
@@ -101,6 +103,15 @@ def _observed(card: dict[str, Any]) -> bool:
     return card.get("status") == "observed" and card.get("freshness_status") not in ("failed", "stale", "unparsed")
 
 
+def _national_monthly_labor_release(title: str) -> bool:
+    title = re.sub(r"^\d{1,2}\s+\w+\s+\d{4}\s+\d{1,2}:\d{2}\s*:\s*", "", title.strip())
+    title = re.sub(r"^DANE (.*?) release on \d{4}-\d{2}-\d{2}$", r"\1", title)
+    return fold_accents(normalize_whitespace(title).lower()) in {
+        "mercado laboral", "mercado laboral (geih)",
+        "gran encuesta integrada de hogares", "gran encuesta integrada de hogares (geih)",
+    }
+
+
 def _events(preflight: dict[str, Any], raw_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Use the official raw calendar even if preflight lacked a current rate."""
     events: dict[tuple[str, str], dict[str, Any]] = {}
@@ -115,6 +126,8 @@ def _events(preflight: dict[str, Any], raw_items: list[dict[str, Any]]) -> list[
         else:
             continue
         if family == "ipc_annual_up" and any(token in str(item.get("title", "")).casefold() for token in ("sin alimentos", "core", "excluyendo")):
+            continue
+        if family == "unemployment_down_yoy" and not _national_monthly_labor_release(str(item.get("title", ""))):
             continue
         day = metadata.get("scheduled_date")
         if family and day:
@@ -131,6 +144,8 @@ def _events(preflight: dict[str, Any], raw_items: list[dict[str, Any]]) -> list[
         family = "banrep_rate_decision" if opportunity.get("event_type") == "banrep_policy_rate_decision" or identity.startswith("banrep_policy_rate_decision") else None
         if family is None:
             family = next((candidate for release, candidate in FAMILY_BY_RELEASE.items() if identity.startswith(f"dane_{release}_release_")), None)
+        if family == "unemployment_down_yoy" and not _national_monthly_labor_release(str(opportunity.get("title", ""))):
+            continue
         day = opportunity.get("event_date")
         if not family or not day or (family, day) in events:
             continue
@@ -297,6 +312,7 @@ def plan_family_forecasts(run_dir: Path, *, config_path: Path = DEFAULT_CONFIG, 
         by_id["labor_market"] = labor
     survey = by_id.get("banrep_eme_expectations") or _survey_context(raw_items)
     slots, notices = [], []
+    notices.extend(dane_calendar_coverage_notices(raw_items))
     events = _events(preflight, raw_items)
     if not events:
         notices.append("No usable official calendar events were captured; zero slots does not establish complete calendar coverage.")

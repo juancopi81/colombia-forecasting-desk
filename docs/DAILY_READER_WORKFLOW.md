@@ -39,6 +39,15 @@ unknown result. Author `agent_analysis.json` using
 Review every triggered tension and at least one cross-bundle or unbundled
 relationship. Distinguish the public editorial decision from internal calls.
 
+For a selected Cámara Comisión Tercera minutes follow-up, use
+`capture_camara_minutes.py --date-from YYYY-MM-DD --date-to YYYY-MM-DD
+--output-dir NEW_CAPTURE_DIR` with live-network execution; see
+[Cámara minutes capture](CAMARA_MINUTES.md). Review its JSON index and bounded
+PDF receipts instead of rereading the empty HTML table. An empty/stale index,
+partial capture or unread PDF leaves the vote outcome unknown.
+Place normal captures under the current run's `sources/camara-minutes-HHMMSS/`
+so its `receipts.json` enters weekly provenance; use `/tmp` for debugging.
+
 ```bash
 ./.venv/bin/python scripts/write_m2_sampling_decisions.py --date YYYY-MM-DD
 ./.venv/bin/python scripts/finalize_agent_analysis.py --date YYYY-MM-DD

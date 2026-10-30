@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import asdict
+import json
+
+import pytest
 
 import colombia_forecasting_desk.source_fetching.rss as rss_fetchers
 from colombia_forecasting_desk.config_loader import load_metasources
@@ -52,6 +56,8 @@ def _fetch_dane_calendar(source, feed: str, monkeypatch, fetched_at: str):
     monkeypatch.setattr(rss_fetchers, "_now_iso", lambda: fetched_at)
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) != source.url:
+            return httpx.Response(404, request=request)
         return httpx.Response(200, text=feed, request=request)
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
@@ -186,6 +192,113 @@ def test_real_config_enables_dane_publication_calendar() -> None:
     assert source.priority == "high"
     assert source.onboarding_status == "working"
     assert source.max_items == 20
+
+
+def _annual_table(day, event_id, title, clock="10:00am"):
+    year, month, date = day.split("-")
+    months = {"01": "Enero", "11": "Noviembre", "12": "Diciembre"}
+    return (f'<table><tr><td>{date} {months[month]} {year} {clock}</td></tr>'
+            f'<tr><td><a class="ev_link_row" href="/index.php/calendario/icalrepeat.detail/{year}/{month}/{date}/{event_id}/-/event">{title}</a></td></tr></table>')
+
+
+def _fetch_augmented_calendar(sample_source, monkeypatch, *, feed="<rss><channel/></rss>", annual=None, now="2026-10-30T16:00:00Z", max_items=20, next_year=None):
+    source = _dane_publication_calendar_source(sample_source, max_items=max_items)
+    monkeypatch.setattr(rss_fetchers, "_now_iso", lambda: now)
+    fixture_dir = DANE_PUBLICATION_CALENDAR_FIXTURE.parent
+    navigation = (fixture_dir / "2026-navigation-excerpt.html").read_text()
+    requests = []
+
+    def handler(request):
+        requests.append(str(request.url))
+        if str(request.url) == source.url:
+            text = feed
+        elif str(request.url) == rss_fetchers.DANE_PUBLICATION_CALENDAR_PAGE_URL:
+            text = navigation
+        elif "/2027/" in request.url.path:
+            text = next_year
+        else:
+            text = annual if annual is not None else (fixture_dir / "2026-annual-excerpt.html").read_text()
+        return httpx.Response(503 if text is False or text is None else 200, text=text or "", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        return fetch_rss(source, client), requests
+
+
+def test_dane_calendar_extends_short_feed_with_official_annual_clocks(sample_source, monkeypatch):
+    items, requests = _fetch_augmented_calendar(sample_source, monkeypatch)
+    assert [(x.metadata["release_family"], x.published_at) for x in items] == [
+        ("exports", "2026-11-04T10:00:00-05:00"),
+        ("ipc", "2026-11-09T18:00:00-05:00"),
+        ("ise", "2026-11-17T10:00:00-05:00"),
+        ("labor", "2026-11-30T10:00:00-05:00"),
+    ]
+    assert len(requests) == 3 and requests[-1].endswith("?limit=0")
+    assert all(x.metadata["calendar_list_url"] == requests[-1] for x in items)
+
+
+def test_dane_calendar_caps_nearest_events_and_reports_truncation(sample_source, monkeypatch):
+    items, _ = _fetch_augmented_calendar(sample_source, monkeypatch, max_items=2)
+    assert [x.metadata["release_family"] for x in items] == ["exports", "ipc"]
+    assert items[0].metadata["calendar_events_before_limit"] == 4
+    assert any("truncated to 2 of 4" in n for n in items[0].metadata["calendar_coverage_notices"])
+
+
+@pytest.mark.parametrize("annual", [False, '<div id="jevents_body"></div>'])
+def test_dane_calendar_incomplete_annual_keeps_healthy_rss_with_notice(sample_source, monkeypatch, annual):
+    feed = _rss_with_titles("04 Nov 2026 10:00 : Exportaciones")
+    items, _ = _fetch_augmented_calendar(sample_source, monkeypatch, annual=annual, feed=feed)
+    assert len(items) == 1 and items[0].metadata["release_family"] == "exports"
+    assert items[0].metadata["calendar_coverage"] == "incomplete"
+    assert any("collection incomplete" in n for n in items[0].metadata["calendar_coverage_notices"])
+
+
+def test_dane_calendar_follows_advertised_next_year_and_keeps_distinct_events(sample_source, monkeypatch):
+    annual = '<div id="jevents_body"><a href="/index.php/calendario/year.listevents/2027/12/30/-">Año Siguiente</a>' + _annual_table("2026-12-30", 1, "Mercado Laboral (GEIH)") + '</div>'
+    next_year = '<div id="jevents_body">' + _annual_table("2027-01-08", 2, "Índice de Precios al Consumidor (IPC)", "06:00pm") + _annual_table("2027-01-08", 3, "Exportaciones") + '</div>'
+    items, requests = _fetch_augmented_calendar(sample_source, monkeypatch, annual=annual, next_year=next_year, now="2026-12-29T16:00:00Z")
+    assert len(items) == 3 and len(requests) == 4
+    assert items[-1].published_at == "2027-01-08T18:00:00-05:00"
+    assert len({x.id for x in items}) == 3
+    assert items[0].metadata["calendar_horizon_end"] == "2027-02-27"
+
+
+def test_dane_calendar_withholds_conflicting_clock_even_if_one_time_has_passed(sample_source, monkeypatch):
+    url = "https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/11/04/11088/-/event"
+    feed = _rss_with_titles("04 Nov 2026 09:00 : Exportaciones").replace("https://www.dane.gov.co/index.php/calendario/evento-1", url)
+    annual = '<div id="jevents_body">' + _annual_table("2026-11-04", 11088, "Exportaciones") + _annual_table("2026-11-09", 2, "Índice de Precios al Consumidor (IPC)") + '</div>'
+    items, _ = _fetch_augmented_calendar(sample_source, monkeypatch, feed=feed, annual=annual, now="2026-11-04T14:30:00Z")
+    assert [x.metadata["release_family"] for x in items] == ["ipc"]
+    assert any("sources disagree" in n for n in items[0].metadata["calendar_coverage_notices"])
+
+
+def test_dane_calendar_agreement_preserves_rss_identity_and_operation(sample_source, monkeypatch):
+    url = "https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/11/04/11088/-/event"
+    operation = "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones"
+    feed = _rss_with_titles("04 Nov 2026 10:00 : Exportaciones").replace("https://www.dane.gov.co/index.php/calendario/evento-1", url).replace("Publicación programada por DANE.", f'&lt;a href="{operation}"&gt;Consultar operación estadística&lt;/a&gt;')
+    annual = '<div id="jevents_body">' + _annual_table("2026-11-04", 11088, "Exportaciones") + '</div>'
+    items, _ = _fetch_augmented_calendar(sample_source, monkeypatch, feed=feed, annual=annual)
+    assert len(items) == 1
+    assert items[0].id == rss_fetchers._make_id('dane_publication_calendar', url, '04 Nov 2026 10:00 : Exportaciones')
+    assert items[0].metadata['operation_url'] == operation
+    assert items[0].metadata['calendar_coverage'] == 'bounded_official_calendar'
+
+
+def test_extended_calendar_reaches_weekly_facts_without_early_family_call(sample_source, monkeypatch, tmp_path):
+    from colombia_forecasting_desk.m3_preflight_opportunities import build_m3_preflight_opportunities
+    from colombia_forecasting_desk.forecast_families import plan_family_forecasts
+    from colombia_forecasting_desk.weekly_brief import build_weekly_facts
+
+    items, _ = _fetch_augmented_calendar(sample_source, monkeypatch, max_items=2)
+    preflight = build_m3_preflight_opportunities(items, run_date='2026-10-30', generated_at='2026-10-30T16:00:00Z')
+    assert next(x for x in preflight['opportunities'] if x['event_date'] == '2026-11-09')['m3_gate'] == 'research_only'
+    run = tmp_path / 'runs' / '2026-10-30'
+    run.mkdir(parents=True)
+    for name, data in [('raw_items.json', [asdict(x) for x in items]), ('m3_preflight_opportunities.json', preflight), ('indicator_watch.json', [])]:
+        (run / name).write_text(json.dumps(data))
+    assert not plan_family_forecasts(run)['slots']
+    facts = build_weekly_facts(tmp_path / 'runs', '2026-W44', cutoff_at='2026-10-30T16:30:00Z')
+    assert any(x['date'] == '2026-11-04' and 'Exportaciones' in x['event'] for x in facts['events'])
+    assert any('truncated to 2 of 4' in gap for gap in facts['coverage_gaps'])
 
 
 def test_parse_rss_entries(sample_source) -> None:

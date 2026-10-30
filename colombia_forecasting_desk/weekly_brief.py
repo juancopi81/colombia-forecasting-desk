@@ -9,12 +9,13 @@ import json
 from pathlib import Path
 import re
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from zoneinfo import ZoneInfo
 
 import yaml
 
 from .plain_language import validate_plain_text, word_count
+from .dedupe import canonicalize_url
 from .schemas.case_file import validate as validate_case
 from .schemas._common import iso_date, probability, text as nonempty_text
 from .schemas.scoreboard import validate as validate_scoreboard
@@ -320,9 +321,21 @@ def build_weekly_facts(
             return
         if not date.fromisoformat(last.name) < event_day <= date.fromisoformat(last.name) + timedelta(days=14) or not _known(event, cutoff):
             return
-        key = (event_day.isoformat(), _family(family or title))
-        events[key] = {"date": event_day.isoformat(), "family_id": key[1], "event": title,
-                       "source_url": url, "artifact_ref": _ref(artifact, locator), "details": event}
+        metadata = event.get("metadata") or {}
+        candidates = [metadata.get("calendar_event_url"), event.get("calendar_url"), url]
+        candidates.extend(ref.get("url") for ref in event.get("source_evidence", []) if isinstance(ref, dict))
+        calendar_url = ""
+        for candidate in candidates:
+            if not isinstance(candidate, str):
+                continue
+            parsed = urlsplit(candidate)
+            if parsed.hostname in {"dane.gov.co", "www.dane.gov.co"} and "/calendario/icalrepeat.detail/" in parsed.path:
+                calendar_url = canonicalize_url(candidate)
+                break
+        family_id = _family(family or title)
+        key = (event_day.isoformat(), calendar_url or family_id)
+        events[key] = {"date": event_day.isoformat(), "family_id": family_id, "event": title,
+                       "source_url": calendar_url or url, "artifact_ref": _ref(artifact, locator), "details": event}
 
     for run in dirs:
         metadata_path = run / "sources" / "followup" / "metadata.json"
@@ -400,6 +413,9 @@ def build_weekly_facts(
         preflight_path = run / "m3_preflight_opportunities.json"
         preflight = _json(preflight_path, gaps)
         if isinstance(preflight, dict) and _known(preflight, cutoff):
+            for caveat in preflight.get("caveats", []):
+                if isinstance(caveat, dict) and caveat.get("detector") == "dane_economic_release" and _known(caveat, cutoff):
+                    gaps.append(f"DANE calendar ({run.name}): {caveat.get('reason', 'coverage unknown')}")
             for entry in preflight.get("opportunities", []):
                 add_event(entry, preflight_path, f"opportunity_id={entry.get('opportunity_id')}", str(entry.get("release_family") or entry.get("opportunity_id", "")),
                           entry.get("event_date", ""), entry.get("title", "Scheduled official release"), entry.get("resolution_source_url") or entry.get("resolver_url") or "")
