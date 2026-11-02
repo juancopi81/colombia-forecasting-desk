@@ -11,7 +11,9 @@ The [daily reader procedure](DAILY_READER_WORKFLOW.md) adds these opt-in artifac
 
 - `reader_brief.json` / `.md` — authored, validated reader output, capped at 250 rendered words
 - `reader_brief_receipt.json` — successful contextual validation and output hashes; required by the ten-run counter
-- `family_evidence_capture.json` — history/release capture results and actionable source notices
+- `family_evidence_capture.json` — history/release and due PL012 minutes capture results with actionable source notices
+- `due_shadow_evidence_capture.json` — bounded due PL012 record checks, unchanged resolver criteria, query bounds and review notices; no outcome decision
+- `sources/camara-minutes-due-<forecast_id>/attempt-NNNN/` — preserved minutes index/PDF bodies, detailed `capture.json` and weekly-compatible `receipts.json`; complete same-day captures are reused and failed attempts retained
 - `family_reference_history.json` — hash-verified current official GEIH history with exact cells and a revised-history caveat
 - `family_release_evidence.json` — exact-period/series/date first-release observations and provenance
 - `sources/family_evidence/<sha>.*` — original official history/bulletin/page bytes used by the intake

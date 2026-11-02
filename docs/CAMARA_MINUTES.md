@@ -7,6 +7,35 @@ that page's endpoint, commission and nonce for the read-only
 `get_actas_y_otros_page` query. The nonce is never hardcoded or copied into the
 report; it remains in the preserved original HTML.
 
+The normal `capture_family_evidence.py --date YYYY-MM-DD` command also invokes
+this collector for `shadow_20261026_camara_pl012_first_debate_approval` while it
+is open and its original event date has elapsed. An open ledger row is the
+unresolved review state: no definitive registry result has been accepted.
+There is no automatic interpretation of registry status or source snippets.
+The helper queries from seven days before `resolution_deadline` through the
+current Bogotá run date, so later-posted records can still establish an event
+before the immutable cutoff. That bounded index lookback does not claim full
+historical/session coverage or extend the event window.
+
+Each due check keeps the default two filtered pages and one PDF. Its summary
+is `due_shadow_evidence_capture.json`, with the original `resolution_source`
+and `resolution_criteria` copied verbatim and collection dates labeled
+separately. Detailed evidence lives at
+`sources/camara-minutes-due-<forecast_id>/attempt-NNNN/{capture,receipts}.json`
+under today's run. A complete same-day query, including an empty one, is reused
+after checking its preserved source hashes. Failed/partial queries, failed
+document downloads or interrupted directories permit a new bounded attempt;
+old bytes and receipts are never overwritten. Live due intake into a historical
+run is rejected. Targeted family `--slot-id`, `--history` and `--history-url`
+commands do not trigger this minutes check.
+
+Read the summary notices even after a complete capture. An unread document
+requires review of the exact bill, session, vote and original exclusive cutoff
+before using the guarded shadow resolver. The helper never changes a ledger
+or decides YES/NO; missing, empty, partial and unread records stay unresolved.
+This due resolver intake is separate from the daily discretionary editorial
+follow-up. Reuse the captured source evidence rather than repeat its query.
+
 Request live-network execution before running this command. Use a new output
 directory for every capture, outside historical run folders during debugging:
 

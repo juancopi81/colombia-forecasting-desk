@@ -1,4 +1,4 @@
-"""Capture official GEIH history and exact dated DANE first-release bulletins.
+"""Capture official family evidence and due PL012 commission minutes.
 
 This is an explicit network command. Run after the strict scan and before the
 family planner/resolver; never invoke it from a renderer or validator.
@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from colombia_forecasting_desk.family_evidence import capture_first_release, capture_geih_history  # noqa: E402
+from colombia_forecasting_desk.due_shadow_evidence import capture_due_shadow_evidence  # noqa: E402
 from colombia_forecasting_desk.forecast_families import _events, _read, _rows, _write  # noqa: E402
 
 
@@ -42,7 +43,8 @@ def main(argv: list[str] | None = None) -> int:
         raw = _read(run_dir / "raw_items.json", [])
         preflight = _read(run_dir / "m3_preflight_opportunities.json", {"opportunities": []})
         labor_due = any(event["family_id"] == "unemployment_down_yoy" and day < date.fromisoformat(event["event_date"]) <= day + timedelta(days=7) for event in _events(preflight, raw))
-        rows = [row for row in _rows(args.ledger) if row.get("status") == "open" and row.get("forecast_family") in ("ipc_annual_up", "ise_annual_up", "unemployment_down_yoy") and row.get("family_event", {}).get("event_date", "9999") <= args.date]
+        ledger_rows = _rows(args.ledger)
+        rows = [row for row in ledger_rows if row.get("status") == "open" and row.get("forecast_family") in ("ipc_annual_up", "ise_annual_up", "unemployment_down_yoy") and row.get("family_event", {}).get("event_date", "9999") <= args.date]
         if args.slot_id:
             rows = [row for row in rows if row.get("slot_id") == args.slot_id]
             if not rows:
@@ -63,7 +65,12 @@ def main(argv: list[str] | None = None) -> int:
                     captures.append(capture["slot_id"])
                 except (ValueError, OSError, httpx.HTTPError) as exc:
                     notices.append(f"First-release evidence unavailable for {row.get('slot_id')}: {exc}")
-        report = {"schema_version": "family_evidence_capture.v1", "run_date": args.date, "history_rows": history_count, "release_slots": captures, "notices": notices}
+        due_shadow_checks = []
+        if not (args.slot_id or args.history or args.history_url):
+            due_shadow = capture_due_shadow_evidence(run_dir, ledger_rows)
+            due_shadow_checks = [check["forecast_id"] for check in due_shadow["checks"]]
+            notices.extend(due_shadow["notices"])
+        report = {"schema_version": "family_evidence_capture.v1", "run_date": args.date, "history_rows": history_count, "release_slots": captures, "due_shadow_checks": due_shadow_checks, "notices": notices}
         _write(run_dir / "family_evidence_capture.json", report)
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)

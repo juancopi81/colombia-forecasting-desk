@@ -17,11 +17,26 @@ interpret sandbox DNS failures or all-zero artifacts as source evidence.
 ```
 
 The second command is also network-dependent. It collects the official GEIH
-historical comparator for an upcoming jobs release and exact dated bulletins
-for due open DANE family calls. Exit 2 means the capture report has actionable
-source notices; inspect it and keep affected outcomes unresolved. Never invent
+historical comparator for an upcoming jobs release, exact dated bulletins
+for due open DANE family calls, and bounded Comisión Tercera minutes for the
+open PL012 food-tax call after its event deadline has elapsed. An open ledger
+row means no definitive registry outcome has been accepted; it triggers the
+other declared resolver source without inferring a result from registry status.
+Exit 2 means the capture report has actionable source notices; inspect
+`family_evidence_capture.json` and `due_shadow_evidence_capture.json` and keep
+affected outcomes unresolved. Never invent
 a first-release marker or substitute a current revised value. See
 [Forecast families](FORECAST_FAMILIES.md) for targeted capture options.
+
+The PL012 intake queries index dates from seven days before its original event
+date through today's Bogotá date, including records posted after the event or
+record-check date. This bounded search never changes the exclusive event
+cutoff or establishes complete session coverage. Each invocation permits two
+filtered pages and one PDF, plus the collector's single empty-query diagnostic.
+Complete same-day captures are reused; failed, partial or interrupted attempts
+may be retried into a fresh directory with all prior receipts preserved. A
+targeted `--slot-id`, `--history` or `--history-url` call does not collect unrelated
+minutes. The due-minutes helper rejects live intake into a historical run.
 
 Compare with the previous decision-grade run. Read source excerpts, source
 health, official indicators, all triggered tensions, market context, bundles,
@@ -39,7 +54,9 @@ unknown result. Author `agent_analysis.json` using
 Review every triggered tension and at least one cross-bundle or unbundled
 relationship. Distinguish the public editorial decision from internal calls.
 
-For a selected Cámara Comisión Tercera minutes follow-up, use
+Review the due PL012 capture before choosing additional follow-up sources.
+Its PDFs remain unread until their identity and outcome are reviewed. For a
+separate selected Cámara Comisión Tercera minutes follow-up, use
 `capture_camara_minutes.py --date-from YYYY-MM-DD --date-to YYYY-MM-DD
 --output-dir NEW_CAPTURE_DIR` with live-network execution; see
 [Cámara minutes capture](CAMARA_MINUTES.md). Review its JSON index and bounded
@@ -47,6 +64,10 @@ PDF receipts instead of rereading the empty HTML table. An empty/stale index,
 partial capture or unread PDF leaves the vote outcome unknown.
 Place normal captures under the current run's `sources/camara-minutes-HHMMSS/`
 so its `receipts.json` enters weekly provenance; use `/tmp` for debugging.
+The automatic due check uses
+`sources/camara-minutes-due-<forecast_id>/attempt-NNNN/` with the same receipt
+contract. It is required resolver intake, separate from the one discretionary
+editorial follow-up; reuse its evidence rather than repeat the query.
 
 ```bash
 ./.venv/bin/python scripts/write_m2_sampling_decisions.py --date YYYY-MM-DD

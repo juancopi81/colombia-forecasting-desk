@@ -570,9 +570,16 @@ def _banrep_resolution(row: dict[str, Any], run_dir: Path) -> dict[str, Any] | N
         if not _official_url(url, row["forecast_family"]) or "minuta" in str(url).lower() or str(item.get("published_at", ""))[:10] != event["event_date"]:
             continue
         text = str(item.get("title", ""))
-        if "junta" not in text.lower() or "política monetaria" not in text.lower() and "policy" not in text.lower():
+        if "junta" not in text.lower():
             continue
-        rate = re.search(r"(?:\ba|\ben|\bat|\bto)\s+(\d+(?:[.,]\d+)?)\s*%", text, re.I)
+        if "política monetaria" in text.lower() or "policy" in text.lower():
+            rate = re.search(r"(?:\ba|\ben|\bat|\bto)\s+(\d+(?:[.,]\d+)?)\s*%", text, re.I)
+        else:
+            rate = re.search(
+                r"\bdecidió(?: por (?:mayoría|unanimidad))?\s+"
+                r"(?:mantener(?: inalterada)?|aumentar|reducir)\s+la tasa de interés de política\s+"
+                r"(?:a|en)\s+(\d+(?:[.,]\d+)?)\s*%", text, re.I,
+            )
         if not rate:
             continue
         candidates.append({"value": float(rate.group(1).replace(",", ".")), "source_url": url, "published_at": item["published_at"], "artifact": f"runs/{run_dir.name}/raw_items.json", "locator": f"id={item.get('id', '')}", "sha256": hashlib.sha256(json.dumps(item, sort_keys=True).encode()).hexdigest(), "period": event["reference_period"], "series_variant": "policy_rate", "event_date": event["event_date"]})

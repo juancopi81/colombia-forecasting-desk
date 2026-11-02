@@ -383,6 +383,73 @@ def test_banrep_requires_its_exact_board_communique_and_checks_rate_card(tmp_pat
     assert resolve_family_forecasts(tmp_path / "runs", ledger(tmp_path), as_of=EVENT, now=datetime(2026, 10, 30, 20, tzinfo=timezone.utc))["resolved"]
 
 
+@pytest.fixture
+def banrep_abbreviated_communique(tmp_path):
+    run = setup_run(tmp_path, cards=[card("policy_rate_ibr", period="2026-10-27", key="policy_rate_pct", value=12.25)], events=[calendar("banrep")])
+    prepare(run, probability=0.65)
+    append(run)
+    outcome = tmp_path / "runs" / EVENT
+    outcome.mkdir()
+    raw = {"id": "decision", "source_id": "banrep_junta_comunicados", "title": "La Junta Directiva del Banco de la República decidió por mayoría mantener inalterada la tasa de interés de política en 12,25%", "url": "https://www.banrep.gov.co/es/noticias/junta-directiva/junta-directiva-octubre-2026", "published_at": EVENT + "T00:00:00Z"}
+    return outcome, raw
+
+
+@pytest.mark.parametrize("source_id", ["banrep_junta_comunicados", "banrep_rss"])
+def test_banrep_abbreviated_policy_title_resolves_no_without_changing_prediction(tmp_path, banrep_abbreviated_communique, source_id):
+    outcome, raw = banrep_abbreviated_communique
+    raw["source_id"] = source_id
+    write(outcome / "raw_items.json", [raw])
+    before = json.loads(ledger(tmp_path).read_text())
+    result = resolve_family_forecasts(tmp_path / "runs", ledger(tmp_path), as_of=EVENT, now=datetime(2026, 10, 30, 20, tzinfo=timezone.utc))
+    after = json.loads(ledger(tmp_path).read_text())
+    assert result["resolved"] == [before["forecast_id"]]
+    assert after["outcome"] == "NO"
+    assert after["resolution_evidence"]["value"] == 12.25
+    assert after["resolution_url"] == raw["url"]
+    assert after["resolution_artifact"] == "runs/2026-10-30/raw_items.json"
+    assert all(after[key] == value for key, value in before.items() if key != "status")
+
+
+@pytest.mark.parametrize("override", [
+    {"source_id": "banrep_junta_calendar"},
+    {"url": "https://news.example/banrep-decision"},
+    {"url": "https://www.banrep.gov.co/es/minutas-junta-directiva-octubre-2026"},
+    {"published_at": "2026-10-29T13:50:00-05:00"},
+    {"published_at": EVENT},
+    {"published_at": EVENT + "T23:00:00Z"},
+    {"title": "El Banco de la República decidió mantener inalterada la tasa de interés de política en 12,25%"},
+    {"title": "La Junta Directiva decidió mantener inalterada la tasa de interés de política"},
+    {"title": "La Junta Directiva decidió mantener inalterada la tasa de interés de política y proyecta la inflación en 5%"},
+    {"title": "La Junta Directiva analiza la tasa de interés de política y proyecta la inflación en 5%"},
+    {"title": "La Junta Directiva analiza la tasa de interés de política en 12,25%"},
+    {"title": "La Junta Directiva analiza si mantiene la tasa de interés de política en 12,25%"},
+])
+def test_banrep_abbreviated_title_cannot_bypass_evidence_guards(tmp_path, banrep_abbreviated_communique, override):
+    outcome, raw = banrep_abbreviated_communique
+    write(outcome / "raw_items.json", [{**raw, **override}])
+    before = ledger(tmp_path).read_bytes()
+    result = resolve_family_forecasts(tmp_path / "runs", ledger(tmp_path), as_of=EVENT, now=datetime(2026, 10, 30, 20, tzinfo=timezone.utc))
+    assert not result["resolved"]
+    assert result["waiting_for_official_records"]
+    assert ledger(tmp_path).read_bytes() == before
+
+
+@pytest.mark.parametrize("conflict", ["communique", "rate_card"])
+def test_banrep_abbreviated_title_leaves_conflicting_rates_unresolved(tmp_path, banrep_abbreviated_communique, conflict):
+    outcome, raw = banrep_abbreviated_communique
+    items = [raw]
+    if conflict == "communique":
+        items.append({**raw, "id": "conflicting_decision", "title": raw["title"].replace("12,25%", "12,50%")})
+    else:
+        write(outcome / "indicator_watch.json", [card("policy_rate_ibr", period=EVENT, key="policy_rate_pct", value=12.5)])
+    write(outcome / "raw_items.json", items)
+    before = ledger(tmp_path).read_bytes()
+    result = resolve_family_forecasts(tmp_path / "runs", ledger(tmp_path), as_of=EVENT, now=datetime(2026, 10, 30, 20, tzinfo=timezone.utc))
+    assert not result["resolved"]
+    assert result["waiting_for_official_records"]
+    assert ledger(tmp_path).read_bytes() == before
+
+
 def test_scoreboard_separates_lanes_pairs_baselines_and_excludes_hindsight(tmp_path):
     run = setup_run(tmp_path)
     prepare(run)
