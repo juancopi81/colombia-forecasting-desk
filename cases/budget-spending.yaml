@@ -1,9 +1,8 @@
 schema_version: case_file.v1
 case_id: budget-spending
 plain_title: The spending cut and next year’s budget
-plain_summary: The government reduced 2026 appropriations and issued the 2027 budget
-  by decree. Implementation and legal questions remain separate from the existence
-  of the instruments.
+plain_summary: The government reduced 2026 appropriations and issued the 2027 budget by decree.
+  Implementation and legal questions remain separate from the existence of the instruments.
 why_it_matters: Budget authority can change public services and project funding.
 who_is_affected: Public bodies, contractors and users of public services.
 identifiers:
@@ -19,28 +18,32 @@ identifiers:
   keywords:
   - presupuesto general
 current_view:
-  date: '2026-10-29'
-  text: The complete official edition checked on October 23 records a COP 13.8 trillion
-    2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis
-    for issuance. New October 28 reports favor a separate supplementary 2026 budget
-    bill with modifications; they do not establish adoption. Execution and legal
-    validity need separate evidence.
+  date: '2026-11-02'
+  text: The verified decrees retain a COP 13.8 trillion 2026 appropriation reduction and COP
+    634.95 trillion 2027 budget. The separate supplementary 2026 budget bill is scheduled for
+    joint economic commissions on November 3. This is a debate opportunity, not adopted spending,
+    cash savings or proof of implementation.
   confidence: confirmed
 next_trigger:
   date: null
-  event: Official allocations, execution data or a court decision change the implementation
-    picture.
+  event: Official adopted text or certified outcome clarifies the supplementary 2026 budget
+    bill after its scheduled November 3 committee debate; the schedule alone is not approval.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-02'
+  change: The new weekly agenda schedules the supplementary 2026 budget bill for November 3
+    at 07:00 in joint economic commissions. Keep this separate from the existing decrees, royalties
+    budget and economic-rescue proposal.
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/AGENDA-LEGISLATIVA-SEMANA-DEL-2-AL-6-DE-NOVIEMBRE-DE-2026.pdf
 - date: '2026-10-29'
-  change: October 28 Gacetas 1663 and 1664 publish positive first-debate reports with
-    modifications for the supplementary 2026 budget bill. The captured excerpts
-    establish a report, not adoption, exact allocations or cash execution.
+  change: October 28 Gacetas 1663 and 1664 publish positive first-debate reports with modifications
+    for the supplementary 2026 budget bill. The captured excerpts establish a report, not adoption,
+    exact allocations or cash execution.
   source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1664
 - date: '2026-10-27'
-  change: The complete official edition checked on October 23 records a COP 13.8 trillion
-    2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis
-    for issuance; execution and legal validity need separate evidence.
+  change: The complete official edition checked on October 23 records a COP 13.8 trillion 2026
+    reduction and a COP 634.95 trillion 2027 budget. The decree states its basis for issuance;
+    execution and legal validity need separate evidence.
   source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.666

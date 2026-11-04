@@ -1,9 +1,9 @@
 schema_version: case_file.v1
 case_id: security-purchases
 plain_title: Publication rules for security purchases
-plain_summary: The public-order bill proposes a reserved-procurement procedure. Its
-  revised text removed earlier explicit nonpublication wording but retained a decree
-  reference; the final disclosure effects need the exact adopted text.
+plain_summary: Joint committees approved a narrower reserved-procurement mechanism. Infrastructure
+  and territorial cofinancing are excluded; final plenary text and disclosure effects still
+  need verification.
 why_it_matters: Publication rules affect public oversight of security spending.
 who_is_affected: Security agencies, suppliers and people monitoring public procurement.
 identifiers:
@@ -17,25 +17,41 @@ identifiers:
   - compras reservadas
   - orden publico
 current_view:
-  date: '2026-10-27'
-  text: The revised positive report removed explicit nonpublication and no-multiple-offers
-    sentences, narrowed scope and retained the procurement-rule reference. Opposition
-    engages that revision. This does not establish either abolished disclosure exceptions
-    or an enacted provision; the certified vote and adopted text remain unverified.
-  confidence: uncertain
+  date: '2026-11-03'
+  text: The official registry records approval of Articles 5 and 14 as in the report and
+    rejected deletion propositions during the November 2 plenary. This establishes partial
+    progress, not completed passage or adoption of the reserved-procurement clause. The
+    previously verified committee text excludes infrastructure and territorial cofinancing;
+    final procurement wording and disclosure effects remain unverified.
+  confidence: confirmed
 next_trigger:
   date: null
-  event: The official committee record or adopted bill text is published.
+  event: A certified completed plenary outcome and adopted text establish the final
+    procurement provision and its disclosure effects.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-03'
+  change: The registry now records November 2 plenary approval of Articles 5 and 14 and
+    rejected deletion propositions. Completed passage and adoption of the procurement
+    provision remain unverified.
+  source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
+- date: '2026-11-02'
+  change: Verified the October 21 committee text and renumbering to Article 25, with explicit
+    infrastructure and territorial-cofinance exclusions. The registry now lists plenary processing
+    and the weekly agenda lists November 2 second debate.
+  source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
+- date: '2026-11-02'
+  change: The approved committee text records Acta 01 of October 21. Article 24 now concerns
+    criminal procedure; Article 25 contains the reserved-procurement mechanism. This is committee
+    adoption, without verified final enactment.
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/10/proyectos-ley/publicaciones/proyecto-36505/Texto-Aprobado-PL2-96-26S-433-26C-Conjuntas-Revisado.docx
 - date: '2026-10-27'
-  change: Official material includes competing reports on the public-order bill. The
-    October 21 debate opportunity does not establish a certified vote or an adopted
-    publication exemption.
+  change: Official material includes competing reports on the public-order bill. The October
+    21 debate opportunity does not establish a certified vote or an adopted publication exemption.
   source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
 - date: '2026-10-27'
-  change: Reconciled the case with the already verified revised proposal, rather than
-    repeating the filed version.
+  change: Reconciled the case with the already verified revised proposal, rather than repeating
+    the filed version.
   source_url: https://www.camara.gov.co/wp-content/uploads/2026/10/proyectos-ley/publicaciones/proyecto-36505/PONENCIA-PL-433-26C-296-26S-ORDEN-PA_BLICO-1.pdf

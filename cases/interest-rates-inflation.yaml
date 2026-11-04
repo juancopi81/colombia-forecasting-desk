@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: interest-rates-inflation
 plain_title: Interest rates and inflation
-plain_summary: The central bank balances persistent inflation against the effects
-  of expensive borrowing.
+plain_summary: The central bank balances persistent inflation against the effects of expensive
+  borrowing.
 why_it_matters: Policy decisions affect credit costs and household purchasing power.
 who_is_affected: Borrowers, savers, firms and public borrowers.
 identifiers:
@@ -16,19 +16,28 @@ identifiers:
   - Banco de la República
   - inflación
 current_view:
-  date: '2026-10-27'
-  text: September annual inflation is 6.29%. The September 30 board decision raised
-    the policy rate to 12.25%; the next decision is October 30.
+  date: '2026-11-02'
+  text: The October 30 board held the policy rate at 12.25%, with four votes for a hold and
+    three for a quarter-point rise. September annual inflation remains 6.29%; easing core inflation
+    and weaker demand coexist with elevated expectations and food-price risks. The next headline
+    inflation release is scheduled for November 9.
   confidence: confirmed
 next_trigger:
-  date: '2026-10-30'
-  event: The central bank announces its next policy-rate decision.
+  date: '2026-11-09'
+  event: DANE publishes October headline inflation at 18:00 Bogotá; the internal call is 60%
+    that the annual rate exceeds 6.29%.
 forecast_ids:
 - family_banrep_rate_decision_2026-10-30
+- family_ipc_annual_up_2026-11-09
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-02'
+  change: Verified the October 30 hold at 12.25%; the frozen 65% hike call resolves NO. Recorded
+    a separate prospective 60% October inflation-up call for November 9, against an explicitly
+    uninformative 50/50 baseline.
+  source_url: https://www.banrep.gov.co/es/noticias/junta-directiva/junta-directiva-octubre-2026
 - date: '2026-10-27'
-  change: September annual inflation is 6.29%. The September 30 board decision raised
-    the policy rate to 12.25%; the next decision is October 30.
+  change: September annual inflation is 6.29%. The September 30 board decision raised the policy
+    rate to 12.25%; the next decision is October 30.
   source_url: https://banrep.gov.co/es/noticias/junta-directiva/junta-directiva-septiembre-2026

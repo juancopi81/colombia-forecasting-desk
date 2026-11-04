@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: economic-activity
 plain_title: Economic activity and jobs
-plain_summary: Monthly activity, factories, shops, trade and employment reveal whether
-  growth is broad and whether it is reaching workers.
+plain_summary: Monthly activity, factories, shops, trade and employment reveal whether growth
+  is broad and whether it is reaching workers.
 why_it_matters: Weak output can affect employment, tax revenue and business demand.
 who_is_affected: Workers, consumers, firms and public budgets.
 identifiers:
@@ -19,20 +19,28 @@ identifiers:
   - manufactura
   - comercio minorista
 current_view:
-  date: '2026-10-27'
-  text: The August activity index was 0.04% below a year earlier. Factory and retail
-    readings diverge; one weak month does not establish a sustained contraction.
+  date: '2026-10-30'
+  text: September national unemployment fell to 8.0% from 8.2% a year earlier, while occupation
+    stayed at 58.7% and participation fell from 63.9% to 63.8%. The 13-city unemployment rate
+    instead rose to 8.3% from 8.1%. The national improvement does not establish a broad employment
+    recovery; August activity and manufacturing remain weak.
   confidence: confirmed
 next_trigger:
-  date: '2026-10-30'
-  event: September national unemployment is released; the next activity, factory
-    and retail releases will update the output picture.
+  date: '2026-11-13'
+  event: DANE schedules manufacturing and retail releases for November 13 at 10:00 Bogotá,
+    activity for November 17 at 10:00 and headline national jobs for November 30 at 10:00.
+    Thematic labor releases on November 13 are distinct from national monthly jobs.
 forecast_ids:
 - family_unemployment_down_yoy_2026-10-30
 status: active
 park_after_days: 21
 updates:
+- date: '2026-10-30'
+  change: The original September GEIH bulletin reports national unemployment of 8.0%, below
+    the 8.2% year-earlier threshold; the existing 35% internal call resolves YES. National
+    occupation is unchanged and large-city unemployment worsens.
+  source_url: https://www.dane.gov.co/files/operaciones/GEIH/bol-GEIH-sep2026.pdf
 - date: '2026-10-27'
-  change: The August activity index was 0.04% below a year earlier. Factory and retail
-    readings diverge; one weak month does not establish a sustained contraction.
+  change: The August activity index was 0.04% below a year earlier. Factory and retail readings
+    diverge; one weak month does not establish a sustained contraction.
   source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise
