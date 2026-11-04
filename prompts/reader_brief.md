@@ -32,6 +32,10 @@ official records, including rows flagged for review. A call already shown under
 Coming up must not be repeated under Open forecasts; that section is for other
 outstanding calls. Use their recorded
 resolution_check_window_end as resolves_by, falling back to resolution_deadline.
+This is the desk's internal record-check date, not an official publication
+deadline. The renderer compares it with run_date: scheduled, scheduled today,
+or date passed with outcome unverified. Preserve the recorded date after it
+passes; an overdue check does not resolve or void a forecast.
 Mention missing official records explicitly; silence never means NO. Public and
 internal forecasts remain distinct in the scoreboard, and no brief authoring or
 rendering step changes either ledger.

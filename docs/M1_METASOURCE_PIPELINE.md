@@ -580,10 +580,15 @@ M1.27 adds a MinHacienda decree-project browser parser for
 `minhacienda_proyectos_decreto`. The source still tries direct HTTP first, but
 if the 2026 page returns Radware the fetcher renders the official page with
 Playwright and emits one row per draft-decree project. A row is treated as
-parsed content only when the parser has the draft title, publication date,
-description/comment-window text, project PDF URL, and comment form URL. If any
-required field is missing, the row remains link-level with
+parsed listing content only when the parser has the draft title, publication
+date, description/comment-window text, and project PDF URL. If any required
+listing field is missing, the row remains link-level with
 `content_extraction_error` so source health cannot look fully content-ready.
+`content_scope=project_listing` makes clear that the underlying PDF has not
+been read. Comment-form availability is recorded separately as
+`comment_form_availability=present|not_listed`; when present, the link is kept
+in `comment_form_url`. A missing form does not invalidate the listing text or
+establish whether consultation is open or closed, or whether a decree was enacted.
 
 M1.28 adds a second fallback for this source. The access order is:
 
@@ -595,7 +600,9 @@ M1.28 adds a second fallback for this source. The access order is:
 Rows from the reader fallback keep `official_source_url`, `reader_proxy_url`,
 and `source_access=jina_reader_proxy` metadata so M2/M3 can see that the
 evidence came from the official page through a reader proxy, not from direct
-official transport. The parser still fails closed on incomplete rows.
+official transport. The parser still fails closed on incomplete listing rows.
+Each project's description, comment window, and comment-form link are bounded
+by the next project, including reader links with escaped quotes in their titles.
 
 M1.29 adds a guarded browser-backed parser for `registraduria_noticias`. The
 source now uses Registraduría's official 2026 news archive (`/-2026-.html`),

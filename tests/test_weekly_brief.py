@@ -196,6 +196,50 @@ def test_weekly_schema_render_caps_and_escaping(brief):
     assert validate_weekly_brief(brief)
 
 
+@pytest.mark.parametrize("render", [render_weekly_brief, render_weekly_html])
+@pytest.mark.parametrize("as_of, label", [
+    ("2026-10-21", "record check scheduled for 2026-10-22"),
+    ("2026-10-22", "record check scheduled for today (2026-10-22)"),
+    ("2026-10-23", "record-check date passed (2026-10-22); outcome unverified"),
+])
+def test_record_check_labels_use_weekly_as_of_date(brief, render, as_of, label):
+    brief["as_of"] = as_of
+    brief["open_forecasts"] = [{"forecast_id": "old", "plain_question": "Will the official rate rise?",
+                                "probability": 0.6, "resolves_by": "2026-10-22"}]
+    original = deepcopy(brief)
+    assert f"60%; {label}." in render(brief)
+    assert "official record due" not in render(brief)
+    assert brief == original
+
+
+@pytest.mark.parametrize("check_date, label", [
+    ("2026-10-20", "record-check date passed (2026-10-20); outcome unverified"),
+    ("2026-10-21", "record check scheduled for today (2026-10-21)"),
+    ("2026-10-22", "record check scheduled for 2026-10-22"),
+])
+def test_historical_check_labels_use_bogota_cutoff_without_mutating_inputs(tmp_path, brief, check_date, label):
+    make_run(tmp_path, "2026-10-21")
+    row = forecast()
+    row["resolution_check_window_end"] = check_date
+    ledger = tmp_path / "forecasts" / "shadow_forecast_log.jsonl"
+    ledger.parent.mkdir()
+    ledger.write_text(json.dumps(row) + "\n")
+    original_ledger = ledger.read_bytes()
+    facts = build_weekly_facts(tmp_path / "runs", "2026-W43", cutoff_at="2026-10-22T01:00:00Z")
+    assert facts["as_of"] == "2026-10-21"
+    assert facts["forecasts"]["internal"]["open"][0]["status"] == "open"
+    brief.update(as_of=facts["as_of"], top_stories=[], next_week=[],
+                 data_problems=["Historical story and watchlist snapshots are unavailable."],
+                 open_forecasts=[{"forecast_id": "old", "plain_question": "Will the official rate rise?",
+                                  "probability": 0.6, "resolves_by": check_date}])
+    original_brief, original_facts = deepcopy(brief), deepcopy(facts)
+    assert not validate_weekly_brief(brief, facts=facts)
+    for render in (render_weekly_brief, render_weekly_html):
+        assert f"60%; {label}." in render(brief)
+    assert brief == original_brief and facts == original_facts
+    assert ledger.read_bytes() == original_ledger
+
+
 def test_rendered_word_cap_is_not_a_json_character_count(brief):
     brief["top_stories"][0]["why_it_matters"] = " ".join(["growth"] * 450)
     assert any("450 words" in issue for issue in validate_weekly_brief(brief))
@@ -249,11 +293,15 @@ def test_finalizer_writes_only_after_provenance_validation(tmp_path, brief):
     folder = tmp_path / "weekly" / "2026-W43"
     write_json(folder / "weekly_facts.json", facts)
     write_json(folder / "weekly_brief.json", brief)
+    authored = (folder / "weekly_brief.json").read_bytes()
+    frozen_facts = (folder / "weekly_facts.json").read_bytes()
     path = Path(__file__).parent.parent / "scripts" / "finalize_weekly_brief.py"
     spec = importlib.util.spec_from_file_location("finalize_weekly_brief", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.finalize(week="2026-W43", weekly_dir=folder.parent)
+    assert (folder / "weekly_brief.json").read_bytes() == authored
+    assert (folder / "weekly_facts.json").read_bytes() == frozen_facts
     original = (folder / "weekly.html").read_bytes()
     assert (folder / "weekly_brief.md").read_text() == render_weekly_brief(brief)
     brief["top_stories"][0]["source_url"] = "https://unknown.gov.co/new-claim"

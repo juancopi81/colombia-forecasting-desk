@@ -10,6 +10,7 @@ import sys
 import pytest
 
 from tests.fetcher_helpers import *  # noqa: F403
+from colombia_forecasting_desk.pipeline import build_source_health
 from colombia_forecasting_desk.source_fetching import tes_browser
 
 
@@ -535,7 +536,7 @@ def test_fetch_minhacienda_tes_reports_uses_browser_on_bot_block(
     assert calls == [("minhacienda_tes_reports", 1)]
 
 
-def test_extract_minhacienda_decree_projects_requires_complete_project_fields(
+def test_extract_minhacienda_decree_projects_separates_comment_form_availability(
     sample_source,
 ) -> None:
     source = replace(
@@ -562,9 +563,11 @@ def test_extract_minhacienda_decree_projects_requires_complete_project_fields(
         <a href="/web/forms/shared/-/form/3277529">Comentar proyecto</a>
       </div>
       <div class="project">
-        <a href="/documents/20119/2873514/PD+sin+formulario.pdf/def?t=2">
-          &#xf15c; PD. Proyecto sin formulario publicado.
-        </a>
+        <div class="title">
+          <a href="/documents/20119/2873514/PD+sin+formulario.pdf/def?t=2">
+            &#xf15c; PD. Proyecto sin formulario publicado.
+          </a>
+        </div>
         <div>mayo 12, 2026</div>
         <p>El proyecto de decreto tiene por objeto ajustar una regla fiscal.</p>
       </div>
@@ -593,15 +596,26 @@ def test_extract_minhacienda_decree_projects_requires_complete_project_fields(
     assert complete.metadata["comment_form_url"] == (
         "https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529"
     )
+    assert complete.metadata["comment_form_availability"] == "present"
+    assert complete.metadata["content_scope"] == "project_listing"
     assert "bonos hipotecarios" in complete.metadata["description"]
     assert "13 al 28 de mayo de 2026" in complete.metadata["comment_window_text"]
     assert "Proyecto PDF:" in complete.raw_text
 
-    incomplete = items[1]
-    assert "content_extraction" not in incomplete.metadata
-    assert incomplete.metadata["content_extraction_error"] == (
-        "missing required decree project fields: comment_form_url"
+    without_form = items[1]
+    assert without_form.metadata["content_extraction"] == "minhacienda_decree_project_browser"
+    assert without_form.metadata["description"] == (
+        "El proyecto de decreto tiene por objeto ajustar una regla fiscal."
     )
+    assert without_form.metadata["comment_form_availability"] == "not_listed"
+    assert without_form.metadata["content_scope"] == "project_listing"
+    assert "content_extraction_error" not in without_form.metadata
+    assert "comment_form_url" not in without_form.metadata
+    assert "comment_window_text" not in without_form.metadata
+    health = build_source_health([source], items, [], [], [])[0]
+    assert health.content_mode == "parsed_content"
+    assert health.parsed_content_count == 2
+    assert health.document_link_count == 0
 
 
 def test_extract_minhacienda_decree_projects_from_reader_markdown(sample_source) -> None:
@@ -656,13 +670,126 @@ def test_extract_minhacienda_decree_projects_from_reader_markdown(sample_source)
     assert complete.metadata["comment_form_url"] == (
         "https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529"
     )
+    assert complete.metadata["comment_form_availability"] == "present"
+    assert complete.metadata["content_scope"] == "project_listing"
     assert "13 al 28 de mayo de 2026" in complete.metadata["comment_window_text"]
 
-    incomplete = items[1]
-    assert "content_extraction" not in incomplete.metadata
-    assert incomplete.metadata["content_extraction_error"] == (
-        "missing required decree project fields: comment_form_url"
+    without_form = items[1]
+    assert without_form.metadata["content_extraction"] == "minhacienda_decree_project_reader"
+    assert without_form.metadata["comment_form_availability"] == "not_listed"
+    assert without_form.metadata["content_scope"] == "project_listing"
+    assert "content_extraction_error" not in without_form.metadata
+    assert "comment_form_url" not in without_form.metadata
+    assert "comment_window_text" not in without_form.metadata
+    health = build_source_health([source], items, [], [], [])[0]
+    assert health.content_mode == "parsed_content"
+    assert health.parsed_content_count == 2
+    assert health.document_link_count == 0
+
+
+@pytest.mark.parametrize("reader", [False, True], ids=["html", "reader"])
+@pytest.mark.parametrize(("date", "description", "missing"), [
+    ("octubre 27, 2026", "", "description_or_comment_window_text"),
+    ("", "El proyecto modifica las garantías hipotecarias.", "date"),
+    ("", "", "date, description_or_comment_window_text"),
+])
+def test_minhacienda_decree_incomplete_listing_stays_incomplete(
+    sample_source, reader, date, description, missing,
+) -> None:
+    title = "PD. Proyecto de garantías hipotecarias."
+    pdf_url = "https://www.minhacienda.gov.co/documents/20119/garantias.pdf"
+    form_url = "https://www.minhacienda.gov.co/web/forms/shared/-/form/3277529"
+    if reader:
+        items = _extract_minhacienda_decree_projects_from_reader_markdown(
+            f"[{title}]({pdf_url})\n\n{date}\n\n{description}\n\n"
+            f"[Comentar proyecto]({form_url})",
+            sample_source.url, "https://r.jina.ai/" + sample_source.url,
+            sample_source, "2026-11-04T00:00:00Z",
+        )
+    else:
+        items = _extract_minhacienda_decree_projects(
+            f'<main><article><a href="{pdf_url}"><i>&#xf15c;</i>{title}</a>'
+            f'<div>{date}</div><p>{description}</p>'
+            f'<a href="{form_url}">Comentar proyecto</a></article></main>',
+            sample_source.url, sample_source, "2026-11-04T00:00:00Z",
+        )
+    assert len(items) == 1
+    item = items[0]
+    assert "content_extraction" not in item.metadata
+    assert item.metadata["content_extraction_error"] == (
+        "missing required decree project fields: " + missing
     )
+    assert item.metadata["comment_form_availability"] == "present"
+    if not description:
+        assert "description" not in item.metadata
+        assert "comment_window_text" not in item.metadata
+    health = build_source_health([sample_source], items, [], [], [])[0]
+    assert health.content_mode == "pdf_links_only"
+    assert health.parsed_content_count == 0
+    assert health.acceptance_status == "document_unparsed"
+
+
+@pytest.mark.parametrize("reader", [False, True], ids=["html", "reader"])
+def test_minhacienda_decree_blank_listing_has_no_extracted_rows(sample_source, reader) -> None:
+    if reader:
+        items = _extract_minhacienda_decree_projects_from_reader_markdown(
+            "", sample_source.url, "https://r.jina.ai/" + sample_source.url,
+            sample_source, "2026-11-04T00:00:00Z",
+        )
+    else:
+        items = _extract_minhacienda_decree_projects(
+            "<main></main>", sample_source.url, sample_source, "2026-11-04T00:00:00Z",
+        )
+    assert items == []
+
+
+@pytest.mark.parametrize("reader", [False, True], ids=["html", "reader"])
+def test_minhacienda_decree_isolates_quoted_and_unquoted_projects(sample_source, reader) -> None:
+    extension = "md" if reader else "html"
+    listing = (Path(__file__).parent / "fixtures" / "minhacienda_decree_projects"
+               / f"quoted_projects.{extension}").read_text()
+
+    def extract(max_items):
+        if reader:
+            return _extract_minhacienda_decree_projects_from_reader_markdown(
+                listing, sample_source.url, "https://r.jina.ai/" + sample_source.url,
+                sample_source, "2026-11-04T00:00:00Z", max_items=max_items,
+            )
+        return _extract_minhacienda_decree_projects(
+            listing, sample_source.url, sample_source, "2026-11-04T00:00:00Z",
+            max_items=max_items,
+        )
+
+    items = extract(10)
+    assert len(items) == 4
+    expected = [
+        ("2026-10-27", "servicios compartidos", "27 de octubre de 2026 al 3 de noviembre de 2026"),
+        ("2026-10-16", "Sistema General de Pensiones", "16 al 31 de octubre de 2026"),
+        ("2026-10-15", "Deuda SAS", "15 al 30 de octubre de 2026"),
+        ("2026-10-08", "tránsitos aduaneros", "8 al 18 de octubre de 2026"),
+    ]
+    for index, (item, (date, topic, window)) in enumerate(zip(items, expected)):
+        assert item.published_at == date + "T00:00:00Z"
+        assert item.metadata["content_extraction"] == (
+            "minhacienda_decree_project_reader" if reader else "minhacienda_decree_project_browser"
+        )
+        assert item.metadata["content_scope"] == "project_listing"
+        assert topic in item.metadata["description"]
+        assert window in item.metadata["comment_window_text"]
+        assert "[PD" not in item.metadata["description"]
+        for other_date, other_topic, other_window in expected:
+            if other_date != date:
+                assert other_topic not in item.raw_text
+                assert other_window not in item.raw_text
+        if index == 1:
+            assert item.metadata["comment_form_availability"] == "present"
+            assert item.metadata["comment_form_url"].endswith("/form/3277529")
+        else:
+            assert item.metadata["comment_form_availability"] == "not_listed"
+            assert "comment_form_url" not in item.metadata
+
+    # A small limit must still use the next project's boundary for the last row.
+    assert extract(1) == items[:1]
 
 
 def test_fetch_minhacienda_decree_projects_uses_browser_on_bot_block(

@@ -80,6 +80,13 @@ def test_rawitem_parser_metadata_contract_marks_parsed_records(sample_source) ->
             <p>El Proyecto de Decreto esta para comentarios del 13 al 28 de mayo.</p>
             <a href="/web/forms/shared/-/form/3277529">Comentar proyecto</a>
           </div>
+          <div class="project">
+            <a href="/documents/20119/2873514/PD+sin+formulario.pdf/def?t=2">
+              PD. Proyecto sin formulario publicado.
+            </a>
+            <div>mayo 12, 2026</div>
+            <p>El proyecto de decreto tiene por objeto ajustar una regla fiscal.</p>
+          </div>
         </main>
         """,
         minhacienda_source.url,
@@ -90,6 +97,12 @@ def test_rawitem_parser_metadata_contract_marks_parsed_records(sample_source) ->
         decree_items[0],
         "minhacienda_decree_project_browser",
     )
+    assert len(decree_items) == 2
+    without_form = decree_items[1]
+    _assert_parsed_contract(without_form, "minhacienda_decree_project_browser")
+    assert without_form.metadata["content_scope"] == "project_listing"
+    assert without_form.metadata["comment_form_availability"] == "not_listed"
+    assert "comment_form_url" not in without_form.metadata
 
 
 def test_rawitem_parser_metadata_contract_keeps_failures_link_level(
@@ -123,11 +136,10 @@ def test_rawitem_parser_metadata_contract_keeps_failures_link_level(
         """
         <main>
           <div class="project">
-            <a href="/documents/20119/2873514/PD+sin+formulario.pdf/def?t=2">
-              PD. Proyecto sin formulario publicado.
+            <a href="/documents/20119/2873514/PD+sin+descripcion.pdf/def?t=2">
+              PD. Proyecto sin descripcion publicada.
             </a>
             <div>mayo 12, 2026</div>
-            <p>El proyecto de decreto tiene por objeto ajustar una regla fiscal.</p>
           </div>
         </main>
         """,
@@ -135,4 +147,4 @@ def test_rawitem_parser_metadata_contract_keeps_failures_link_level(
         minhacienda_source,
         "2026-05-19T00:00:00Z",
     )
-    _assert_fail_closed_contract(decree_items[0], "comment_form_url")
+    _assert_fail_closed_contract(decree_items[0], "description_or_comment_window_text")

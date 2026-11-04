@@ -37,6 +37,10 @@ Mention open forecasts waiting for official records and review flags.
 List each open record in optional open_forecasts using the same forecast_id,
 plain_question, probability and resolves_by fields as the daily brief. The
 finalizer checks these against the dated ledger projection.
+resolves_by is the desk's internal record-check date, not an official publication
+deadline. Rendered status uses as_of, which must match the frozen cutoff's civil
+date in America/Bogota, including for historical briefs. A passed check date
+leaves the outcome unverified; it does not resolve or void the forecast.
 
 Patterns are review prompts with caveats, not accusations. Explain that direct
 contracting is lawful in many circumstances. Do not give buy, sell or betting

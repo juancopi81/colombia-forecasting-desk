@@ -9,7 +9,7 @@ Friday brings decisions on interest rates and new jobs data.
 - 2026-10-30 — September unemployment release. A comparable current official unemployment value is still unavailable.
 
 **Open forecasts**
-- Will the food-tax repeal bill pass its House committee vote \(PL 012\)? 55%; official record due 2026-10-30.
+- Will the food-tax repeal bill pass its House committee vote \(PL 012\)? 55%; record check scheduled for 2026-10-30.
 
 **Data problems**
 - The policy-rate feed is unavailable; the September 30 board communiqué confirms 12.25%.

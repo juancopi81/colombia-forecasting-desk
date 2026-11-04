@@ -34,10 +34,13 @@ An upcoming call is displayed only under Coming up. If the same forecast ID is
 also present in the authored open-forecast list, both renderers omit that
 duplicate from Open forecasts. Validation still checks both authored references
 against the recorded probability and status before rendering.
+Open forecasts label the internal record-check date relative to run_date:
+scheduled, scheduled today, or passed with the outcome unverified. This is not
+an official publication deadline and does not change the recorded forecast.
 
 Source URLs must use HTTPS and be present in another JSON artifact in that run;
 the brief cannot establish its own provenance. The finalizer checks forecast IDs,
-probabilities, open statuses and official record-check dates against both ledgers.
+probabilities, open statuses and recorded check dates against both ledgers.
 It rejects a malformed ledger, a future forecast, missing disclosure on an
 incomplete run, or omission of forecasts flagged for review. These checks support
 source review; a matching URL alone does not prove the narrative is correct.

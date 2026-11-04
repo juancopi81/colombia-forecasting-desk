@@ -28,6 +28,26 @@ def test_october_27_golden_example(brief):
     assert "55%" in html and "2026-10-30" in html
 
 
+@pytest.mark.parametrize("render", [render_reader_brief, render_reader_brief_html])
+@pytest.mark.parametrize("run_date, label", [
+    ("2026-10-29", "record check scheduled for 2026-10-30"),
+    ("2026-10-30", "record check scheduled for today (2026-10-30)"),
+    ("2026-10-31", "record-check date passed (2026-10-30); outcome unverified"),
+])
+@pytest.mark.parametrize("date_field", ["resolution_check_window_end", "resolution_deadline"])
+def test_record_check_labels_use_brief_date_without_changing_forecasts(brief, render, run_date, label, date_field):
+    brief["run_date"] = run_date
+    call = brief["open_forecasts"][0]
+    row = {"forecast_id": call["forecast_id"], "run_date": "2026-10-26", "status": "open",
+           "probability": call["probability"], date_field: call["resolves_by"]}
+    original_brief, original_row = deepcopy(brief), deepcopy(row)
+    assert not validate_reader_brief(brief, forecast_rows=[row])
+    rendered = render(brief)
+    assert f"55%; {label}." in rendered
+    assert "official record due" not in rendered
+    assert brief == original_brief and row == original_row
+
+
 def test_truly_quiet_day_is_one_line(brief):
     for key in ("changes", "coming_up", "open_forecasts", "data_problems"):
         brief[key] = []
@@ -122,12 +142,14 @@ def test_finalizer_validates_before_writing_and_never_mutates_ledgers(tmp_path, 
     ledger.write_text(json.dumps(row) + "\n")
     original = ledger.read_bytes()
     (run / "reader_brief.json").write_text(json.dumps(brief))
+    authored = (run / "reader_brief.json").read_bytes()
     with pytest.raises(ValueError, match="not captured"):
         _finalizer().finalize(run_date="2026-10-27", runs_dir=run.parent)
     assert not (run / "reader_brief.md").exists()
     (run / "raw_items.json").write_text(json.dumps([{"url": brief["changes"][0]["source_url"]}]))
     _finalizer().finalize(run_date="2026-10-27", runs_dir=run.parent)
     assert ledger.read_bytes() == original
+    assert (run / "reader_brief.json").read_bytes() == authored
     assert (run / "reader_brief.md").read_text() == render_reader_brief(brief)
     page = BeautifulSoup((run / "review.html").read_text(), "html.parser")
     assert page.select_one(".wrap").find().get("class") == ["reader-brief"]

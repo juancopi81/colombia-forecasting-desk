@@ -146,6 +146,9 @@ at or below 250 words. A genuinely quiet day is one line.
 Show a call once: upcoming calls belong under Coming up; other outstanding
 calls belong under Open forecasts. Both renderers suppress repeated forecast
 IDs across those sections while still validating every authored reference.
+Open forecasts show their internal record-check date relative to the brief's
+run_date, not an official publication deadline. After that date passes, the
+label says the outcome remains unverified; the forecast and its date stay intact.
 
 ```bash
 ./.venv/bin/python scripts/finalize_reader_brief.py --date YYYY-MM-DD

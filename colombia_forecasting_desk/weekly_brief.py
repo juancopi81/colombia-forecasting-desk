@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from .plain_language import validate_plain_text, word_count
+from .plain_language import record_check_label, validate_plain_text, word_count
 from .dedupe import canonicalize_url
 from .schemas.case_file import validate as validate_case
 from .schemas._common import iso_date, probability, text as nonempty_text
@@ -458,7 +458,8 @@ def _markdown(brief: dict[str, Any]) -> str:
     lines.extend(["", f"**Our calls:** {_md(brief['our_calls'])}"])
     if brief.get("open_forecasts"):
         lines.extend(["", "**Open forecasts**"])
-        lines.extend(f"- {_md(item['plain_question'])} {item['probability'] * 100:g}%; official record due {item['resolves_by']}."
+        lines.extend(f"- {_md(item['plain_question'])} {item['probability'] * 100:g}%; "
+                     f"{record_check_label(item['resolves_by'], as_of=brief['as_of'])}."
                      for item in brief["open_forecasts"])
     if brief["next_week"]:
         lines.extend(["", "**Next week**"])
@@ -587,7 +588,8 @@ def render_weekly_html(brief: dict[str, Any]) -> str:
     parts.append(f'<section><h2>Our calls</h2><p>{esc(brief["our_calls"])}</p></section>')
     if brief.get("open_forecasts"):
         parts.append("<section><h2>Open forecasts</h2><ul>")
-        parts.extend(f'<li>{esc(item["plain_question"])} {item["probability"] * 100:g}%; official record due {esc(item["resolves_by"])}.</li>'
+        parts.extend(f'<li>{esc(item["plain_question"])} {item["probability"] * 100:g}%; '
+                     f'{esc(record_check_label(item["resolves_by"], as_of=brief["as_of"]))}.</li>'
                      for item in brief["open_forecasts"])
         parts.append("</ul></section>")
     if brief["next_week"]:

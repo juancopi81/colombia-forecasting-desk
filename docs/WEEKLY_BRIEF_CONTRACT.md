@@ -53,6 +53,13 @@ When there are open forecasts, list them in the optional open_forecasts field
 using the daily brief's forecast_id, plain_question, probability and resolves_by
 shape. Finalization checks each against the dated record and rejects omissions,
 so forecasts waiting for official records remain visible.
+resolves_by denotes the desk's internal record-check date, not an official
+publication deadline. Both renderers compare it with the brief's as_of date,
+which finalization matches to the frozen facts. The builder requires this date
+to match the cutoff's civil date in America/Bogota. Future checks are scheduled,
+checks on that date are scheduled for today, and passed
+checks show "outcome unverified." Week-end dates and wall-clock time do not
+determine this label. The label never changes the forecast or resolves its outcome.
 
 Usefulness answers are explicit inputs. Optionally supply --feedback-file with
 week, date, answer, source and source_ref; source must be user_message or

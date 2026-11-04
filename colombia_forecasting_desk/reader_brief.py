@@ -6,7 +6,7 @@ import re
 from typing import Any, Iterable
 from urllib.parse import quote
 
-from .plain_language import validate_plain_text, word_count
+from .plain_language import record_check_label, validate_plain_text, word_count
 from .schemas.reader_brief import validate as validate_schema
 
 
@@ -61,7 +61,7 @@ def _markdown(brief: dict[str, Any]) -> str:
         lines.extend(["", "**Open forecasts**"])
         for item in open_forecasts:
             lines.append(f"- {_md(item['plain_question'])} {_percent(item['probability'])}; "
-                         f"official record due {item['resolves_by']}.")
+                         f"{record_check_label(item['resolves_by'], as_of=brief['run_date'])}.")
     if brief["data_problems"]:
         lines.extend(["", "**Data problems**"])
         lines.extend(f"- {_md(problem)}" for problem in brief["data_problems"])
@@ -183,7 +183,7 @@ def render_reader_brief_html(brief: dict[str, Any]) -> str:
         parts.append("<h2>Open forecasts</h2><ul>")
         for item in open_forecasts:
             parts.append(f'<li>{esc(item["plain_question"])} {_percent(item["probability"])}; '
-                         f'official record due {esc(item["resolves_by"])}.</li>')
+                         f'{esc(record_check_label(item["resolves_by"], as_of=brief["run_date"]))}.</li>')
         parts.append("</ul>")
     if brief["data_problems"]:
         parts.append("<h2>Data problems</h2><ul>")

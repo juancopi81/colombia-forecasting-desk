@@ -411,6 +411,8 @@ def _looks_like_minhacienda_decree_project_title(title: str) -> bool:
 
 
 def _minhacienda_decree_container(link: Any) -> Any:
+    bounded_container = link
+    title = _clean_minhacienda_decree_title(link.get_text(" ", strip=True))
     for candidate in link.parents:
         if not getattr(candidate, "get_text", None):
             continue
@@ -423,28 +425,34 @@ def _minhacienda_decree_container(link: Any) -> Any:
             if _is_minhacienda_decree_pdf_href(anchor["href"])
         ]
         if len(project_links) > 1:
-            continue
-        folded = fold_accents(text.lower())
-        has_comment_context = (
-            "comentar proyecto" in folded
-            or "proyecto de decreto para comentarios" in folded
-        )
-        if has_comment_context and _parse_date_text_to_iso(text[:DATE_CONTEXT_CHARS]):
+            break
+        bounded_container = candidate
+        published_at = _parse_minhacienda_decree_project_date(text)
+        description_text, _ = _minhacienda_decree_text_parts(candidate, title, published_at)
+        if published_at and description_text:
             return candidate
-    return link.find_parent(["tr", "li", "article", "div", "section"]) or link
+    return bounded_container
 
 
-def _minhacienda_decree_text_parts(container: Any, title: str) -> tuple[str, str]:
+def _minhacienda_decree_text_parts(
+    container: Any,
+    title: str,
+    published_at: str | None,
+) -> tuple[str, str]:
     parts = [
         normalize_whitespace(paragraph.get_text(" ", strip=True))
         for paragraph in container.find_all("p")
     ]
     parts = [part for part in parts if part]
     if not parts:
-        block_text = normalize_whitespace(container.get_text(" ", strip=True))
-        for value in (title, "Comentar proyecto"):
-            block_text = normalize_whitespace(block_text.replace(value, " "))
-        parts = [block_text] if block_text else []
+        parts = [normalize_whitespace(part) for part in container.stripped_strings]
+    parts = [
+        part for part in parts
+        if _clean_minhacienda_decree_title(part)
+        and _clean_minhacienda_decree_title(part) != title
+        and fold_accents(part.lower()) != "comentar proyecto"
+        and not _is_minhacienda_decree_project_date_line(part, published_at)
+    ]
     description_text = normalize_whitespace(" ".join(parts))
     comment_parts = [
         part
@@ -497,7 +505,8 @@ def _is_minhacienda_decree_project_date_line(
 
 
 _MARKDOWN_LINK_RE = re.compile(
-    r"\[(?P<text>[^\]]+)\]\((?P<url>https?://[^\s)]+)(?:\s+\"[^\"]*\")?\)",
+    r'\[(?P<text>[^\]]+)\]\((?P<url>https?://[^\s)]+)'
+    r'(?:\s+"(?:\\.|[^"\\])*")?\)',
     flags=re.DOTALL,
 )
 
@@ -597,6 +606,9 @@ def _minhacienda_decree_item_from_fields(
     metadata: dict[str, Any],
     content_extraction: str,
 ) -> RawItem:
+    # Listing extraction does not read the PDF or establish consultation/legal status.
+    metadata["content_scope"] = "project_listing"
+    metadata["comment_form_availability"] = "present" if comment_form_url else "not_listed"
     if description_text:
         metadata["description"] = description_text
     if comment_window_text:
@@ -613,7 +625,6 @@ def _minhacienda_decree_item_from_fields(
             ("date", published_at),
             ("description_or_comment_window_text", description_text),
             ("project_pdf_url", project_pdf_url),
-            ("comment_form_url", comment_form_url),
         )
         if not value
     ]
@@ -681,6 +692,7 @@ def _extract_minhacienda_decree_projects(
         description_text, comment_window_text = _minhacienda_decree_text_parts(
             project,
             title,
+            published_at,
         )
         comment_form_url = _minhacienda_decree_comment_form_url(project, base_url)
         metadata: dict[str, Any] = {

@@ -51,6 +51,15 @@ def format_cop(value: int | float | None) -> str:
     return f"COP {number}"
 
 
+def record_check_label(check_date: str, *, as_of: str) -> str:
+    """Describe an internal check using validated ISO dates, never wall-clock time."""
+    if check_date < as_of:
+        return f"record-check date passed ({check_date}); outcome unverified"
+    if check_date == as_of:
+        return f"record check scheduled for today ({check_date})"
+    return f"record check scheduled for {check_date}"
+
+
 def word_count(text: str) -> int:
     """Count visible words, excluding Markdown URL targets and HTML tags."""
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
