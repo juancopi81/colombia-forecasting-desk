@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<title>Compilaci&oacute;n Servicio Nacional de Aprendizaje - SENA - estatuto_tributario_pr021</title>
+		<meta charset="UTF-8">
+		<link rel="icon" type="image/x-icon" href="../images/favicon.png" />
+		<script src="https://kit.fontawesome.com/551f19d8ac.js" crossorigin="anonymous"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="format-detection" content="telephone=no">
+		<meta name="Author" content="Servicio Nacional de Aprendizaje Sena, Avance Jur&iacute;dico Casa Editorial S.A.S.">
+		<meta name="Publisher" content="Servicio Nacional de Aprendizaje Sena">
+		<meta name="Copyright" content="&copy; Servicio Nacional de Aprendizaje Sena, Avance Jur&iacute;dico Casa Editorial S.A.S.">
+		<meta name="Pagetopic" content="Legal">
+		<meta name="Pagetype" content="Book">
+		<meta name="Audience" content=" All">
+		<meta name="Robots" content="all">
+		<meta name="Revisit-After" content="3 days">
+		<meta name="Keywords" content="Sena - Servicio Nacional de Aprendizaje Sena">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800&family=Work+Sans:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+		<link rel="preconnect" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+		<link rel="stylesheet" href="../css/base_SENA_general.css">
+		<link rel="stylesheet" href="../css/header_SENA.css">
+		<link rel="stylesheet" href="../css/header_SENA_grid.css">
+		<link rel="stylesheet" href="../css/footer_SENA.css">
+		<link rel="stylesheet" href="../css/footer_SENA_grid.css">
+		<link rel="stylesheet" href="../css/base_SENA.css">
+		<link rel="stylesheet" href="../css/base_SENA_grid.css">
+		<link rel="stylesheet" href="../css/menu_contenido_aj.css">
+		<link rel="stylesheet" href="../css/menu_contenido_aj_grid.css">
+		<link rel="stylesheet" href="../css/usabilidad_gov_co.css">
+		<link rel="stylesheet" href="../css/visor.css">
+		<link rel="stylesheet" href="../css/visor_paneles_botones.css">
+		<link rel="stylesheet" href="../css/visor_grid.css">
+		<script src="../js/iconsDefinitions.js" defer></script>
+		<script src="../js/generalFunctions.js" defer></script>
+		<script src="../js/clearCasillaBusqueda.js" defer></script>
+		<script src="../js/myFunction_MenuVisor.js" defer></script>
+		<script src="../js/openNewURLInAnotherWindow.js" defer></script>
+		<script src="../js/openNewURLInTheSameWindow.js" defer></script>
+		<script src="../js/menu_contenido_aj.js" defer></script>
+		<script src="../js/nuevaBusquedaVisor.js" defer></script>
+		<script src="../js/botonActivado.js" defer></script>
+		<script src="../js/botonSeleccionado.js" defer></script>
+		<script src="../js/removeItems.js" defer></script>
+		<script src="../js/isEmpty.js" defer></script>
+		<script src="../js/inline_Visor.js" defer></script>
+		<script src="../js/polyfills_Visor.js" defer></script>
+		<script src="../js/main_Visor.js" defer></script>
+		<script src="../js/loadIndice.js" defer></script>
+		<script src="../js/docFunction.js" defer></script>
+		<script src="../js/scrollSmoothTo.js" defer></script>
+		<script src="../js/gotoBookmarkSeleccionada.js" defer></script>
+		<script src="../js/activaDesactivaCVJAs.js" defer></script>
+		<script src="js/estatuto_tributario_pr021.js" defer></script>
+		<script src="../js/listenersBotonesVisor.js" defer></script>
+		<script src="../js/listenersBotonesNavegacion.js" defer></script>
+		<script src="../js/navegacionFunctionVisor.js" defer></script>
+		<script src="../js/loadCorteVisor.js" defer></script>
+		<script src="../js/usabilidad_gov_co.js" defer></script>
+		<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+	</head>
+	<body onload="docFunction('estatuto_tributario_pr021')" onresize="visorResizeFunction()">
+		<div class="contenedor-body">
+			<div class="grid-contenedor-body">
+
+				<header class="header">
+					<div class="contenedor-header">
+						<div class="grid-contenedor-header">
+							<div class="franja-gov-co-header">
+								<div class="contenedor-franja-gov-co-header">
+									<div class="grid-contenedor-franja-gov-co-header">
+										<div class="left-panel-franja-gov-co-header"></div>
+										<div class="contenido-franja-gov-co-header">
+											<div class="logo-gov-co-sencillo">
+												<div class="contenedor-logo-gov-co-sencillo">
+													<div class="grid-contenedor-logo-gov-co-sencillo">
+														<div class="logo-gov-co-header">
+															<a href="https://www.gov.co/" id="HGov" target="_blank">
+																<img src="../images/logo_gov.png" alt="Gov.co">
+															</a>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-franja-gov-co-header"></div>
+									</div>
+								</div>
+							</div>
+							<div class="franja-logo-buscador" >  
+								<div class="contenedor-franja-logo-buscador">
+									<div class="grid-contenedor-franja-logo-buscador">
+										<div class="left-panel-logo-buscador"></div>
+										<div class="contenido-logo-buscador">
+											<div class="logo-buscador">
+												<div class="contenedor-logo-buscador">
+													<div class="grid-contenedor-logo-buscador">
+														<div class="panel-logo-entidad">
+															<div class="logo-entidad">
+																<a href="https://www.sena.edu.co/" target="_blank"> 
+																	<img src="../images/logoSena.png" alt="servicio nacional de aprendizaje Sena">
+																</a>
+															</div>
+														</div>
+														<div class="panel-buscador">
+															<div class="panel-casilla-busqueda-en-header" style="display:none;">
+																<div class="contenedor-panel-casilla-botones-en-header">
+																	<div class="grid-contenedor-panel-casilla-botones-en-header">
+																		<form class="form-casilla-busqueda-en-header" action="../herramientas_busqueda.html" autocomplete="off" accept-charset="UTF-8">
+																			<div class="input-casilla-busqueda-en-header">
+																				<input type="text" id="input-casilla-busqueda-field-en-header" name="q" placeholder="Buscar este sitio" oninput="changeInput()" required>
+																			</div>
+																		</form>
+																		<button  type="button" class="boton-clear-texto-en-header" onclick="clearCasillaBusqueda()" title="">
+																			<div class="contenedor-boton-clear-texto-en-header">
+																				<i class="fa fa-times" aria-hidden="true"></i>
+																			</div>
+																		</button>
+																		<button  type="button" class="boton-buscar-texto-en-header" onclick="sendFormCasillaBusqueda('index')" title="Clic para buscar el texto">
+																			<div class="contenedor-boton-buscar-texto-en-header">
+																				<i class="fa fa-search" aria-hidden="true"></i>
+																			</div>
+																		</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-logo-buscador"></div>	
+									</div>
+								</div>
+							</div>
+							<div class="franja-menu-institucional">
+								<div class="contenedor-franja-menu-institucional">
+									<div class="grid-contenedor-franja-menu-institucional">
+										<div class="left-panel-franja-menu-institucional"></div>
+										<div class="contenido-franja-menu-institucional">
+											<div class="menu-institucional">
+												<div class="contenedor-menu-institucional">
+													<div class="grid-contenedor-menu-institucional">
+														<div class="menu-horizontal-franja-menu-institucional">
+															<ul class="menu-ul-header">
+																<li class="menu-seleccionado">
+																	<a href="https://www.sena.edu.co/es-co/Paginas/default.aspx">Inicio</a>
+																</li>
+																<li >
+																	<a href="https://www.sena.edu.co/es-co/transparencia/Paginas/default.aspx" title="Clic para ir a Transparencia">Transparencia</a>
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/ciudadano/Paginas/default.aspx" title="Atenci&oacute;n y Servicio a la Ciudadan&iacute;a">Atenci&oacute;n y Servicio a la Ciudadan&iacute;a</a>
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/transparencia/Paginas/participa.aspx" title="Clic para ir a Participa">Participa</a>      
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/sena/Paginas/quienesSomos.aspx" title="Clic para ir a La Entidad">La Entidad</a>      
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/formacion/Paginas/Estudie-en-el-SENA.aspx" title="Clic para ir a Formaci&oacute;n">Formaci&oacute;n</a>      
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/trabajo/Paginas/busqueEmpleo.aspx" title="Clic para ir a Empleabilidad">Empleabilidad</a>      
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/Empresarios/Paginas/default.aspx" title="Clic para ir a Empresarios">Empresarios</a>      
+																</li>
+																<li>
+																	<a href="https://www.sena.edu.co/es-co/Noticias/Paginas/default.aspx" title="Clic para ir a Sala de Prensa">Sala de Prensa</a>      
+																</li>
+															</ul>
+														</div>
+														<div class="icon-menu-franja-menu-institucional" onclick="myFunctionFranjaMenuInstitucional()">
+															<img class="logo-menu-franja-menu-institucional" src="../images/noun-menu-1561734-333333.svg" alt="Men&uacute; principal" title="Oprima para abrir / cerrar el men&uacute;">
+														</div>
+														<div class="menu-vertical-franja-menu-institucional" id="miMenu-superior-franja-menu-institucional">
+															<a href="https://www.sena.edu.co/es-co/Paginas/default.aspx" title="Clic para ir al inicio">Inicio</a>
+															<a href="https://www.sena.edu.co/es-co/transparencia/Paginas/default.aspx" title="Clic para ir a Transparencia">Transparencia</a>
+															<a href="https://www.sena.edu.co/es-co/ciudadano/Paginas/default.aspx" title="Clic para ir a Atenci&oacute;n y Servicio a la Ciudadan&iacute;a">Atenci&oacute;n y Servicio a la Ciudadan&iacute;a</a>
+															<a href="https://www.sena.edu.co/es-co/transparencia/Paginas/participa.aspx" title="Clic para ir a Participa">Participa</a>
+															<a href="https://www.sena.edu.co/es-co/sena/Paginas/quienesSomos.aspx" title="Clic para ir a La Entidad">La Entidad</a>
+															<a href="https://www.sena.edu.co/es-co/formacion/Paginas/Estudie-en-el-SENA.aspx" title="Clic para ir a Formaci&oacute;n">Formaci&oacute;n</a>
+															<a href="https://www.sena.edu.co/es-co/trabajo/Paginas/busqueEmpleo.aspxl" title="Clic para ir a Jurisprudencia">Empleabilidad</a>
+															<a href="https://www.sena.edu.co/es-co/Empresarios/Paginas/default.aspx" title="Clic para ir a Empresarios">Empresarios</a>	
+															<a href="https://www.sena.edu.co/es-co/Noticias/Paginas/default.aspx" title="Clic para ir a Sala de Prensa">Sala de Prensa</a>																
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-franja-menu-institucional"></div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</header>
+				<main class="contenido">
+					<div class="contenedor-contenido">
+						<div class="grid-contenedor-contenido">
+							<nav class="franja-migas">
+								<div class="contenedor-franja-migas">
+									<div class="grid-contenedor-franja-migas">
+										<div class="left-panel-migas"></div>
+										<div class="contenido-migas">
+											<div class="icono-menu-contextual-migas">
+												<div class="contenedor-icono-menu-contextual-migas">
+													<div class="grid-contenedor-icono-menu-contextual-migas">
+														<div class="contenedor-migas">
+															<div class="miga miga-activa">
+																<div class="contenedor-miga-inicio">
+																	<a href="../../index.html">
+																		<span class="material-symbols-outlined contenedor-miga-inicio-style">keyboard_backspace</span>
+																		<span class="texto-miga-inicio">Inicio</span>
+																	</a>
+																</div>
+															</div>
+															<div class="miga">
+																<div class="contenedor-miga">
+																	<span class="texto-miga">Documento</span>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+												<div class="contenedor-icono-menu-contextual-migas-auxiliar">
+													<div class="grid-contenedor-icono-menu-contextual-migas-auxiliar">
+														<div class="contenedor-migas-auxiliar">
+															<div class="miga miga-activa">
+																<div class="contenedor-miga-inicio">
+																	<a href="../../index.html">
+																		<span class="material-symbols-outlined contenedor-miga-inicio-style">keyboard_backspace</span>
+																		<span class="texto-miga-inicio">Inicio</span>
+																	</a>
+																</div>
+															</div>
+															<div class="miga">
+																<div class="contenedor-miga">
+																	<span class="texto-miga">Documento</span>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-migas"></div>
+									</div>
+								</div>
+							</nav>
+							<div class="franja-navegacion-visor visor-wide">
+								<div class="contenedor-franja-navegacion-visor">
+									<div class="grid-contenedor-franja-navegacion-visor">
+										<div class="left-panel-franja-navegacion-visor"></div>
+										<div class="contenido-franja-navegacion-visor">
+											<div class="navegacion-visor">
+												<div class="contenedor-navegacion-visor">
+													<div class="grid-contenedor-navegacion-visor">
+														<div class="panel-titulo-documento">
+															<h1 class="titulo-documento">
+																estatuto_tributario_pr021
+															</h1>
+														</div>
+														<div class="panel-boton-anotaciones" title="Clic para ocultar/mostrar anotaciones">
+															<button type="button" class="boton-anotaciones" onclick="activaDesactivaCVJAs(offProgressActivaDesactiva)">
+																<div class="contenedor-boton-anotaciones">
+																	Ocultar anotaciones
+																</div>
+															</button>
+														</div>
+														<div class="panel-botones-acciones">
+															<div class="contenedor-panel-botones-acciones">
+																<div class="grid-contenedor-panel-botones-acciones">
+																	<div class="panel-boton-download-sencillo">
+																		<button type="button" class="boton-download-sencillo" title="Clic para descargar el documento">
+																			<div class="contenedor-boton-download-sencillo">
+																				<span class="material-symbols-outlined contenedor-boton-download-sencillo-style">download</span>
+																			</div>
+																		</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-franja-navegacion-visor"></div>
+									</div>
+								</div>
+							</div>
+							<div class="franja-visor visor-wide">
+								<div class="contenedor-franja-visor">
+									<div class="grid-contenedor-franja-visor">
+										<div class="left-panel-contenido-visor"></div>
+										<div class="contenido-visor">
+											<div class="contenedor-contenido-visor">
+												<div class="grid-contenedor-contenido-visor">
+													<div class="panel-botones">
+														<div class="contenedor-panel-botones">
+															<div class="grid-contenedor-panel-botones">
+																<div class="boton-busqueda primer-boton-panel-botones" onclick="botonActivado(this)">
+																	<div class="contenedor-boton-busqueda">
+																		<span class="texto-boton-busqueda">Buscar</span>
+																		<span class="material-symbols-outlined contenedor-icono-boton-style">search</span>
+																	</div>
+																</div>
+																<div class="boton-indice ultimo-boton-panel-botones" onclick="botonActivado(this)">
+																	<div class="contenedor-boton-indice">
+																		<span class="texto-boton-indice">&Iacute;ndice</span>
+																		<span class="material-symbols-outlined contenedor-icono-boton-style">developer_guide</span>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+													<div class="dummy-line">
+													</div>
+													<div class="panel-auxiliar">
+														<app-visor></app-visor>
+														<div class="panel-indice">
+														</div>
+													</div>
+													<div class="panel-fondo-documento">
+														<div class="panel-documento">
+<a name="documento_top"></a>
+<p style="text-align:center;"><a class=antsig href="estatuto_tributario_pr020.htm">Anterior</a> | <a class=antsig href="estatuto_tributario_pr022.htm">Siguiente</a></p>
+<p><a class="bookmarkaj" name="512-8">ART&Iacute;CULO 512-8. DEFINICI&Oacute;N DE RESTAURANTES.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1607_2012.htm#78" >78</A> de la Ley 1607 de 2012. El nuevo texto es el siguiente:&gt; Para los efectos del numeral tercero del art&iacute;culo <A href="estatuto_tributario_pr020.htm#512-1" >512-1</A> de este Estatuto, se entiende por restaurantes, aquellos establecimientos cuyo objeto es el servicio de suministro de comidas y bebidas destinadas al consumo como desayuno, almuerzo o cena, y el de platos fr&iacute;os y calientes para refrigerio r&aacute;pido, sin tener en cuenta la hora en que se preste el servicio, independientemente de la denominaci&oacute;n que se le d&eacute; al establecimiento. Tambi&eacute;n se considera que presta el servicio de restaurante el establecimiento que en forma exclusiva se dedica al expendio de aquellas comidas propias de cafeter&iacute;as, helader&iacute;as, fruter&iacute;as, pasteler&iacute;as y panader&iacute;as y los establecimientos, que adicionalmente a otras actividades comerciales presten el servicio de expendio de comidas seg&uacute;n lo descrito en el presente inciso.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> &lt;Ver Notas del Editor&gt; &lt;Par&aacute;grafo modificado por el art&iacute;culo 160 de la Ley 2010 de 2019. El nuevo texto es el siguiente:&gt; Los servicios de restaurante y cafeter&iacute;a prestados por los establecimientos de educaci&oacute;n conforme con lo establecido en el art&iacute;culo <A href="estatuto_tributario_pr019.htm#476" >476</A> de este Estatuto; estar&aacute;n excluidos del impuesto al consumo.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow1()">Notas de Vigencia</a></div>
+<table id="Table1" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow2()">Notas del Editor</a></div>
+<table id="Table2" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow3()">Jurisprudencia Vigencia</a></div>
+<table id="Table3" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow4()">Concordancias</a></div>
+<table id="Table4" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow5()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table5" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow6()">Notas de Vigencia</a></div>
+<table id="Table6" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow7()">Concordancias</a></div>
+<table id="Table7" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="512-9">ART&Iacute;CULO 512-9. BASE GRAVABLE Y TARIFA EN EL SERVICIO DE RESTAURANTES.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1607_2012.htm#79" >79</A> de la Ley 1607 de 2012. El nuevo texto es el siguiente:&gt; La base gravable en el servicio prestado por los restaurantes est&aacute; conformada por el precio total de consumo, incluidas las bebidas acompa&ntilde;antes de todo tipo y dem&aacute;s valores adicionales. En ning&uacute;n caso la propina, por ser voluntaria, har&aacute; parte de la base del impuesto nacional al consumo. Tampoco har&aacute;n parte de la base gravable los alimentos excluidos del impuesto sobre las ventas que se vendan sin transformaciones o preparaciones adicionales.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow8()">Concordancias</a></div>
+<table id="Table8" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p>&lt;Ver Notas de Vigencia&gt; La tarifa aplicable al servicio es del ocho por ciento (8%) sobre todo consumo. El impuesto debe discriminarse en la cuenta de cobro, tiquete de registradora, factura o documento equivalente y deber&aacute; calcularse previamente e incluirse en la lista de precios al p&uacute;blico, sin perjuicio de lo se&ntilde;alado en el art&iacute;culo <A href="estatuto_tributario_pr025.htm#618" >618</A> de este Estatuto.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow9()">Notas de Vigencia</a></div>
+<table id="Table9" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> &lt;Par&aacute;grafo derogado por el art&iacute;culo <A href="ley_1819_2016.htm#376" >376</A> de la Ley 1819 de 2016&gt;</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow10()">Notas de Vigencia</a></div>
+<table id="Table10" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow11()">Concordancias</a></div>
+<table id="Table11" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow12()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table12" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow13()">Notas de Vigencia</a></div>
+<table id="Table13" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="512-10">ART&Iacute;CULO 512-10. BARES, TABERNAS Y DISCOTECAS CUALQUIERA FUERA LA DENOMINACI&Oacute;N O MODALIDAD QUE ADOPTEN.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1607_2012.htm#80" >80</A> de la Ley 1607 de 2012. El nuevo texto es el siguiente:&gt; Para los efectos del numeral tercero del art&iacute;culo <A href="estatuto_tributario_pr020.htm#512-1" >512-1</A> de este Estatuto, se entiende por bares, tabernas y discotecas, aquellos establecimientos, con o sin pista de baile o presentaci&oacute;n de espect&aacute;culos, en los cuales se expenden bebidas alcoh&oacute;licas y accesoriamente comidas, para ser consumidas en los mismos, independientemente de la denominaci&oacute;n que se le d&eacute; al establecimiento.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow14()">Notas de Vigencia</a></div>
+<table id="Table14" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="512-11">ART&Iacute;CULO 512-11. BASE GRAVABLE Y TARIFA EN LOS SERVICIOS DE BARES, TABERNAS Y DISCOTECAS.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1607_2012.htm#81" >81</A> de la Ley 1607 de 2012. El nuevo texto es el siguiente:&gt; La base gravable en los servicios prestados por los establecimientos a que se refiere el art&iacute;culo anterior, estar&aacute; integrada por el valor total del consumo, incluidas comidas, precio de entrada, y dem&aacute;s valores adicionales al mismo. En ning&uacute;n caso la propina, por ser voluntaria, har&aacute; parte de la base del impuesto al consumo.</p>
+<p>La tarifa aplicable al servicio es del ocho por ciento (8%) sobre todo consumo. El impuesto debe discriminarse en la cuenta de cobro, tiquete de registradora, factura o documento equivalente y deber&aacute; calcularse previamente e incluirse en la lista de precios al p&uacute;blico, sin perjuicio de lo se&ntilde;alado en el art&iacute;culo <A href="estatuto_tributario_pr025.htm#618" >618</A> de este Estatuto.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow15()">Notas de Vigencia</a></div>
+<table id="Table15" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="512-12">ART&Iacute;CULO 512-12. ESTABLECIMIENTOS QUE PRESTAN EL SERVICIO DE RESTAURANTE Y EL DE BARES Y SIMILARES.</A> &lt;Ver Notas de Vigencia&gt; &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1607_2012.htm#82" >82</A> de la Ley 1607 de 2012. El nuevo texto es el siguiente:&gt; Cuando dentro de un mismo establecimiento se presten independientemente y en recinto separado, el servicio de restaurante y el de bar, taberna o discoteca, se gravar&aacute; como servicio integral a la tarifa del ocho por ciento (8%).</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow16()">Notas de Vigencia</a></div>
+<table id="Table16" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>Igual tratamiento se aplicar&aacute; cuando el mismo establecimiento alterne la prestaci&oacute;n de estos servicios en diferentes horarios.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> El servicio de restaurante y bar prestado en clubes sociales estar&aacute; gravado con el impuesto nacional al consumo.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow17()">Notas de Vigencia</a></div>
+<table id="Table17" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="512-13">ART&Iacute;CULO 512-13. NO RESPONSABLES DEL IMPUESTO NACIONAL AL CONSUMO DE RESTAURANTES Y BARES.</A> </span>&lt;Art&iacute;culo modificado por el art&iacute;culo 28 de la Ley 2010 de 2019. El nuevo texto es el siguiente:&gt; No ser&aacute;n responsables del Impuesto Nacional al Consumo de restaurantes y bares a que hace referencia el numeral 3 del art&iacute;culo <A href="estatuto_tributario_pr020.htm#512-1" >512-1</A> de este Estatuto, las personas naturales que cumplan la totalidad de las siguientes condiciones: </p>
+<p>a) Que en el a&ntilde;o anterior hubieren obtenido ingresos brutos totales, provenientes de la actividad, inferiores a 3.500 UVT; </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow18()">Concordancias</a></div>
+<table id="Table18" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p>b) Que tengan m&aacute;ximo un establecimiento de comercio, sede, local o negocio donde ejercen su actividad. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o. </span>Para la celebraci&oacute;n de operaciones gravadas provenientes de la actividad por cuant&iacute;a individual e igual o superior a 3.500 UVT, estas personas deber&aacute;n inscribirse previamente como responsables del impuesto. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow19()">Concordancias</a></div>
+<table id="Table19" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o. </span>Los responsables del impuesto, una vez registrados, s&oacute;lo podr&aacute;n solicitar su retiro del r&eacute;gimen cuando demuestren que en los tres (3) a&ntilde;os fiscales anteriores se cumplieron, por cada a&ntilde;o, las condiciones establecidas en la presente disposici&oacute;n para tener la condici&oacute;n de no responsables. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o. </span>Cuando los no responsables realicen operaciones con los responsables del impuesto deber&aacute;n registrar en el Registro &Uacute;nico Tributario (RUT) su condici&oacute;n de tales y entregar copia del mismo al adquirente de los servicios, en los t&eacute;rminos se&ntilde;alados en el reglamento. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 4o.</span> Las medidas tendientes al control de la evasi&oacute;n y control tributario previstas en el par&aacute;grafo 3 del art&iacute;culo <A href="estatuto_tributario_pr017.htm#437" >437</A> y el art&iacute;culo <A href="estatuto_tributario_pr020.htm#508-1" >508-1</A> de este Estatuto ser&aacute;n aplicables al impuesto al consumo. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 5o.</span> &lt;Par&aacute;grafo adicionado por el art&iacute;culo <A href="ley_2155_2021.htm#57" >57</A> de la Ley 2155 de 2021. El nuevo texto es el siguiente:&gt; Por el a&ntilde;o 2022, no ser&aacute;n responsables del Impuesto Nacional al Consumo de restaurantes y bares a que hace referencia el numeral 3 del art&iacute;culo <A href="estatuto_tributario_pr020.htm#512-1" >512-1</A> de este Estatuto, los contribuyentes del impuesto unificado bajo el R&eacute;gimen Simple de Tributaci&oacute;n - SIMPLE cuando &uacute;nicamente desarrollen actividades de expendio de comidas y bebidas de las que trata el numeral 4 del art&iacute;culo <A href="estatuto_tributario.htm#908" >908</A> del Estatuto Tributario. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow20()">Notas de Vigencia</a></div>
+<table id="Table20" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow21()">Notas de Vigencia</a></div>
+<table id="Table21" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow22()">Jurisprudencia Vigencia</a></div>
+<table id="Table22" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow23()">Concordancias</a></div>
+<table id="Table23" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow24()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table24" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-14">ART&Iacute;CULO 512-14. <span class="i_aj">OBLIGACIONES DE LOS RESPONSABLES DEL IMPUESTO NACIONAL AL CONSUMO</span>.</A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#206" >206</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; </p>
+<p>&lt;Ver Notas de Vigencia&gt; Los responsables del r&eacute;gimen simplificado del impuesto nacional al consumo deber&aacute;n cumplir con las obligaciones se&ntilde;aladas en el art&iacute;culo <A href="estatuto_tributario_pr020.htm#506" >506</A> de este Estatuto.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow25()">Notas de Vigencia</a></div>
+<table id="Table25" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>&lt;*Texto sustituido seg&uacute;n el art&iacute;culo 20 de la Ley 2010 de 2019&gt; Por su parte, los responsables del <S>r&eacute;gimen com&uacute;n</S> del impuesto nacional al consumo deber&aacute;n cumplir con las mismas obligaciones se&ntilde;aladas para para los responsables del <S>r&eacute;gimen com&uacute;n*</S> &lt;r&eacute;gimen de responsabilidad&gt; del impuesto sobre las ventas.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow26()">Notas de Vigencia</a></div>
+<table id="Table26" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow27()">Notas de Vigencia</a></div>
+<table id="Table27" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-15">ART&Iacute;CULO 512-15. <span class="i_aj">IMPUESTO NACIONAL AL CONSUMO DE BOLSAS PL&Aacute;STICAS.</span></A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#207" >207</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; A partir del 1o de julio de 2017, estar&aacute; sujeto al impuesto nacional al consumo la entrega a cualquier t&iacute;tulo de bolsas pl&aacute;sticas cuya finalidad sea cargar o llevar productos enajenados por los establecimientos comerciales que las entreguen.</p>
+<p>La tarifa del impuesto ser&aacute; la de la siguiente tabla: </p>
+<table width="43%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="17%" style="width:17%;border:0px;"><span class="b_aj">A&ntilde;o</span></td><td VALIGN="top" WIDTH="83%" style="width:83%;border:0px;"><span class="b_aj">Tarifa en pesos por bolsa</span></td></tr>
+<tr><td VALIGN="top" WIDTH="17%" style="width:17%;border:0px;">2017</td><td VALIGN="top" WIDTH="83%" style="width:83%;border:0px;">$20</td></tr>
+<tr><td VALIGN="top" WIDTH="17%" style="width:17%;border:0px;">2018</td><td VALIGN="top" WIDTH="83%" style="width:83%;border:0px;">$30</td></tr>
+<tr><td VALIGN="top" WIDTH="17%" style="width:17%;border:0px;">2019</td><td VALIGN="top" WIDTH="83%" style="width:83%;border:0px;">$40</td></tr>
+<tr><td VALIGN="top" WIDTH="17%" style="width:17%;border:0px;">2020</td><td VALIGN="top" WIDTH="83%" style="width:83%;border:0px;">$50</td></tr></table>
+<p>Las anteriores tarifas se actualizar&aacute;n anualmente, en un porcentaje equivalente a la variaci&oacute;n del &iacute;ndice de precios al consumidor certificado por el DANE al 30 de noviembre y el resultado se aproximar&aacute; al peso m&aacute;s cercano. La DIAN, certificar&aacute; y publicar&aacute; antes del 1o de enero de cada a&ntilde;o las tarifas actualizadas. </p>
+<p>El sujeto pasivo del impuesto es la persona que opte por recibir bolsas pl&aacute;sticas cuya finalidad sea cargar o llevar los productos adquiridos en establecimientos (incluyendo domicilios).</p>
+<p>&lt;*Texto sustituido seg&uacute;n el art&iacute;culo 20 de la Ley 2010 de 2019&gt; Son responsables de este impuesto las personas naturales o jur&iacute;dicas que pertenezcan al <S>r&eacute;gimen com&uacute;n de IVA*</S> &lt;r&eacute;gimen de responsabilidad del Impuesto sobre las Ventas (IVA)&gt;. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow28()">Notas de Vigencia</a></div>
+<table id="Table28" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>Este impuesto no podr&aacute; tratarse como costo, deducci&oacute;n o impuesto descontable.</p>
+<p>El impuesto se causar&aacute; al momento de la entrega de la bolsa. En todos los casos, en la factura de compra o documento equivalente deber&aacute; constar expresamente el n&uacute;mero de bolsas y el valor del impuesto causado.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> La tarifa de las bolsas pl&aacute;sticas que ofrezcan soluciones ambientales ser&aacute; del 0%, 25%, 50% o 75% del valor pleno de la tarifa, seg&uacute;n el nivel (de 1 a 4) de impacto al medio ambiente y la salud p&uacute;blica, definido por Ministerio de Ambiente y Desarrollo Sostenible con base en la reglamentaci&oacute;n que establezca el Gobierno nacional. Para este fin el Ministerio de Ambiente deber&aacute; adelantar un estudio de los est&aacute;ndares de industria sobre el nivel de degradabilidad de los materiales pl&aacute;sticos en rellenos sanitarios. Tambi&eacute;n adelantar&aacute; estudios sobre la caracterizaci&oacute;n de los pl&aacute;sticos como residuos y de las soluciones ambientales factibles para estas.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> El Gobierno nacional reglamentar&aacute; y tomar&aacute; medidas orientadas a mitigar el impacto ambiental de las bolsas pl&aacute;sticas importadas; as&iacute; como evitar una competencia desleal de bolsas importadas o de contrabando.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o.</span> &lt;Ver Notas del Editor&gt; Los sujetos pasivos del monotributo, podr&aacute;n acogerse voluntariamente al impuesto. En este caso el monto del impuesto se entender&aacute; incluido en la tarifa fija del monotributo.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow29()">Notas del Editor</a></div>
+<table id="Table29" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow30()">Notas de Vigencia</a></div>
+<table id="Table30" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow31()">Concordancias</a></div>
+<table id="Table31" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="512-16">ART&Iacute;CULO 512-16. BOLSAS PL&Aacute;STICAS QUE NO CAUSAN EL IMPUESTO.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#208" >208</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; No est&aacute; sujeta a este impuesto la entrega de las siguientes bolsas pl&aacute;sticas:</p>
+<p>1. Aquellas cuya finalidad no sea cargar o llevar productos adquiridos en el establecimiento que la entrega. </p>
+<p>2. Las que sean utilizadas como material de empaque de los productos pre-empacados.</p>
+<p>3. Las biodegradables certificadas como tal por el Ministerio de Medio Ambiente y Desarrollo Sostenible, con base en la reglamentaci&oacute;n que establezca el Gobierno nacional.</p>
+<p>4. Las bolsas reutilizables que conforme a la reglamentaci&oacute;n del Gobierno nacional posean unas caracter&iacute;sticas t&eacute;cnicas y mec&aacute;nicas que permiten ser usadas varias veces, sin que para ello requieran procesos de transformaci&oacute;n.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow32()">Notas de Vigencia</a></div>
+<table id="Table32" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow33()">Concordancias</a></div>
+<table id="Table33" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-17">ART&Iacute;CULO 512-17. <span class="i_aj">HECHO GENERADOR DEL IMPUESTO NACIONAL AL CONSUMO DE CANNABIS</span>.</A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#209" >209</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; Estar&aacute;n sujetas al impuesto nacional al consumo de cannabis, las ventas de productos transformados a partir de cannabis psicoactivo o no psicoactivo.</p>
+<p>Por cannabis se entienden las sumidades, floridas o con fruto, de la planta de cannabis (a excepci&oacute;n de las semillas y las hojas no unidad a las sumidades) de las cuales no se ha extra&iacute;do la resina, cualquiera que sea el nombre con que se las designe. Se entiende por cannabis psicoactivo aquel cuyo contenido de tetrahidrocannabinol (THC) es igual o superior al l&iacute;mite que establezca el Gobierno nacional mediante la reglamentaci&oacute;n correspondiente. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> Para los efectos del presente art&iacute;culo, se consideran ventas, entre otros: </p>
+<p>1. Todos los actos que impliquen la transferencia a t&iacute;tulo gratuito u oneroso, independientemente de la designaci&oacute;n que se d&eacute; a los contratos o negociaciones que originen esa transferencia y de las condiciones pactadas por las partes, sea que se realicen a nombre propio, por cuenta de terceros a nombre propio, o por cuenta y a nombre de terceros. </p>
+<p>2. Los retiros o disminuciones de inventarios de productos transformados a partir de cannabis hechos por el responsable para su uso o para formar parte de los activos fijos de la empresa.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow34()">Notas de Vigencia</a></div>
+<table id="Table34" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow35()">Concordancias</a></div>
+<table id="Table35" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-18">ART&Iacute;CULO 512-18. <span class="i_aj">RESPONSABLES DEL IMPUESTO NACIONAL AL CONSUMO DE CANNABIS</span>.</A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#210" >210</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; El impuesto nacional al consumo de cannabis estar&aacute; a cargo del transformador. Se entender&aacute; por transformador el comprador o productor de cannabis, psicoactivo o no psicoactivo, que somete el mismo a un proceso de transformaci&oacute;n. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> Por transformaci&oacute;n se entiende cualquier proceso que implique cambiar de forma el cannabis; cualquier transmutaci&oacute;n de las sumidades, floridas o con fruto, en cualquier otro producto; o la obtenci&oacute;n de un derivado a trav&eacute;s de cualquier proceso mec&aacute;nico, f&iacute;sico, qu&iacute;mico o biol&oacute;gico; ya sea del cannabis psicoactivo o del no psicoactivo. Dentro de estos derivados se incluyen, entre otros, aceites, resinas, tinturas, extractos, o materiales vegetales provenientes de las plantas de cannabis. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> El responsable deber&aacute; soportar contable y documentalmente el valor del producto transformado. Lo dispuesto en el presente art&iacute;culo ser&aacute; aplicable independientemente de que el productor sea vinculado econ&oacute;mico del transformador o de que el mismo transformador sea el productor.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o.</span> En cualquier caso, los titulares de la licencia de fabricaci&oacute;n de derivados del cannabis a las que hace referencia la Ley 1787 de 2016 y sus reglamentos, se entender&aacute;n tambi&eacute;n como responsables del impuesto nacional al consumo de cannabis.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 4o.</span> &lt;Par&aacute;grafo adicionado por el art&iacute;culo 29 de la Ley 2010 de 2019. El nuevo texto es el siguiente:&gt; Los recursos recaudados por concepto del impuesto nacional al consumo de cannabis se destinar&aacute;n a la provisi&oacute;n de bienes y servicios p&uacute;blicos para el desarrollo rural de los proyectos vinculados al Programa Nacional Integral de Sustituci&oacute;n de Cultivos de Uso Il&iacute;cito (PNIS).</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow36()">Notas de Vigencia</a></div>
+<table id="Table36" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow37()">Notas de Vigencia</a></div>
+<table id="Table37" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow38()">Concordancias</a></div>
+<table id="Table38" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-19">ART&Iacute;CULO 512-19. <span class="i_aj">BASE GRAVABLE DEL IMPUESTO NACIONAL AL CONSUMO DE CANNABIS.</span></A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#211" >211</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; La base gravable del impuesto nacional al consumo de cannabis es el valor total del producto final del transformador o responsable del impuesto, sin incluir el impuesto sobre las ventas. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow39()">Notas de Vigencia</a></div>
+<table id="Table39" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow40()">Concordancias</a></div>
+<table id="Table40" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-20">ART&Iacute;CULO 512-20. <span class="i_aj">TARIFAS DEL IMPUESTO NACIONAL AL CONSUMO DE CANNABIS</span>.</A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#212" >212</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; La tarifa del impuesto nacional al consumo de cannabis ser&aacute; del diecis&eacute;is por ciento 16%, del valor del producto final en cualquier de sus presentaciones. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow41()">Notas de Vigencia</a></div>
+<table id="Table41" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow42()">Concordancias</a></div>
+<table id="Table42" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-21">ART&Iacute;CULO 512-21. <span class="i_aj">CAUSACI&Oacute;N DEL IMPUESTO NACIONAL AL CONSUMO DE CANNABIS.</span></A> </B>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_1819_2016.htm#213" >213</A> de la Ley 1819 de 2016. El nuevo texto es el siguiente:&gt; El impuesto nacional al consumo de cannabis se causa en la venta que realice el transformador, en la fecha de emisi&oacute;n de la factura o documento equivalente y a falta de estos, en el momento de la entrega, aunque se haya pactado reserva de dominio, pacto de retroventa o condici&oacute;n resolutoria. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> El impuesto nacional al consumo de cannabis constituye para el responsable un costo deducible del impuesto sobre la renta como mayor valor del bien.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> El impuesto nacional al consumo de cannabis no genera impuestos descontables en el impuesto sobre las ventas (IVA).</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o. </span>El impuesto nacional al consumo de cannabis deber&aacute; estar discriminado en la factura de venta, en el documento equivalente o en el documento que soporte la venta.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow43()">Notas de Vigencia</a></div>
+<table id="Table43" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow44()">Concordancias</a></div>
+<table id="Table44" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><B><A name="512-22">ART&Iacute;CULO 512-22. <span class="i_aj">BASE GRAVABLE Y TARIFA DE LOS JUEGOS DE SUERTE Y AZAR OPERADOS EXCLUSIVAMENTE POR INTERNET.</span></A> </B>&lt;Art&iacute;culo adicionado, por el a&ntilde;o 2026, por el art&iacute;culo 2 del Decreto Legislativo 240 de 2026. El nuevo texto es el siguiente:&gt; Los juegos de suerte y azar operados exclusivamente por internet estar&aacute;n gravados con la tarifa del diecis&eacute;is por ciento (16%).</p>
+<p>La base gravable estar&aacute; constituida por los ingresos brutos del juego (GGR por sus siglas en ingl&eacute;s <span class="i_aj">gross game revenue</span>), entendidos como el total de las apuestas menos los premios pagados en el bimestre correspondiente.</p>
+<p><span class="b_aj">PAR&Aacute;GRAFO. </span>La operaci&oacute;n, explotaci&oacute;n, provisi&oacute;n de servicios y contenidos, plataformas tecnol&oacute;gicas o soluciones de software, la intermediaci&oacute;n de pagos, el aseguramiento de transacciones, as&iacute; como la promoci&oacute;n o publicidad de juegos de suerte y azar operados por internet, solo podr&aacute; ser realizada por y para personas jur&iacute;dicas que cuenten con la autorizaci&oacute;n y el contrato de concesi&oacute;n vigentes otorgados por la autoridad competente.</p>
+<p>Las entidades financieras, los proveedores de servicios de pago, las plataformas tecnol&oacute;gicas, los desarrolladores de software, los proveedores de contenido, los medios de comunicaci&oacute;n y, en general, cualquier tercero que participe directa o indirectamente en la operaci&oacute;n de dichos juegos, deber&aacute;n abstenerse de prestar servicios a operadores no autorizados. El incumplimiento de lo dispuesto en el presente par&aacute;grafo dar&aacute; lugar a la imposici&oacute;n de las sanciones previstas en el ordenamiento jur&iacute;dico vigente por parte de las autoridades de vigilancia y control competentes, sin perjuicio de las dem&aacute;s acciones administrativas, contractuales y legales a que haya lugar.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow45()">Notas de Vigencia</a></div>
+<table id="Table45" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="512-22-INEXEQUIBLE">ART&Iacute;CULO 512-22. IMPUESTO NACIONAL AL CONSUMO DE BIENES INMUEBLES.</A> </span>&lt;Art&iacute;culo INEXEQUIBLE&gt; </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow46()">Notas de Vigencia</a></div>
+<table id="Table46" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow47()">Jurisprudencia Vigencia</a></div>
+<table id="Table47" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow48()">Concordancias</a></div>
+<table id="Table48" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow49()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table49" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513">ARTICULO 513. APLICACI&Oacute;N DE LAS NORMAS DE PROCEDIMIENTO GENERAL.</A> Las normas de procedimiento contempladas en el Libro Quinto, son aplicables al impuesto sobre las ventas, en cuanto no sean incompatibles con las normas especiales sobre la materia. </p>
+<p class="centrado"><a class="bookmarkaj" name="TITULO X-3">T&Iacute;TULO X. </A></p>
+<p class="centrado"><span class="b_aj">IMPUESTOS SALUDABLES.</span> &#160;</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow50()">Notas de Vigencia</a></div>
+<table id="Table50" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p class="centrado"><a class="bookmarkaj" name="CAP&Iacute;TULO I-X">CAP&Iacute;TULO I. </A></p>
+<p class="centrado"><span class="b_aj">IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS. &#160;</span></p>
+<p><span class="b_aj"><A name="513-1">ART&Iacute;CULO 513-1. HECHO GENERADOR DEL IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; <U>El hecho generador del impuesto a las bebidas ultraprocesadas azucaradas est&aacute; constituido por: </U></p>
+<p><U>1. En la producci&oacute;n la venta, el retiro de inventarios o los actos que impliquen la transferencia de dominio a t&iacute;tulo gratuito u oneroso. </U></p>
+<p><U>2. La importaci&oacute;n. </U></p>
+<p><U>Estar&aacute;n sujetas a este impuesto, en funci&oacute;n de su nivel de az&uacute;car a&ntilde;adido, las bebidas ultraprocesadas azucaradas, as&iacute; como los concentrados, polvos y jarabes que, despu&eacute;s de su mezcla o diluci&oacute;n permiten la obtenci&oacute;n de bebidas azucaradas. </U></p>
+<p>Se considera como bebida ultraprocesada azucarada la bebida l&iacute;quida que no tenga un grado alcoh&oacute;lico volum&eacute;trico superior a cero coma cinco por ciento (0,5%) vol, y a la cual se le ha incorporado cualquier az&uacute;car a&ntilde;adido. </p>
+<p>En esta definici&oacute;n se incluyen bebidas gaseosas o carbonatadas, bebidas a base de malta, bebidas tipo t&eacute; o caf&eacute;, bebidas a base de fruta en cualquier concentraci&oacute;n, refrescos, zumos y n&eacute;ctares de fruta, bebidas energizantes, bebidas deportivas, refrescos, aguas saborizadas y mezclas en polvo. </p>
+<p>Se consideran concentrados, polvos y Jarabes las esencias o extractos de sabores que permitan obtener bebidas saborizadas y los productos con o sin edulcorantes o saboreadores, naturales, artificiales o sint&eacute;ticos, adicionados o no, de jugo, pulpa o n&eacute;ctar, de frutas, de verduras o legumbres y otros aditivos para alimentos, as&iacute; como las mezclas a base de harina, f&eacute;cula, extracto de malta y almid&oacute;n.</p>
+<p>Se consideran az&uacute;cares a&ntilde;adidos los monosac&aacute;ridos y/o disac&aacute;ridos que se adicionan durante el procesamiento de alimentos o se empaquetan como tales, e incluyen aquellos contenidos en los jarabes, en los concentrados de jugos de frutas o vegetales. No se considera az&uacute;car a&ntilde;adido los edulcorantes sin aporte cal&oacute;rico. </p>
+<p>Los bienes de las siguientes partidas y sub partidas estar&aacute;n sujetos al presente impuesto en la medida en que contengan az&uacute;cares a&ntilde;adidos y se cumpla con lo previsto en los incisos anteriores: </p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;"><span class="b_aj">Producto </span></td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;"><span class="b_aj">Partida o Subpartida arancelaria </span></td></tr>
+<tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;">Extracto de malta; preparaciones alimenticias de harina, gra&ntilde;ones, s&eacute;mola, almid&oacute;n, f&eacute;cula o extracto de malta, que no contengan cacao o con un contenido de cacao inferior al cuarenta por ciento (40%) en peso calculado sobre una base totalmente desgrasada, no expresadas ni comprendidas en otra parte; preparaciones alimenticias de productos de las partidas 04.01 a 04.04 que no contengan cacao o con un contenido de cacao inferior al cinco por ciento (5%) en peso calculado sobre una base totalmente desgrasada, no expresadas ni comprendidas en otra parte. </td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;">19.01. (excepto 19.01.90.20.00 y 19.01.20.00.00) </td></tr>
+<tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;">Jugos de frutas u otros frutos (incluido el mosto de uva y el agua de coco) o de hortaliza sin fermentar y sin adici&oacute;n de alcohol, incluso con adici&oacute;n de az&uacute;car u otro edulcorante. </td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;">20.09 </td></tr>
+<tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;">Mezclas en polvo de extractos, esencias y concentrados de caf&eacute;, t&eacute; o yerba mate y preparaciones a base de estos productos o a base de caf&eacute;, t&eacute; o yerba mate; achicoria tostada y dem&aacute;s suced&aacute;neos del caf&eacute; tostados y sus extractos, esencias y concentrados. </td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;">21.01 </td></tr>
+<tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;"><U>Agua, incluidas el agua mineral y la gaseada, con adici&oacute;n de az&uacute;car u otro edulcorante o aromatizada, y dem&aacute;s bebidas no alcoh&oacute;licas, excepto los jugos de frutas u otros frutos o de hortalizas de la partida 20.09, excepto las aguas no saborizadas ni endulzadas. </U></td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;"><U>22.02 </U></td></tr>
+<tr><td VALIGN="top" WIDTH="76%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:76%;border-width:1px;">Preparaciones compuestas cuyo grado alcoh&oacute;lico volum&eacute;trico sea inferior o igual al cero coma cinco por ciento (0,5%) vol, para la elaboraci&oacute;n de bebidas. </td><td VALIGN="top" WIDTH="24%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:24%;border-width:1px;">2106.90.21.00 y 2106.90.29.00 </td></tr></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> Se encuentran exentas del impuesto las siguientes bebidas azucaradas: </p>
+<p>1. Las f&oacute;rmulas infantiles. </p>
+<p>2. Medicamentos con incorporaci&oacute;n de az&uacute;cares adicionados. </p>
+<p>3. Los productos l&iacute;quidos o polvo para reconstituir cuyo prop&oacute;sito sea brindar terapia nutricional para personas que no pueden digerir, absorber y/o metabolizar los nutrientes provenientes de la ingesta de alimentos. </p>
+<p>4. Alimentos l&iacute;quidos y/o polvos para prop&oacute;sitos m&eacute;dicos especiales. </p>
+<p>5. Soluciones de electrolitos para consumo oral dise&ntilde;ados para prevenir la deshidrataci&oacute;n producto de una enfermedad. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> Para la fiscalizaci&oacute;n y recaudo de este impuesto, y con el objetivo de garantizar la consistencia entre el etiquetado y el contenido de az&uacute;cares a&ntilde;adidos de las bebidas sujetas al mismo, la Unidad Administrativa Especial Direcci&oacute;n de Impuestos y Aduanas Nacionales (DIAN) deber&aacute; atender lo establecido en las Resoluciones 5109 del 2005 y 810 del 2021, expedidas por el Ministerio de Salud y Protecci&oacute;n Social, o la norma que las modifique, adicione o sustituya. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o.</span> Las bebidas ultraprocesadas azucaradas a las que se refiere este Art&iacute;culo, no causar&aacute;n este impuesto cuando sean exportados por el productor. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 4o. </span>Las operaciones anulada rescindidas o resueltas de los bienes gravados con el impuesto a las bebidas ultraprocesadas azucaradas, dar&aacute;n lugar a un menor valor a pagar del impuesto, sin que otorgue derecho a devoluci&oacute;n. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 5o.</span> No constituye hecho generador del impuesto a las bebidas ultraprocesadas azucaradas, la donaci&oacute;n por parte del productor o importador cuando se realice a los bancos de alimentos que se encuentren constituidos como entidades sin &aacute;nimo de lucro del R&eacute;gimen Tributario Especial, o los bancos de alimentos que bajo la misma personer&iacute;a jur&iacute;dica posea la iglesia o confesi&oacute;n religiosa reconocida por el Ministerio del Interior o por la ley. El tratamiento previsto en este par&aacute;grafo tambi&eacute;n ser&aacute; aplicable a las asociaciones de bancos de alimentos. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow51()">Notas de Vigencia</a></div>
+<table id="Table51" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow52()">Jurisprudencia Vigencia</a></div>
+<table id="Table52" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="513-2">ART&Iacute;CULO 513-2. RESPONSABLE DEL IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; El responsable del impuesto a las bebidas ultraprocesadas azucaradas ser&aacute; el productor y/o el importador, seg&uacute;n el caso.</p>
+<p>No ser&aacute;n responsables de este impuesto, los productores personas naturales que en el a&ntilde;o gravable anterior o en el a&ntilde;o en curso hubieran obtenido ingresos brutos provenientes de las actividades gravadas con este impuesto, inferiores a diez mil (10.000) UVT. Cuando se supere esta cuant&iacute;a, ser&aacute; responsable del impuesto a las bebidas ultraprocesadas azucaradas a partir del per&iacute;odo gravable siguiente. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> Para los efectos de este Art&iacute;culo, la definici&oacute;n de productor ser&aacute; la establecida en el Art&iacute;culo <A href="estatuto_tributario_pr018.htm#440" >440</A> de este Estatuto. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow53()">Notas de Vigencia</a></div>
+<table id="Table53" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow54()">Jurisprudencia Vigencia</a></div>
+<table id="Table54" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow55()">Concordancias</a></div>
+<table id="Table55" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="513-3">ART&Iacute;CULO 513-3. BASE GRAVABLE DEL IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; La base gravable del impuesto a las bebidas ultraprocesadas azucaradas es el contenido en gramos (g) de az&uacute;car por cada c&iacute;en mililitros (100 ml) de bebida, o su equivalente, producidas por el productor o importadas por el importador. </p>
+<p>Trat&aacute;ndose de bienes importados, en la declaraci&oacute;n de importaci&oacute;n deber&aacute; informarse el contenido en gramos (g) de az&uacute;car por cada cien mililitros (100 ml) de bebida, o su equivalente. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> La base gravable de los concentrados, polvos, mezclas y jarabes corresponde al contenido de az&uacute;car en gramos (g) por cada cien mililitros (100 ml) de bebida, o su equivalente, que el empaque o envase certifique que pueden producirse mediante la respectiva mezcla o diluci&oacute;n. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> Los responsables del impuesto a las bebidas ultraprocesadas azucaradas deber&aacute;n garantizar la veracidad del volumen de las bebidas que conforman la base gravable, ya sea cuando se trate de bebidas l&iacute;quidas, o de concentrados, polvos o jarabes. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow56()">Notas de Vigencia</a></div>
+<table id="Table56" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow57()">Jurisprudencia Vigencia</a></div>
+<table id="Table57" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-4">ART&Iacute;CULO 513-4. TARIFA DEL IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; La tarifa del impuesto a las bebidas ultraprocesadas azucaradas se expresa en pesos por cien mililitros (100 ml) de bebida, y el valor unitario est&aacute; en funci&oacute;n del contenido de az&uacute;car en gramos (g) por cada cien mililitros (100 ml) de bebida, as&iacute;: </p>
+<p>Para los a&ntilde;os 2023 y 2024: </p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="69%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:69%;border-width:1px;"><span class="b_aj">Contenido en 100 ml </span></td><td VALIGN="top" COLSPAN="2" WIDTH="31%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:31%;border-width:1px;"><span class="b_aj">Tarifa (porcada 100 ml) </span></td></tr>
+<tr><td VALIGN="top" COLSPAN="2" WIDTH="91%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:91%;border-width:1px;"><span class="b_aj">2023 </span></td><td VALIGN="top" WIDTH="9%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:9%;border-width:1px;"><span class="b_aj">2024 </span></td></tr>
+<tr><td VALIGN="top" WIDTH="69%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:69%;border-width:1px;">Menor a seis gramos (6 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="22%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:22%;border-width:1px;">$0 </td><td VALIGN="top" WIDTH="9%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:9%;border-width:1px;">$0 </td></tr>
+<tr><td VALIGN="top" WIDTH="69%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:69%;border-width:1px;">Mayor o igual a seis gramos (6 gr) y menor a diez gramos (10 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="22%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:22%;border-width:1px;">$18 </td><td VALIGN="top" WIDTH="9%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:9%;border-width:1px;">$28 </td></tr>
+<tr><td VALIGN="top" WIDTH="69%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:69%;border-width:1px;">Mayor o igual a diez gramos (10 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="22%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:22%;border-width:1px;">$35 </td><td VALIGN="top" WIDTH="9%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:9%;border-width:1px;">$55 </td></tr></table>
+<p>Para el a&ntilde;o 2025:</p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="75%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:75%;border-width:1px;"><span class="b_aj">Contenido en 100 ml </span></td><td VALIGN="top" WIDTH="25%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:25%;border-width:1px;"><span class="b_aj">Tarifa (porcada 100 ml) </span></td></tr>
+<tr><td VALIGN="top" COLSPAN="2" WIDTH="100%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:100%;border-width:1px;"><span class="b_aj">2025 </span></td></tr>
+<tr><td VALIGN="top" WIDTH="75%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:75%;border-width:1px;">Menor a cinco gramos (5 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="25%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:25%;border-width:1px;">$0 </td></tr>
+<tr><td VALIGN="top" WIDTH="75%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:75%;border-width:1px;">Mayor o igual a cinco gramos (5 gr) y menor a nueve gramos (9 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="25%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:25%;border-width:1px;">$38 </td></tr>
+<tr><td VALIGN="top" WIDTH="75%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:75%;border-width:1px;">Mayor o igual a nueve gramos (9 gr) de az&uacute;cares a&ntilde;adidos </td><td VALIGN="top" WIDTH="25%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:25%;border-width:1px;">$65 </td></tr></table>
+<p>Estas tarifas se aplican de la siguiente forma para determinar el monto del impuesto aplicable a cada bebida: </p>
+<p class="centrado"><img src="graficas/estatuto_tributario_obj_40.gif" WIDTH="167" HEIGHT="62"/></p>
+<p>Donde: </p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="11%" style="line-height:0.17in;text-align:justify;width:11%;border:0px;">&#160;IMP: </td><td VALIGN="top" WIDTH="89%" style="line-height:0.17in;text-align:justify;width:89%;border:0px;">Monto del impuesto aplicable a la bebida, en pesos. </td></tr>
+<tr><td VALIGN="top" WIDTH="11%" style="line-height:0.17in;text-align:justify;width:11%;border:0px;">&#160;Vol: </td><td VALIGN="top" WIDTH="89%" style="line-height:0.17in;text-align:justify;width:89%;border:0px;">Volumen de la bebida, expresado en mililitros (ml). </td></tr>
+<tr><td VALIGN="top" WIDTH="11%" style="line-height:0.17in;text-align:justify;width:11%;border:0px;">&#160;Tarifa: </td><td VALIGN="top" WIDTH="89%" style="line-height:0.17in;text-align:justify;width:89%;border:0px;">Tarifa del impuesto, seg&uacute;n lo determinado en la tabla anterior. </td></tr></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> A partir del a&ntilde;o 2026, el valor de las tarifas establecidas para el a&ntilde;o 2025 se ajustar&aacute; cada primero (1) de enero en el mismo porcentaje en que se incremente la Unidad de Valor Tributario (UVT). La Unidad Administrativa Especial Direcci&oacute;n de Impuestos y Aduanas Nacionales (DIAN) expedir&aacute; por medio de acto administrativo el porcentaje de incremento de la Unidad de Valor Tributario (UVT) y el valor de las tarifas actualizadas. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow58()">Notas de Vigencia</a></div>
+<table id="Table58" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow59()">Jurisprudencia Vigencia</a></div>
+<table id="Table59" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow60()">Concordancias</a></div>
+<table id="Table60" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="513-5">ART&Iacute;CULO 513-5. CAUSACI&Oacute;N DEL IMPUESTO A LAS BEBIDAS ULTRAPROCESADAS AZUCARADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; El impuesto a las bebidas ultraprocesadas azucaradas se causa as&iacute;.</p>
+<p>1. En la producci&oacute;n, la venta, retiro de inventario o transferencia a t&iacute;tulo gratuito u oneroso que realice el productor, en la fecha de emisi&oacute;n de la factura o documento equivalente y a falta de estos, en el momento de la entrega o retiro, aunque se haya pactado reserva de dominio, pacto de retroventa o condici&oacute;n resolutoria. </p>
+<p>2. En las importaciones, al tiempo de la nacionalizaci&oacute;n del bien. En este caso, el impuesto se liquidar&aacute; y pagar&aacute; al momento de la liquidaci&oacute;n y pago de los tributos aduaneros. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o.</span> El impuesto a las bebidas ultraprocesadas azucaradas de que trata el presente Cap&iacute;tulo constituye para el comprador un costo deducible en el impuesto sobre la renta como mayor valor del bien, en los t&eacute;rminos del Art&iacute;culo <A href="estatuto_tributario.htm#115" >115</A> de este Estatuto. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> El impuesto a las bebidas ultraprocesadas azucaradas no genera impuestos descontables en el impuesto sobre las ventas (IVA). </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o.</span> El impuesto a las bebidas ultraprocesadas azucaradas deber&aacute; estar discriminado en la factura de venta, independientemente de la discriminaci&oacute;n que del impuesto sobre las ventas (IVA) se haga en la misma. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow61()">Notas de Vigencia</a></div>
+<table id="Table61" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow62()">Jurisprudencia Vigencia</a></div>
+<table id="Table62" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p class="centrado"><a class="bookmarkaj" name="CAP&Iacute;TULO II-X">CAP&Iacute;TULO II. </A></p>
+<p class="centrado"><span class="b_aj">IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS. &#160;</span></p>
+<p><span class="b_aj"><A name="513-6">ART&Iacute;CULO 513-6. HECHO GENERADOR DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; <U>El hecho generador del impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas est&aacute; constituido por: </U></p>
+<p><U>1. En la producci&oacute;n, la venta, el retiro de inventarios o los actos que impliquen la transferencia de dominio a t&iacute;tulo gratuito u oneroso. </U></p>
+<p><U>2. La importaci&oacute;n. </U></p>
+<p><U>Estar&aacute;n sujetos a este impuesto los productos comestibles ultraprocesados que como ingredientes se les haya adicionado az&uacute;cares, sal/sodio y/o grasas y su contenido en la tabla nutricional supere los siguientes valores: </U></p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;"><span class="b_aj">Nutriente </span></td><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;"><span class="b_aj">Por cada 100 g </span></td></tr>
+<tr><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">Sodio </td><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">&gt;&#160;= 1 mg/kcal y/o &gt;&#160;= 300 mg/100 g </td></tr>
+<tr><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">Az&uacute;cares </td><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">&gt;&#160;= 10% del total de energ&iacute;a proveniente de az&uacute;cares libres </td></tr>
+<tr><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">Grasas saturadas </td><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">&gt;&#160;= 10% del total de energ&iacute;a proveniente de grasas saturadas </td></tr></table>
+<p>Para calcular los porcentajes establecidos en la tabla se proceder&aacute; de acuerdo con el par&aacute;grafo 1 del presente Art&iacute;culo. </p>
+<p>Los productos ultraprocesados son formulaciones industriales elaboradas a partir de sustancias derivadas de los alimentos o sintetizadas de otras fuentes org&aacute;nicas. Algunas sustancias empleadas para elaborar los productos Ultraprocesados, como grasas, aceites, almidones y az&uacute;car, derivan directamente de alimentos. Otras se obtienen mediante el procesamiento adicional de ciertos componentes alimentarios, como la hidrogenaci&oacute;n de los aceites (que genera grasas trans t&oacute;xicas), la hidr&oacute;lisis de las prote&iacute;nas y la "purificaci&oacute;n" de los almidones. La gran mayor&iacute;a de los ingredientes en la mayor parte de los productos ultraprocesados son aditivos (aglutinantes, cohesionantes, colorantes, edulcorantes, emulsificantes, espesantes, espumantes, estabilizadores, "mejoradores", sensoriales como aromatizantes y saborizantes, conservadores, saborizantes y solventes). </p>
+<p>Los productos ultraprocesados son formulaciones industriales principalmente a base de sustancias extra&iacute;das o derivadas de alimentos, adem&aacute;s de aditivos y cosm&eacute;ticos que dan color, sabor o textura para intentar imitar a los alimentos. Tienen un elevado contenido en az&uacute;cares a&ntilde;adidos, grasa total, grasas saturadas y sodio, y un bajo contenido en prote&iacute;na, fibra alimentaria, minerales y vitaminas, en comparaci&oacute;n con los productos, platos y comidas sin procesar o m&iacute;nimamente procesados.</p>
+<p>Se entender&aacute; por producto ultraprocesado que se les haya adicionado sal/sodio; aquellos a los que durante el proceso de elaboraci&oacute;n se haya utilizado como ingrediente o aditivo cualquier sal o aditivo que contenga sodio o cualquier ingrediente que contenga sales de sodio agregadas. </p>
+<p>Se entender&aacute; por producto ultraprocesado que se les haya adicionado grasas; aquellos a los que durante el proceso de elaboraci&oacute;n se haya utilizado como ingrediente grasas vegetales o animales, aceites vegetales parcialmente hidrogenados (manteca vegetal, crema vegetal o margarina) e ingredientes que los contengan agregados. </p>
+<p>Se consideran az&uacute;cares a&ntilde;adidos los monosac&aacute;ridos y/o disac&aacute;ridos que se adicionan durante el procesamiento de alimentos o se empaquetan como tales, e incluyen aquellos contenidos en los jarabes, en los concentrados de jugos de frutas o vegetales. </p>
+<p>Se entender&aacute; por producto alimenticio procesado y/o ultraprocesado que se les haya adicionado az&uacute;cares; aquellos a los que durante el proceso de elaboraci&oacute;n se les hayan a&ntilde;adido az&uacute;cares seg&uacute;n la definici&oacute;n del inciso anterior. </p>
+<p>Por lo tanto, los bienes de las siguientes partidas y sub partidas estar&aacute;n sujetos al presente impuesto en la medida en que contengan sodio, az&uacute;cares o grasas saturadas, y se cumpla con lo previsto en los incisos anteriores: </p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;"><span class="b_aj">Producto </span></td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;"><span class="b_aj">Partidas arancelarias </span></td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Productos constituidos por los componentes naturales de la leche, incluso con adici&oacute;n de az&uacute;car u otro edulcorante, no expresados ni comprendidos en otra parte; <U>[excepto el arequipe y/o dulce de leche]. </U></td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;"><U>04.04.90.00.00 </U></td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Embutidos y productos similares de carne, despojos, sangre o de insectos; preparaciones alimenticias a base de estos productos, <U>[excepto salchich&oacute;n, mortadela y butifarra</U>.] </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">16.01 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Las dem&aacute;s preparaciones y conservas de carne, despojos, sangre o de insectos. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">16.02 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">[<U>Art&iacute;culos de confiter&iacute;a sin cacao (incluido el chocolate, blanco).</U>] </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;"><U>17.04 </U><br/></td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Chocolate y dem&aacute;s preparaciones alimenticias que contengan cacao; </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">18.06 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Mezclas y pastas para la preparaci&oacute;n de productos de panader&iacute;a, pasteler&iacute;a o galleter&iacute;a, de la partida 19.05. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">19.01.20.00.00 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Productos a base de cereales obtenidos por inflado o tostado (por ejemplo: hojuelas o copos de ma&iacute;z); cereales (excepto el ma&iacute;z) en grano o en forma de copos u otro grano trabajado (excepto la harina, gra&ntilde;ones y s&eacute;mola), precocidos o preparados de otro modo, no expresados ni comprendidos en otra parte. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">19.04 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Productos de panader&iacute;a, pasteler&iacute;a o galleter&iacute;a, incluso con adici&oacute;n de cacao; hostias, sellos vac&iacute;os de los tipos utilizados para medicamentos, obleas para sellar, pastas secas de harina, almid&oacute;n o f&eacute;cula, en hojas, y productos similares. Excepto el pan y las obleas. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">19.05 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;"><U>[Las dem&aacute;s hortalizas preparadas o conservadas (excepto en vinagre oen &aacute;cido ac&eacute;tico), sin congelar, excepto los productos de la partida 20.06. ]</U></td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">20.05 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Hortalizas, frutas u otros frutos o sus cortezas y dem&aacute;s partes de plantas, confitados con az&uacute;car (almibarados, glaseados o escarchados). </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">20.06.00.00 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Confituras, jaleas y mermeladas, pur&eacute;s y pastas de frutas u otros frutos, obtenidos por cocci&oacute;n incluso con adici&oacute;n de az&uacute;car u otro edulcorante, excepto el bocadillo de guayaba. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">20.07 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Frutas u otros frutos y dem&aacute;s partes comestibles de plantas, preparados o conservados de otro modo, incluso con adici&oacute;n de az&uacute;car u otro edulcorante o alcohol, no expresados ni comprendidos en otra parte </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">20.08 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Preparaciones para salsas y salsas preparadas; condimentos y sazonadores compuestos; harina de mostaza y mostaza preparada. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">21.03 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;">Helados, incluso con cacao. </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">21.05 </td></tr>
+<tr><td VALIGN="top" WIDTH="77%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:77%;border-width:1px;"><U>[Preparaciones alimenticias no expresadas ni comprendidas en otra parte].</U> </td><td VALIGN="top" WIDTH="23%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:23%;border-width:1px;">[<U>21.06 excepto (21.06.90.21.00 y 21.06.90.29.00) </U>]<br/></td></tr></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o. </span>para calcular los porcentajes establecidos en la tabla de que trata el inciso 2 del presente Art&iacute;culo se deber&aacute; tener en cuenta lo siguiente: </p>
+<p>a) <span class="b_aj">Sodio</span>: se toma cualquier cantidad de alimento, puede ser cien gramos (100 g) o la porci&oacute;n, y se divide el contenido de sodio reportado, entre el n&uacute;mero de kcal, reportadas en la misma cantidad, si esta relaci&oacute;n es superior a uno (1) ser&aacute; sujeto de impuesto. Por otro lado, debe calcular el contenido de sodio en cien gramos (100 g) y si este supera los trescientos miligramos (300 mg), estar&aacute; sujeto al impuesto. Es suficiente con que se cumpla una de las dos condiciones para ser sujeto al impuesto. </p>
+<p>b) <span class="b_aj">Az&uacute;cares</span>: se debe identificar los az&uacute;cares a&ntilde;adidos seg&uacute;n lo definido en el par&aacute;grafo 2 de este Art&iacute;culo. Una vez identificados, en cualquier cantidad de alimento, se debe multiplicar la cantidad de az&uacute;cares a&ntilde;adidos en gramos, por el factor de conversi&oacute;n de az&uacute; cares (4 kcal/g). Este resultado, se divide entre el total de las kcal, de la misma cantidad de alimento y se multiplica por cien (100). Finalmente, se compara este resultado con el porcentaje establecido en la tabla, y si es igual o superior a diez por ciento (10%), estar&aacute; sujeto al impuesto. </p>
+<p>c) <span class="b_aj">Grasas saturadas</span>: se debe multiplicar la cantidad de grasas saturadas en gramos, por el factor de conversi&oacute;n de grasas (9 kcal/g), en cualquier cantidad de alimento. Este resultado, se divide entre el total de las kcal, de la misma cantidad de alimento y se multiplica por cien (100). Finalmente, se compara este resultado con el porcentaje establecido en la tabla, y si es igual o superior a diez por ciento (10%), estar&aacute; sujeto al impuesto. </p>
+<p>Trat&aacute;ndose de bienes importados, lo indicado en el presente par&aacute;grafo debe informarse en la declaraci&oacute;n de importaci&oacute;n. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o. </span>Los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas a los que se refiere este art&iacute;culo, no causar&aacute;n este impuesto cuando sean exportados por el productor. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o. </span>Las operaciones anuladas, rescindidas o resueltas de los bienes gravados con el impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas, dar&aacute;n lugar a un menor valor a pagar del impuesto, sin que otorgue derecho a devoluci&oacute;n. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 4o.</span> No Constituye hecho generador del impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas, la donaci&oacute;n por parte del productor o importador cuando se realice a los bancos de alimentos que se encuentren constituidos como entidades sin &aacute;nimo de lucro del R&eacute;gimen Tributario Especial o los bancos de alimentos que bajo la misma personer&iacute;a jur&iacute;dica posea la iglesia o confesi&oacute;n religiosa reconocida por el Ministerio del Interior o por la ley. El tratamiento previsto en este par&aacute;grafo tambi&eacute;n ser&aacute; aplicable a las asociaciones de bancos de alimentos. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow63()">Notas de Vigencia</a></div>
+<table id="Table63" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow64()">Jurisprudencia Vigencia</a></div>
+<table id="Table64" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-7">ART&Iacute;CULO 513-7. RESPONSABLE DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; El responsable del impuesto a los productos comestibles ultraprocesados industrialmente y/o con, alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas ser&aacute; el productor y/o el importador, seg&uacute;n el caso. </p>
+<p>No ser&aacute;n responsables de este impuesto, los productores personas naturales que en el a&ntilde;o gravable anterior o en el a&ntilde;o en curso hubieran obtenido ingresos brutos provenientes de las actividades gravadas con este impuesto, inferiores a diez mil (10.000) UVT. Cuando se supere esta cuant&iacute;a, ser&aacute; responsable del impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas a partir del periodo gravable siguiente. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO.</span> Para los efectos de este Art&iacute;culo, la definici&oacute;n de productor ser&aacute; la establecida en el Art&iacute;culo <A href="estatuto_tributario_pr018.htm#440" >440</A> de este Estatuto. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow65()">Notas de Vigencia</a></div>
+<table id="Table65" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow66()">Jurisprudencia Vigencia</a></div>
+<table id="Table66" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow67()">Concordancias</a></div>
+<table id="Table67" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="513-8">ART&Iacute;CULO 513-8. BASE GRAVABLE DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; La base gravable del impuesto est&aacute; constituida por el precio de venta. En el caso de donaci&oacute;n o retiro de inventario, la base gravable es el valor comercial, de acuerdo con lo se&ntilde;alado en el Art&iacute;culo <A href="estatuto_tributario.htm#90" >90</A> del Estatuto Tributario. </p>
+<p><U>En el caso de las mercanc&iacute;as importadas, la base gravable sobre la cual se liquida el impuesto a los productos comestibles ultraprocesado y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas, ser&aacute; la misma que se tiene en cuenta para liquidar los tributos aduaneros, adicionados con el valor de este gravamen. </U></p>
+<p><U>Trat&aacute;ndose de productos terminados producidos en zona franca, la base gravable ser&aacute; el valor de todos los costos y gastos de producci&oacute;n de conformidad con el certificado de integraci&oacute;n, m&aacute;s el valor de los tributos aduaneros. Cuando el importador sea el comprador o cliente en territorio aduanero nacional, la base gravable ser&aacute; el valor de la factura m&aacute;s los tributos aduaneros</U>. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow68()">Notas de Vigencia</a></div>
+<table id="Table68" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow69()">Jurisprudencia Vigencia</a></div>
+<table id="Table69" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-9">ART&Iacute;CULO 513-9. TARIFA DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; La tarifa del impuesto ser&aacute; del diez por ciento (10%) en el a&ntilde;o 2023, del quince por ciento (15%) en el a&ntilde;o 2024 y del veinte por ciento (20%) a partir del a&ntilde;o 2025. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow70()">Notas de Vigencia</a></div>
+<table id="Table70" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow71()">Jurisprudencia Vigencia</a></div>
+<table id="Table71" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj"><A name="513-10">ART&Iacute;CULO 513-10. CAUSACI&Oacute;N DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZ&Uacute;CARES A&Ntilde;ADIDOS, SODIO O GRASAS SATURADAS.</A> </span>&lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; El impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas se causa as&iacute;: </p>
+<p>1. En la producci&oacute;n, la venta, retiro de inventario o transferencia a t&iacute;tulo gratuito u oneroso que realice el productor, en la fecha de emisi&oacute;n de la factura o documento equivalente y a falta de estos, en el momento de la entrega o retiro, aunque se haya pactado reserva de dominio, pacto de retroventa o condici&oacute;n resolutoria. </p>
+<p>2. En las importaciones, al tiempo de la nacionalizaci&oacute;n del bien. En este caso, el impuesto se liquidar&aacute; y pagar&aacute; al momento de la liquidaci&oacute;n y pago de los tributos aduaneros. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 1o. </span>El impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas de que trata el presente Cap&iacute;tulo constituye para el comprador un costo deducible en el impuesto sobre la renta como mayor valor del bien, en los t&eacute;rminos del Art&iacute;culo <A href="estatuto_tributario.htm#115" >115</A> de este Estatuto. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o.</span> El impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adidos, sodio o grasas saturadas no genera impuestos descontables en el impuesto sobre las ventas (IVA). </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o. </span>El impuesto a los productos comestibles ultraprocesados industrialmente y/o con alto contenido de az&uacute;cares a&ntilde;adido, sodio o grasas saturadas deber&aacute; estar discriminado en la factura de venta, independientemente de la discriminaci&oacute;n que del impuesto sobre las ventas (IVA)se haga en la misma. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow72()">Notas de Vigencia</a></div>
+<table id="Table72" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow73()">Jurisprudencia Vigencia</a></div>
+<table id="Table73" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p class="centrado"><a class="bookmarkaj" name="CAP&Iacute;TULO III-X">CAP&Iacute;TULO III. </A></p>
+<p class="centrado"><span class="b_aj">DISPOSICIONES COMUNES. &#160;</span></p>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-11">ART&Iacute;CULO 513-11. SUJETO ACTIVO.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; Corresponde a la Unidad Administrativa Especial Direcci&oacute;n de Impuestos y Aduanas Nacionales (DIAN) el recaudo y la administraci&oacute;n de los impuestos previstos en el presente T&iacute;tulo, para lo cual tendr&aacute; las facultades consagradas en el Estatuto Tributario o en el Estatuto Aduanero para la investigaci&oacute;n, determinaci&oacute;n, control, discusi&oacute;n, devoluci&oacute;n y cobro de estos impuestos, siendo para ello aplicable las sanciones contempladas en dichos estatutos ante la detecci&oacute;n de inconsistencias en la correcta forma y oportunidad en la declaraci&oacute;n y pago de los impuestos y tributos aduaneros, As&iacute; mismo aplicar&aacute; el procedimiento establecido en el Estatuto Tributario o Estatuto Aduanero. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow74()">Notas de Vigencia</a></div>
+<table id="Table74" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow75()">Jurisprudencia Vigencia</a></div>
+<table id="Table75" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-12">ART&Iacute;CULO 513-12. PERIODO GRAVABLE.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; El periodo gravable para los impuestos previstos en el presente T&iacute;tulo ser&aacute; bimestral. Los periodos bimestrales son: enero-febrero, marzo-abril, mayo-junio, julio-agosto, septiembre-octubre, noviembre-diciembre. Cuando se trate de importaciones el impuesto se liquidar&aacute; y pagar&aacute; conjuntamente con la liquidaci&oacute;n y pago de los tributos aduaneros. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow76()">Notas de Vigencia</a></div>
+<table id="Table76" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow77()">Jurisprudencia Vigencia</a></div>
+<table id="Table77" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow78()">Concordancias</a></div>
+<table id="Table78" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="513-13">ART&Iacute;CULO 513-13. DECLARACI&Oacute;N Y PAGO.</A> &lt;Art&iacute;culo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#54" >54</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; Los plazos para la presentaci&oacute;n de la declaraci&oacute;n y pago de los impuestos previstos en el presente T&iacute;tulo ser&aacute;n los establecidos por el Gobierno nacional. El contenido y prescripci&oacute;n del formulario ser&aacute; establecido por la Unidad Administrativa Especial Direcci&oacute;n de Impuestos y Aduanas Nacionales (DIAN). </p>
+<p>No habr&aacute; lugar a la presentaci&oacute;n de la declaraci&oacute;n de los impuestos previstos en el presente T&iacute;tulo en los periodos en los cuales no se hayan realizado operaciones sometidas a dichos impuestos.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow79()">Notas de Vigencia</a></div>
+<table id="Table79" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow80()">Jurisprudencia Vigencia</a></div>
+<table id="Table80" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow81()">Concordancias</a></div>
+<table id="Table81" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p class="centrado"><a class="bookmarkaj" name="LIBRO IV">LIBRO CUARTO. </A></p>
+<p class="centrado"><span class="b_aj">IMPUESTO DE TIMBRE NACIONAL.</span> </p>
+<p class="centrado"><a class="bookmarkaj" name="TITULO I-4">TITULO I. </A></p>
+<p class="centrado"><span class="b_aj">SUJETOS PASIVOS.</span> </p>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="514">ARTICULO 514. CONTRIBUYENTES O RESPONSABLES SON SUJETOS PASIVOS.</A> Son sujetos pasivos de la obligaci&oacute;n tributaria o de las sanciones las personas o entidades como contribuyentes o responsables de la obligaci&oacute;n o de la sanci&oacute;n. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow82()">Concordancias</a></div>
+<table id="Table82" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="515">ARTICULO 515. QUIENES SON CONTRIBUYENTES.</A> &lt;Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#32" >32</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Son contribuyentes las personas naturales o jur&iacute;dicas, sus asimiladas, y las entidades p&uacute;blicas no exceptuadas expresamente, que intervengan como otorgantes, giradores, aceptantes, emisores o suscriptores en los documentos. </p>
+<p>As&iacute; mismo es contribuyente aquel a cuyo favor se expida, otorgue o extienda el documento. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow83()">Notas de Vigencia</a></div>
+<table id="Table83" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow84()">Concordancias</a></div>
+<table id="Table84" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow85()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table85" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="516">ARTICULO 516. QUIENES SON RESPONSABLES.</A> &lt;Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#33" >33</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Son responsables por el impuesto y las sanciones todos los agentes de retenci&oacute;n, incluidos aquellos, que a&uacute;n sin tener el car&aacute;cter de contribuyentes, deben cumplir las obligaciones de &eacute;stos por disposici&oacute;n expresa de la ley. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow86()">Notas de Vigencia</a></div>
+<table id="Table86" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow87()">Concordancias</a></div>
+<table id="Table87" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow88()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table88" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="517">ARTICULO 517. LOS FUNCIONARIOS OFICIALES RESPONDEN SOLIDARIAMENTE CON LOS AGENTES DE RETENCI&Oacute;N.</A> &lt;Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#34" >34</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Responden solidariamente con el agente de retenci&oacute;n los funcionarios oficiales que autoricen, expidan, registren o tramiten actos o instrumentos sometidos al impuesto, o quienes sin tener dicho car&aacute;cter, desempe&ntilde;en funciones p&uacute;blicas e intervengan en los mencionados hechos. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow89()">Notas de Vigencia</a></div>
+<table id="Table89" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow90()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table90" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="518">ARTICULO 518. AGENTES DE RETENCI&Oacute;N.</A> &lt;Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#35" >35</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Deber&aacute;n responder como agentes de retenci&oacute;n, a m&aacute;s de los que se&ntilde;ale el reglamento: </p>
+<p>1. Las personas naturales y asimiladas, cuando re&uacute;nan las condiciones previstas en el art&iacute;culo <A href="estatuto_tributario_pr021.htm#519" >519</A> de este Estatuto, y las personas jur&iacute;dicas y asimiladas, que teniendo el car&aacute;cter de contribuyentes del impuesto, intervengan como contratantes, aceptantes, emisores o suscriptores en los documentos. </p>
+<p>2. Los notarios por las escrituras p&uacute;blicas. </p>
+<p>3. Las entidades p&uacute;blicas del orden nacional, departamental o municipal, cualquiera sea su naturaleza jur&iacute;dica. </p>
+<p>4. Los agentes diplom&aacute;ticos del Gobierno Colombiano, por los documentos otorgados en el exterior. </p>
+<p>5. &lt;Numeral INEXEQUIBLE&gt;</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow91()">Notas de Vigencia</a></div>
+<table id="Table91" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow92()">Jurisprudencia Vigencia</a></div>
+<table id="Table92" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow93()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table93" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj">PARAGRAFO.</span> &lt;Par&aacute;grafo adicionado por el art&iacute;culo <A href="ley_0223_1995.htm#164" >164</A> de la Ley 223 de 1995. El nuevo texto es el siguiente:&gt; El impuesto de Timbre que se cause en el exterior, ser&aacute; recaudado por los agentes consulares y su declaraci&oacute;n y pago estar&aacute; a cargo del Ministerio de Relaciones Exteriores en la forma como lo determine el reglamento, sin que se generen intereses moratorios. De la suma recaudada en el exterior por concepto del impuesto de Timbre se descontar&aacute;n los costos de giro y transferencia. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow94()">Notas de Vigencia</a></div>
+<table id="Table94" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow95()">Notas de Vigencia</a></div>
+<table id="Table95" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow96()">Concordancias</a></div>
+<table id="Table96" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow97()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table97" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p class="centrado"><a class="bookmarkaj" name="TITULO II-4">TITULO II. </A></p>
+<p class="centrado"><span class="b_aj">ACTUACIONES GRAVADAS Y SUS TARIFAS.</span> </p>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="519">ARTICULO 519. BASE GRAVABLE EN EL IMPUESTO DE TIMBRE NACIONAL.</A> </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow98()">Notas de Vigencia</a></div>
+<table id="Table98" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>&lt;Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#36" >36</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; </p>
+<p>&lt;Inciso 1o. modificado por el art&iacute;culo <A href="ley_1111_2006.htm#72" >72</A> de la Ley 1111 de 2006. El nuevo texto es el siguiente:&gt; El impuesto de timbre nacional, se causar&aacute; a la tarifa del uno punto cinco por ciento (1.5%) sobre los instrumentos p&uacute;blicos y documentos privados, incluidos los t&iacute;tulos valores, que se otorguen o acepten en el pa&iacute;s, o que se otorguen fuera del pa&iacute;s pero que se ejecuten en el territorio nacional o generen obligaciones en el mismo, en los que se haga constar la constituci&oacute;n, existencia, modificaci&oacute;n o extinci&oacute;n de obligaciones, al igual que su pr&oacute;rroga o cesi&oacute;n, cuya cuant&iacute;a sea superior a seis mil (6.000) Unidades de Valor Tributario, UVT, en los cuales intervenga como otorgante, aceptante o suscriptor una entidad p&uacute;blica, una persona jur&iacute;dica o asimilada, o una persona natural que tenga la calidad de comerciante, que en el a&ntilde;o inmediatamente anterior tuviere unos ingresos brutos o un patrimonio bruto superior a treinta mil (30.000) Unidades de Valor Tributario, UVT.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow99()">Notas de Vigencia</a></div>
+<table id="Table99" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow100()">Concordancias</a></div>
+<table id="Table100" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow101()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table101" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p>&lt;Inciso adicionado por el art&iacute;culo 35 de la Ley 383 de 1997. El nuevo texto es el siguiente:&gt; Para los contratos celebrados por constructores para programas de vivienda, el aumento de tarifas dispuesto en este art&iacute;culo s&oacute;lo ser&aacute; aplicable a partir del primero (1o) de julio de 1998. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow102()">Notas de Vigencia</a></div>
+<table id="Table102" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>&lt;Inciso modificado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#77" >77</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; Trat&aacute;ndose de documentos que hayan sido elevados a escritura p&uacute;blica, se causar&aacute; el impuesto de timbre, en concurrencia con el impuesto de registro, siempre y cuando no se trate de la enajenaci&oacute;n a cualquier t&iacute;tulo de bienes inmuebles cuyo valor sea inferior a veinte mil (20.000) UVT y no haya sido sujeto a este impuesto, o naves, o constituci&oacute;n o cancelaci&oacute;n de hipotecas sobre los mismos. En el caso de constituci&oacute;n de hipoteca abierta, se pagar&aacute; este impuesto sobre los respectivos documentos de deber. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow103()">Notas de Vigencia</a></div>
+<table id="Table103" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow104()">Jurisprudencia Vigencia</a></div>
+<table id="Table104" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow105()">Concordancias</a></div>
+<table id="Table105" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow106()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table106" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p>Tambi&eacute;n se causar&aacute; el impuesto de timbre en el caso de la oferta mercantil aceptada, aunque la aceptaci&oacute;n se haga en documento separado. </p>
+<p>&lt;Inciso modificado por el art&iacute;culo 36 de la Ley 383 de 1997. El nuevo texto es el siguiente:&gt; Cuando tales documentos sean de cuant&iacute;a indeterminada, el impuesto se causar&aacute; sobre cada pago o abono en cuenta derivado del contrato o documento, durante el tiempo que dure vigente. </p>
+<p>Lo anterior ser&aacute; aplicable para los contratos que se suscriban, modifiquen o prorroguen a partir de la presente ley. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow107()">Notas de Vigencia</a></div>
+<table id="Table107" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow108()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table108" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj">PARAGRAFO.</span> El impuesto de timbre generado por los documentos y actuaciones previstas en este Libro, ser&aacute; igual al valor de las retenciones en la fuente debidamente practicadas. En el evento de los documentos de cuant&iacute;a indeterminada, cuando fuere procedente, adem&aacute;s de la retenci&oacute;n inicial de la suma se&ntilde;alada en el &uacute;ltimo inciso de este art&iacute;culo, el impuesto de timbre comprender&aacute; las retenciones que se efect&uacute;en una vez se vaya determinando o se determine su cuant&iacute;a, si es del caso. </p>
+<p><span class="b_aj">PAR&Aacute;GRAFO 2o. </span>&lt;Par&aacute;grafo adicionado por el art&iacute;culo <A href="ley_1111_2006.htm#72" >72</A> de la Ley 1111 de 2006. El nuevo texto es el siguiente:&gt; La tarifa del impuesto a que se refiere el presente art&iacute;culo se reducir&aacute; de la siguiente manera:</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow109()">Notas de Vigencia</a></div>
+<table id="Table109" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>- Al uno por ciento (1%) en el a&ntilde;o 2008</p>
+<p>- Al medio por ciento (0.5%) en el a&ntilde;o 2009</p>
+<p>- Al cero por ciento (0%) a partir del a&ntilde;o 2010.</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow110()">Notas de Vigencia</a></div>
+<table id="Table110" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow111()">Concordancias</a></div>
+<table id="Table111" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p><span class="b_aj">PAR&Aacute;GRAFO 3o.</span> &lt;Par&aacute;grafo adicionado por el art&iacute;culo <A href="ley_2277_2022_pr001.htm#77" >77</A> de la Ley 2277 de 2022. El nuevo texto es el siguiente:&gt; A partir del a&ntilde;o 2023, la tarifa del impuesto para el caso de documentos que hayan sido elevados a escritura p&uacute;blica trat&aacute;ndose de la enajenaci&oacute;n a cualquier t&iacute;tulo de bienes inmuebles cuyo valor sea igual o superior a veinte mil (20.000) UVT, la tarifa se determinar&aacute; conforme con la siguiente tabla: </p>
+<table width="100%" style="border:1px black;padding:1px;margin-left:0.00in"><tr><td VALIGN="top" WIDTH="22%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:22%;border-width:1px;"><span class="b_aj">Rangos en UVT </span></td><td VALIGN="top" WIDTH="17%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:17%;border-width:1px;"><span class="b_aj">Tarifa marginal </span></td><td VALIGN="top" COLSPAN="2" WIDTH="61%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:61%;border-width:1px;"><span class="b_aj">Impuesto </span></td></tr>
+<tr><td VALIGN="top" WIDTH="10%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:10%;border-width:1px;"><span class="b_aj">Desde </span></td><td VALIGN="top" COLSPAN="3" WIDTH="90%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:90%;border-width:1px;"><span class="b_aj">Hasta </span></td></tr>
+<tr><td VALIGN="top" WIDTH="10%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:10%;border-width:1px;">0 </td><td VALIGN="top" WIDTH="13%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:13%;border-width:1px;">20.000 </td><td VALIGN="top" WIDTH="16%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:16%;border-width:1px;">0% </td><td VALIGN="top" WIDTH="61%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:61%;border-width:1px;">0% </td></tr>
+<tr><td VALIGN="top" WIDTH="10%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:10%;border-width:1px;">&gt;&#160;20.000 </td><td VALIGN="top" WIDTH="13%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:13%;border-width:1px;">50.000 </td><td VALIGN="top" WIDTH="16%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:16%;border-width:1px;">1,5% </td><td VALIGN="top" WIDTH="61%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:61%;border-width:1px;">(Valor de la enajenaci&oacute;n en UVT menos 20.000 UVT) x 1,5% </td></tr>
+<tr><td VALIGN="top" WIDTH="10%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:10%;border-width:1px;">&gt;&#160;50.000 </td><td VALIGN="top" WIDTH="13%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:13%;border-width:1px;">En adelante </td><td VALIGN="top" WIDTH="16%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:16%;border-width:1px;">3% </td><td VALIGN="top" WIDTH="61%" style="line-height:0.17in;border-style:solid;border-width:1px;text-align:justify;width:61%;border-width:1px;">(Valor de la enajenaci&oacute;n en UVT menos 50.000 UVT) x 3% + 450 UVT </td></tr></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow112()">Notas de Vigencia</a></div>
+<table id="Table112" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow113()">Jurisprudencia Vigencia</a></div>
+<table id="Table113" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow114()">Notas de Vigencia</a></div>
+<table id="Table114" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow115()">Concordancias</a></div>
+<table id="Table115" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow116()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table116" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="520">ARTICULO 520. OTROS INSTRUMENTOS SOMETIDOS AL IMPUESTO DE TIMBRE CUANDO SU CUANTIA FUERE SUPERIOR A UN MILLON DE PESOS ($1.000.000).</A> &lt;Art&iacute;culo derogado por el art&iacute;culo <A href="ley_0006_1992.htm#140" >140</A> de la Ley 6 de 1992&gt;</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow117()">Notas de Vigencia</a></div>
+<table id="Table117" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow118()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table118" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="521">ARTICULO 521. DOCUMENTOS PRIVADOS SOMETIDOS AL IMPUESTO DE TIMBRE, CUALQUIERA FUERE SU CUANTIA.</A> &lt;Ajuste de las cifras en valores absolutos en t&eacute;rminos de UVT por el art&iacute;culo <A href="ley_1111_2006.htm#51" >51</A> de la Ley 1111 de 2006 (A partir del a&ntilde;o gravable 2007). Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#37" >37</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Los siguientes documentos est&aacute;n sujetos al impuesto de timbre cualquiera que fuere su cuant&iacute;a y pagar&aacute;n las sumas indicadas en cada caso: </p>
+<p>a) Los cheques que deban pagarse en Colombia: 0,0003 UVT, por cada uno;</p>
+<p>b) Los bonos nominativos y al portador: el medio por ciento (0.5%) sobre su valor nominal. </p>
+<p>c) Los Certificados de dep&oacute;sito que expidan los almacenes generales de dep&oacute;sito: 0,03 UVT.</p>
+<p>d) Las garant&iacute;as otorgadas por los establecimientos de cr&eacute;dito, causan el impuesto al medio por ciento (0.5%), por una sola vez, sobre el valor de la comisi&oacute;n o prima, recibidos por la entidad garante. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow119()">Notas de Vigencia</a></div>
+<table id="Table119" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow120()">Concordancias</a></div>
+<table id="Table120" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow121()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table121" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="522">ARTICULO 522. REGLAS PARA DETERMINAR LAS CUANTIAS.</A> &lt;Fuente original compilada: L. 02/76 Art 34.&gt; Para la determinaci&oacute;n de las cuant&iacute;as en el impuesto de timbre, se observar&aacute;n las siguientes reglas: </p>
+<p>1. En los contratos de ejecuci&oacute;n sucesiva, la cuant&iacute;a ser&aacute; la del valor total de los pagos peri&oacute;dicos que deban hacerse durante la vigencia del convenio. </p>
+<p>En los contratos de duraci&oacute;n indefinida se tomar&aacute; como cuant&iacute;a la correspondiente a los pagos durante un a&ntilde;o. </p>
+<p>2. En los actos o actuaciones que por naturaleza sean de valor indeterminado se tendr&aacute; como cuant&iacute;a la que aparezca en las normas de este t&iacute;tulo y no la proveniente de simple estimaci&oacute;n de los interesados. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow122()">Doctrina Concordante</a></div>
+<table id="Table122" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<p>3. Se ajustar&aacute;n los impuestos cuando inicialmente fue indeterminado el valor de un acto, sujeto a ellos o incorporado a documento que los origine y posteriormente dicho valor se haya determinado; sin la prueba del pago del impuesto ajustado no ser&aacute;n deducibles en lo referente a impuestos de renta y complementarios, los pagos ni las obligaciones que consten en los instrumentos gravados, ni tendr&aacute;n valor probatorio ante las autoridades judiciales o administrativas. </p>
+<p>4. La cuant&iacute;a de los contratos en moneda extranjera se determinar&aacute; seg&uacute;n el cambio oficial en el momento en que el impuesto se haga efectivo. </p>
+<p><span class="b_aj">PARAGRAFO.</span> &lt;Par&aacute;grafo adicionado por el art&iacute;culo <A href="ley_0006_1992.htm#38" >38</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; En los casos previstos en el numeral 3), cuando la Administraci&oacute;n Tributaria determine que el valor a pagar inicialmente era cuantificable, podr&aacute;, mediante resoluci&oacute;n, fijar dicho valor imponiendo adicionalmente una sanci&oacute;n por inexactitud equivalente al 160% del mayor valor determinado. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow123()">Notas de Vigencia</a></div>
+<table id="Table123" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow124()">Concordancias</a></div>
+<table id="Table124" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="523">ARTICULO 523. ACTUACIONES Y DOCUMENTOS SIN CUANTIA GRAVADOS CON EL IMPUESTO.</A> &lt;Ajuste de las cifras en valores absolutos en t&eacute;rminos de UVT por el art&iacute;culo <A href="ley_1111_2006.htm#51" >51</A> de la Ley 1111 de 2006 (A partir del a&ntilde;o gravable 2007). Art&iacute;culo modificado por el art&iacute;culo <A href="ley_0006_1992.htm#39" >39</A> de la Ley 6 de 1992. El nuevo texto es el siguiente:&gt; Igualmente se encuentran gravadas: </p>
+<p>1. Los pasaportes ordinarios que se expidan en el pa&iacute;s, 1,5 UVT; las revalidaciones, 0,6 UVT.</p>
+<p>2. Las concesiones de explotaci&oacute;n de bosques naturales con fines agroindustriales en terrenos bald&iacute;os, 3 UVT por hect&aacute;rea; cuando se trate de explotaci&oacute;n de maderas finas, seg&uacute;n calificaci&oacute;n del Inderena, o la entidad que haga sus veces 9 UVT por hect&aacute;rea; la pr&oacute;rroga de estas concesiones o autorizaciones, el cincuenta por ciento (50%) del valor inicialmente pagado.</p>
+<p>3.	 El aporte de una zona esmerald&iacute;fera, a solicitud de alg&uacute;n interesado particular a la Empresa Minerales de Colombia, 15 UVT.</p>
+<p>4.	 Las licencias para portar armas de fuego, 6 UVT; las renovaciones, 1,5 UVT.</p>
+<p>5.	 Licencias para comerciar en municiones y explosivos, 45 UV; las renovaciones 30 UVT.</p>
+<p>6.	Cada reconocimiento de personer&iacute;a jur&iacute;dica, 6 UVT trat&aacute;ndose de entidades sin &aacute;nimo de lucro, 3 UVT.</p>
+<p><span class="b_aj">PARAGRAFO.</span> Se excluye del pago del impuesto se&ntilde;alado en el numeral dos (2) del presente art&iacute;culo, al mediano y peque&ntilde;o agricultor que realice explotaci&oacute;n de bosques en terrenos bald&iacute;os con fines exclusivamente agr&iacute;colas, en cultivos de pancoger, en un m&aacute;ximo de diez hect&aacute;reas, sin perjuicio de cumplir con las obligaciones legales vigentes de posterior reforestaci&oacute;n. </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow125()">Notas de Vigencia</a></div>
+<table id="Table125" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow126()">Concordancias</a></div>
+<table id="Table126" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow127()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table127" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="524">ARTICULO 524. LAS VISAS QUE SE EXPIDAN A LOS EXTRANJEROS CAUSAN IMPUESTO DE TIMBRE.</A> &lt;Fuente original compilada: L. 9/83 Art. 55&gt; Las visas que se expidan causar&aacute;n impuesto de timbre nacional en las cuant&iacute;as que se determinan a contin&uacute;aci&oacute;n: </p>
+<p>1. La visa temporal, cuarenta y cinco d&oacute;lares (US$ 45.oo), o su equivalente en otras monedas. </p>
+<p>2. La visa ordinaria, setenta y cinco d&oacute;lares (US$75.oo), o su equivalente en otras monedas. </p>
+<p>3. La visa de negocios transitoria, ciento veinte d&oacute;lares (US$120.oo), o su equivalente en otras monedas. </p>
+<p>4. La visa de negocios permanente, doscientos veinticinco d&oacute;lares (US$225.oo), o su equivalente en otras monedas. </p>
+<p>5. La visa de residente, doscientos veinticinco d&oacute;lares (US$225.oo), o su equivalente en otras monedas. </p>
+<p>6. La visa de residente para la persona casada con nacional colombiano, ciento veinte d&oacute;lares (US$120.oo), o su equivalente en otras monedas. </p>
+<p>7. La visa de estudiante, treinta d&oacute;lares (US$30.oo), o su equivalente en otras monedas. </p>
+<p>8. La visa de turismo, hasta treinta d&oacute;lares (US$30.oo), o su equivalente en otras monedas, seg&uacute;n se determine mediante decreto ejecutivo atendiendo el principio de reciprocidad internacional, el inter&eacute;s tur&iacute;stico del pa&iacute;s y los tratados y convenios vigentes. </p>
+<p>9. Las visas de tr&aacute;nsito, quince d&oacute;lares (US$15.oo), o su equivalente en otras monedas. </p>
+<p>10. Las visas no comprendidas en los ordinales precedentes ni en el par&aacute;grafo 1 de este art&iacute;culo, setenta y cinco d&oacute;lares (US$75.oo), o su equivalente en otras monedas. </p>
+<p><span class="b_aj">PARAGRAFO 1o.</span> El permiso especial de tr&aacute;nsito fronterizo, las visas diplom&aacute;ticas, de cortes&iacute;a, oficiales, de servicios, las especiales de residentes para asilados y refugiados pol&iacute;ticos y las ordinarias CIM, no causan impuesto de timbre. (Valores a&ntilde;o base 1985) </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow128()">Concordancias</a></div>
+<table id="Table128" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="525">ARTICULO 525. IMPUESTO DE TIMBRE PARA ACTUACIONES QUE SE CUMPLAN EN EL EXTERIOR.</A> &lt;Art&iacute;culo derogado por el art&iacute;culo 4 de la Ley 2152 de 2021&gt; </p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow129()">Notas de Vigencia</a></div>
+<table id="Table129" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow130()">Concordancias</a></div>
+<table id="Table130" class="caja_vja_c" cellPadding=10 width="100%" style="display: none;"></table>
+<div><a class="caja_vja_encabezado" href="javascript:insRow131()">Legislaci&oacute;n Anterior</a></div>
+<table id="Table131" class="caja_vja_la" cellPadding=10 width="100%" style="display: none;"></table>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="526">ARTICULO 526. CUANDO SE CANCELEN DENTRO DEL PAIS SE LIQUIDAN AL CAMBIO OFICIAL.</A> Cuando la cancelaci&oacute;n de los valores se&ntilde;alados en los art&iacute;culos anteriores deba hacerse en el territorio nacional, los mismos se liquidar&aacute;n al tipo de cambio oficial. </p>
+<p class="centrado"><a class="bookmarkaj" name="TITULO III-4">TITULO III. </A></p>
+<p class="centrado"><span class="b_aj">CAUSACI&Oacute;N DEL IMPUESTO DE TIMBRE PARA ALGUNAS ACTUACIONES.</span> </p>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p><a class="bookmarkaj" name="527">ARTICULO 527. MOMENTOS DE REALIZACI&Oacute;N DE ALGUNOS HECHOS GRAVADOS.</A> &lt;Fuente original compilada: L. 02/76 Art. 16.&gt; Se entiende realizado el hecho gravado: </p>
+<p>a. Respecto de t&iacute;tulos de acciones y bonos nominativos, en el momento de su suscripci&oacute;n cuando sean al portador en la fecha de entrega del t&iacute;tulo;</p>
+<div><a class="caja_vja_encabezado" href="javascript:insRow132()">Notas del Editor</a></div>
+<table id="Table132" class="caja_vja_v" cellPadding=10 width="100%" style="display: none;"></table>
+<p>b. Sobre certificados de dep&oacute;sito y bono de prenda de almacenes generales de dep&oacute;sito, en la fecha de entrega, por el almac&eacute;n del correspondiente certificado o bono; </p>
+<p>c. En el caso de los cheques, en la fecha de entrega de la chequera. </p>
+<div class="ir-arriba"><a href="#documento_top" title="Ir al inicio">
+<img src="../images/noun-arrow-up-3137361-004A99.svg" alt="Ir al inicio"/>
+</a></div>
+<p style="text-align:center;"><a class=antsig href="estatuto_tributario_pr020.htm">Anterior</a> | <a class=antsig href="estatuto_tributario_pr022.htm">Siguiente</a></p>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="right-panel-contenido-visor"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</main>
+
+			</div>
+		</div>
+		<div class="franja-AJ">
+			<div class="contenedor-franja-AJ">
+				<div class="grid-contenedor-franja-AJ">
+					<div class="left-panel-franja-AJ"></div>
+					<div class="contenido-franja-AJ">
+						<div class="data-obra">
+							<div class="contenedor-data-obra">
+								<div class="grid-contenedor-data-obra">
+									<div class="logo-aj-visible">
+										<img src=" images/logo_AJ.svg"  alt="Logo de Avance Jur&iacute;dico" title="Logo de Avance Jur&iacute;dico">
+									</div>
+									<div class="nombre-obra">
+										Compilaci&oacute;n Jur&iacute;dica del SENA
+									</div>
+									<div class="isbn">
+										ISBN : 978-958-15-0868-6 En l&iacute;nea 
+									</div>
+									<div class="actualizacion">
+										&Uacute;ltima actualizaci&oacute;n:&nbsp;
+									</div>
+									<div class="control-versiones">
+										<a href="../docs/pdf/Manual_SENA.pdf">Manual de uso</a>
+									</div>
+									<div class="creditos">
+										<a href="../creditos.html">Cr&eacute;ditos y reserva de derechos de autor</a>
+									</div>
+									<div class="entidad">
+										Servicio Nacional de Aprendizaje SENA - DRA &copy; 2018 a 2024
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="right-panel-franja-AJ"></div>
+				</div>
+			</div>
+		</div>
+		<footer class="footer">
+			<div class="franja-Informacion">
+				<div class="contenedor-franja-Informacion">
+					<div class="grid-contenedor-franja-Informacion">
+						<div class="left-panel-franja-Informacion"></div>
+						<div class="contenido-franja-Informacion">
+							<div class="contenedor-footer">
+								<div class="contenedor-footer-body">
+									<div class="contenedor-footer-titulo">
+										<h5>SERVICIO NACIONAL DE APRENDIZAJE SENA</h5>
+									</div>
+									<div class="contenedor-footer-subtitulo">
+										<h5>DIRECCI&Oacute;N GENERAL</h5>
+									</div>
+									<div class="contenedor-footer-informacion">
+										<p>
+											Calle 57 No. 8 - 69 Bogot&aacute; D.C. (Cundinamarca), Colombia
+										</p>
+										<p>
+											El SENA brinda a la ciudadan&iacute;a, atenci&oacute;n presencial en las 33 Regionales y 117 Centros de Formaci&oacute;n
+										</p>
+										<p>
+											<a href="https://www.sena.edu.co/es-co/transparencia/Paginas/mecanismosContacto.aspx">Conozca aqu&iacute; los puntos de atenci&oacute;n</a>
+										</p>
+										<p>
+											L&iacute;neas de atenci&oacute;n al ciudadanos, empresarios y l&iacute;nea PQRS:
+											<br>
+											Bogot&aacute; +(57) 601 736 60 60 - L&iacute;nea gratuita y resto del pa&iacute;s 018000 910270
+										</p>
+										<br>
+										<br>
+									</div>
+									<div class="contenedor-footer-logos">
+										<div class="logo-sena-footer">
+											<img src="../images/logoSena.png">
+										</div>
+										<div class="contenedor-footer-vacio">
+											<img class="logo" src="../images/Icontec.png">
+										</div>
+									</div>
+								</div>
+								<div class="contenedor-footer-social-media">
+									<ul class="menu-social menu-footer">
+										<li>
+											<a
+											   href="https://www.facebook.com/SENA/"
+											   title="Facebook" target="_blank">
+												<i class="red-social-icon-footer"><img src="../images/facebook_footer_icon.png"></i>
+												<p>@SENA</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://twitter.com/SENAComunica"
+											   title="Twitter - X" target="_blank">
+												<i class="red-social-icon-footer"><img src="../images/twitter_footer_icon.png"></i>
+												<p>@SENACOMUNICA</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://www.instagram.com/senacomunica/"
+											   title="Instagram" target="_blank">
+												<i class="red-social-icon-footer instagram-icon-footer"><img src="../images/instagram_footer_icon.png"></i>
+												<p>@SENACOMUNICA</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://www.youtube.com/user/SENATV"
+											   title="Youtube" target="_blank">
+												<i class="red-social-icon-footer"><img src="../images/youtube_footer_icon.png"></i>
+												<p>@SENATV</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://www.linkedin.com/school/servicio-nacional-de-aprendizaje-sena-/"
+											   title="Ir a linkedin de SENA" target="_blank">
+												<i class="red-social-icon-footer"><img src="../images/linkedin_footer_icon.png"></i>
+												<p>SENA</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://www.tiktok.com/@senacomunica_"
+											   title="Ir a Tiktok de SENA" target="_blank">
+											   <i class="red-social-icon-footer"><img src="../images/tik-tok_footer_icon.png"></i>
+											   <p>@senacomunica_</p>
+											</a>
+										</li>
+										<li>
+											<a
+											   href="https://api.whatsapp.com/send/?phone=573168760255&text&app_absent=0"
+											   title="Ir a Whatsapp de SENA" target="_blank">
+											   <i class="red-social-icon-footer"><img src="../images/facebook_footer_icon.png"></i>
+											   <p>Whatsapp: 3168760255</p>
+											</a>
+										</li>
+									</ul>
+									<ul class="menu-social menu-footer">
+										
+									</ul>
+								</div>
+								<br>
+								<br>
+								<div class="contenedor-footer-body-secundario">
+									<div class="informacion-adicional-footer">
+										<ul class="informacion-adicional-ul">
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/sena/Paginas/directorio.aspx" title="Pol&iacute;ticas"><p>Directorio SENA </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://sciudadanos.sena.edu.co/SolicitudIndex.aspx" title="Contacto"><p>PQRS </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/ciudadano/Paginas/chat.aspx" title="Mapa del sitio"><p class="mapa-u">Chat en l&iacute;nea </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/ciudadano/Paginas/Denuncias_Corrupcion.aspx" title="Mapa del sitio"><p class="mapa-u">Denuncias por actos de corrupci&oacute;n </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/transparencia/Paginas/mecanismosContacto.aspx#notificacionesJudiciales" title="Mapa del sitio"><p class="mapa-u">Notificaciones judiciales </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/Paginas/politicasCondicionesUso.aspx" title="Mapa del sitio"><p class="mapa-u">T&eacute;rminos y condiciones del portal web </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/Paginas/politicasCondicionesUso.aspx#derechoAutor" title="Mapa del sitio"><p class="mapa-u">Derechos de autor y/o autorizaci&oacute;n de uso sobre contenidos </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/transparencia/Paginas/habeas_data.aspx" title="Mapa del sitio"><p class="mapa-u">Pol&iacute;tica de Tratamiento para Protecci&oacute;n de Datos Personales </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://www.sena.edu.co/es-co/Paginas/mapaSitio.aspx" title="Mapa del sitio"><p class="mapa-u">Mapa del sitio </p></a></li>
+											<li class="informacion-adicional-li"><a href="https://compromiso.sena.edu.co/index.php?text=inicio&id=27" title="Mapa del sitio"><p class="mapa-u">Pol&iacute;tica de seguridad y privacidad de la informaci&oacute;n </p></a></li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="right-panel-franja-Informacion"></div>
+					</div>
+				</div>
+			</div>
+			<div class="contenedor-logos-footer">
+				<div class="contenedor-cotenido-logos-footer">
+					<div class="logos-footer">
+						<a class="logo-footer-left" href="https://www.colombia.co/" target="_blank">
+							<img src="../images/colombiaco2.png" height="50" alt="">
+						</a>
+						<a class="logo-footer-right" href="https://www.gov.co/" target="_blank">
+							<img src="../images/header_govco.png" height="40" alt="Logo Gov.co">
+						</a>
+					</div>
+				</div>
+			</div>
+		</footer>
+		<div class="boton-menu-lateral">
+			<div class="side-menu" onclick="openMenuContextual()">
+				<div class="abrir-contenedor-boton-menu">
+					<img src="../images/noun-menu-7047443-FFFFFF.svg">
+				</div>
+			</div>
+		</div>
+		<div class="panel-lateral-menu">
+			<div class="contenedor-panel-lateral-menu">
+				<div class="grid-contenedor-panel-lateral-menu">
+					<div class="navegacion-logo-menu">
+						<div class="contenedor-navegacion-logo-menu">
+							<div class="grid-contenedor-navegacion-logo-menu">
+								<div class="icono-boton-cerrar-menu">
+									<div class="contenedor-boton-menu" onclick="closeMenuContextual()">
+										<img src="../images/noun-x-1890803.svg">
+									</div>
+								</div>
+								<div class="logo-entidad-menu">
+									<img src="../images/logoSena.png">
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="migas-menu">
+						<div class="contenedor-migas">
+							<div class="miga">
+								<a href="../index.html"> 
+									<div class="contenedor-miga-inicio">
+										<img id="texto-miga-inicio" src="../images/noun-home-7081999-b0b3b5.svg" alt="Inicio"><span class="texto-miga-inicio">Inicio</span>
+									</div>
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="navegacion-menu">
+						<div class="contenedor-navegacion-menu">
+							<div class="grid-contenedor-navegacion-menu">
+								<div class="titulo-modulos-menu">
+									M&Oacute;DULOS
+								</div>
+								<div class="modulos-menu">
+									<div class="contenedor-modulos-menu">
+										<div class="grid-contenedor-modulos-menu">
+											<div class="opcion-menu">
+												<a href="decreto_unico_reglamentario_sector_trabajo.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Decreto &Uacute;nico Reglamentario del Sector Trabajo
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="novedades_normativas_jurisprudenciales.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Novedades normativas y jurisprudenciales
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="boletines_enfoque_juridico.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Bolet&iacute;n - Enfoque Jur&iacute;dico
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="normativa_aplicable_sena.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Normativa aplicable al SENA
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="herramientas_busqueda.html">
+												<div class="contenedor-opcion-menu">
+													<div class="grid-contenedor-opcion-menu">
+														<div class="imagen-opcion-menu">
+															<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+														</div>
+														<div class="titulo-opcion-menu">
+															Herramientas de b&uacute;squeda
+														</div>
+														<div class="ver-mas-opcion-menu">
+															<div class="contenedor-ver-mas-opcion-menu">
+																<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+															</div>
+														</div>
+													</div>
+												</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="indice_por_temas_misionales.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																&Iacute;ndice por temas misionales
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="normativa_organizacional_sena.html"> 
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Normativa organizacional del SENA
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="conceptos_juridicos.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Conceptos jur&iacute;dicos
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="jurisprudencia.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Jurisprudencia
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+											<div class="opcion-menu">
+												<a href="normativa_comun_a_entidades_publicas.html">
+													<div class="contenedor-opcion-menu">
+														<div class="grid-contenedor-opcion-menu">
+															<div class="imagen-opcion-menu">
+																<img src="../images/noun_Folder_6621_gris_claro.svg" alt="Opci&oacute;n documentos">
+															</div>
+															<div class="titulo-opcion-menu">
+																Normativa com&uacute;n a las entidades p&uacute;blicas
+															</div>
+															<div class="ver-mas-opcion-menu">
+																<div class="contenedor-ver-mas-opcion-menu">
+																	<img src="../images/noun_Greater Than_3039376.svg" alt="VER M&Aacute;S">
+																</div>
+															</div>
+														</div>
+													</div>
+												</a>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="configuracion-menu">
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>	
+
+		<div class="panel-lateral-modal">
+			<div class="contenedor-panel-lateral-modal">
+				<div class="grid-contenedor-panel-lateral-modal">
+					<div class="boton-cerrar-panel-modal">
+						<div class="titulo-boton-cerrar">
+						</div>
+						<div class="icono-boton-cerrar">
+							&times;
+						</div>
+					</div>
+					<div class="contenido-panel-lateral-modal">
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="menu-usabilidad-aux">
+			<ul>
+				<li>
+					<button type="button" class="boton-usabilidad-aux boton-contraste" onclick="contrast()" title="Clic para alternar el color del sitio entre los modos claro y oscuro">
+						<img class="icono-boton-usabilidad-aux" src="../images/channels-956_icon_contrast.svg" alt="Contraste" title="Contraste">
+						<span class="texto-boton-usabilidad-aux">Contraste | Modo oscuro</span>
+					</button>
+				</li>
+				<li>
+					<button type="button" class="boton-usabilidad-aux boton-reducir-letra" onclick="decreaseFontSize()" title="Clic para reducir letra">
+						<img class="icono-boton-usabilidad-aux" src="../images/channels-956_icon_less_size.svg" alt="Reducir" title="Reducir">
+						<span class="texto-boton-usabilidad-aux">Reducir letra <strong>(16px)</strong></span>
+					</button>
+				</li>
+				<li>
+					<button type="button" class="boton-usabilidad-aux boton-aumentar-letra" onclick="increaseFontSize()" title="Clic para aumentar letra">
+						<img class="icono-boton-usabilidad-aux" src="../images/channels-956_icon_more_size.svg" alt="Aumentar" title="Aumentar">
+						<span class="texto-boton-usabilidad-aux">Aumentar letra <strong>(16px)</strong></span>
+					</button>
+				</li>
+				<li>
+					<div>
+						<a class="boton-usabilidad-aux boton-centro-relevo" href="https://centroderelevo.gov.co/632/w3-channel.html" title="Clic para abrir https://centroderelevo.gov.co/632/w3-channel.html En una nueva pesta&ntilde;a" alt="Centro de relevo" target="_blank">
+							<img class="icono-boton-usabilidad-aux" src="../images/channels-956_icon_centro_relevo.svg" alt="Centro de relevo" title="Centro de relevo">
+							<span class="texto-boton-usabilidad-aux">Centro de relevo <i aria-hidden="true" class="fas fa-external-link-alt"></i></span>
+						</a>
+					</div>
+				</li>
+			</div>
+		</div>
+		<div class="boton-volver-arriba-aux" onclick="irArriba()" aria-label="Volver arriba">Volver arriba</button>
+	</body>
+</html>
+

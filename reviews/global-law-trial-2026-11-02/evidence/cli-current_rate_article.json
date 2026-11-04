@@ -1,0 +1,19 @@
+{
+  "id": "current_rate_article",
+  "queried_at": "2026-11-02T09:35:35.616147-05:00",
+  "command": [
+    "/Users/juanpineros/juancopi81/colombia-forecasting-desk/.venv/bin/python",
+    "tools/en_vigor_el.py",
+    "--law",
+    "2026-11-02",
+    "estatuto-tributario",
+    "art-0513-09"
+  ],
+  "cwd": "/private/tmp/colombia-law-trial-20261102-0933",
+  "query_date": "2026-11-02",
+  "article": "art-0513-09",
+  "exit_code": 0,
+  "elapsed_seconds": 0.235,
+  "stdout": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)\n\n# Art. 513-9\nTARIFA DEL IMPUESTO A LOS PRODUCTOS COMESTIBLES ULTRAPROCESADOS INDUSTRIALMENTE Y/O CON ALTO CONTENIDO DE AZÚCARES AÑADIDOS, SODIO O GRASAS SATURADAS. La tarifa del impuesto será del diez por ciento (10%) en el año 2023, del quince por ciento (15%) en el año 2024 y del veinte por ciento (20%) a partir del año 2025.\n",
+  "stderr": ""
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "sena-et-pr021",
+    "url": "https://normograma.sena.edu.co/compilacion/docs/estatuto_tributario_pr021.htm",
+    "fetched_at": "2026-11-02T09:36:40.767647-05:00",
+    "status_code": 200,
+    "final_url": "https://normograma.sena.edu.co/compilacion/docs/estatuto_tributario_pr021.htm",
+    "elapsed_seconds": 0.153,
+    "content_type": "text/html",
+    "bytes": 160264,
+    "sha256": "612a8ee7b948cdeb8b1ba63f8ad835f6f9cd885d391eacf151de788c339c5960",
+    "raw_artifact": "evidence/sena-et-pr021.html.txt",
+    "detected_encoding": "utf-8",
+    "extracted_artifact": "evidence/sena-et-pr021-extracted.txt",
+    "html_tables": 140,
+    "capture_status": "captured_and_extracted"
+  },
+  {
+    "id": "dian-ley-2277-2022",
+    "url": "https://normograma.dian.gov.co/dian/compilacion/docs/ley_2277_2022.htm",
+    "fetched_at": "2026-11-02T09:36:40.970687-05:00",
+    "status_code": 200,
+    "final_url": "https://normograma.dian.gov.co/dian/compilacion/docs/ley_2277_2022.htm",
+    "elapsed_seconds": 0.615,
+    "content_type": "text/html",
+    "bytes": 425202,
+    "sha256": "4c64ed17c4b419e6ae47fb35ee6d1c50382bbb00713ec193fb08187f12d30664",
+    "raw_artifact": "evidence/dian-ley-2277-2022.html.txt",
+    "detected_encoding": "iso-8859-1",
+    "extracted_artifact": "evidence/dian-ley-2277-2022-extracted.txt",
+    "html_tables": 146,
+    "capture_status": "captured_and_extracted"
+  }
+]

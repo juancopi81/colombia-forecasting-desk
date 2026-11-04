@@ -1,0 +1,111 @@
+{
+  "trial_date": "2026-11-02",
+  "case_id": "food-tax-repeal",
+  "assessed_at": "2026-11-02T09:39:10.770426-05:00",
+  "upstream_commit": "366b1d6de06965a4ac927792a09522d7ec85eac6",
+  "decision": "do_not_integrate_into_automated_evidence",
+  "permitted_recommendation": "Optional manual discovery/navigation only; verify source text and operative dates independently.",
+  "scope_limit": "Seven native CLI invocations, two article text checks, and two official-source captures for one case; no full corpus audit or global MCP test.",
+  "checks": [
+    {
+      "id": "current_article_retrieval",
+      "status": "pass",
+      "observation": "Exact file id art-0513-06 returns Article 513-6.",
+      "evidence": [
+        "evidence/cli-current_exact_path.json"
+      ]
+    },
+    {
+      "id": "ordinary_article_number",
+      "status": "fail",
+      "severity": "usability",
+      "observation": "513-6 returns a misleading absent-on-date message; art-0513-06 succeeds for the same date.",
+      "evidence": [
+        "evidence/cli-current_standard_number.json",
+        "evidence/cli-current_exact_path.json"
+      ]
+    },
+    {
+      "id": "current_text_completeness",
+      "status": "fail",
+      "severity": "adoption_blocker",
+      "observation": "Article 513-6 omits the nutrient-threshold and product-classification tables, including product exclusions. Threshold prose later in the article survives, but the tables are absent.",
+      "markers": [
+        {
+          "text": "Nutriente Por cada 100 g",
+          "official_present": true,
+          "lexifina_present": false
+        },
+        {
+          "text": "04.04.90.00.00",
+          "official_present": true,
+          "lexifina_present": false
+        },
+        {
+          "text": "Excepto el pan y las obleas.",
+          "official_present": true,
+          "lexifina_present": false
+        },
+        {
+          "text": "21.06.90.29.00",
+          "official_present": true,
+          "lexifina_present": false
+        }
+      ],
+      "evidence": [
+        "evidence/lexifina-art-513-6.md",
+        "evidence/official-art-513-6.txt"
+      ]
+    },
+    {
+      "id": "rate_sentence",
+      "status": "pass",
+      "observation": "The complete rate sentence in Article 513-9 matches the official text after whitespace normalization. This is not a check of every provision.",
+      "exact_sentence_match": true,
+      "evidence": [
+        "evidence/lexifina-art-513-9.md",
+        "evidence/official-art-513-9.txt"
+      ]
+    },
+    {
+      "id": "pre_enactment_absence",
+      "status": "pass",
+      "observation": "The exact provision file is absent on 2022-12-12, the day before enactment.",
+      "evidence": [
+        "evidence/cli-before_enactment.json",
+        "evidence/lexifina-article-history.txt"
+      ]
+    },
+    {
+      "id": "delayed_tax_effective_date",
+      "status": "fail",
+      "severity": "adoption_blocker",
+      "query_date": "2023-10-31",
+      "official_tax_effective_date": "2023-11-01",
+      "cli_reported_in_force_date": "2022-12-13",
+      "observation": "The native in-force lookup returns the provision before the tax takes effect, labels it in force from enactment, and gives no delayed-application caveat in captured stdout/stderr.",
+      "evidence": [
+        "evidence/cli-enactment_day.json",
+        "evidence/cli-before_effective_day.json",
+        "evidence/cli-effective_day.json",
+        "evidence/official-ley-2277-art-96.txt"
+      ]
+    },
+    {
+      "id": "legal_attribution",
+      "status": "pass",
+      "observation": "The article history names Ley 2277 de 2022 and an official source URL, which agrees with the official Article 513-6 addition note. Attribution does not cure incomplete text or date handling.",
+      "evidence": [
+        "evidence/lexifina-article-history.txt",
+        "evidence/official-art-513-6.txt"
+      ]
+    }
+  ],
+  "automation": {
+    "id": "colombia-forecasting-weekday-review",
+    "observed_status": "ACTIVE",
+    "scheduled_local_time": "2026-11-02T10:30:00-05:00",
+    "timezone": "America/Bogota",
+    "action": "Leave schedule, prompt and pipeline unchanged."
+  }
+}

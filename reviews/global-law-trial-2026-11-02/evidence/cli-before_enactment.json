@@ -1,0 +1,19 @@
+{
+  "id": "before_enactment",
+  "queried_at": "2026-11-02T09:35:34.406137-05:00",
+  "command": [
+    "/Users/juanpineros/juancopi81/colombia-forecasting-desk/.venv/bin/python",
+    "tools/en_vigor_el.py",
+    "--law",
+    "2022-12-12",
+    "estatuto-tributario",
+    "art-0513-06"
+  ],
+  "cwd": "/private/tmp/colombia-law-trial-20261102-0933",
+  "query_date": "2022-12-12",
+  "article": "art-0513-06",
+  "exit_code": 1,
+  "elapsed_seconds": 0.13,
+  "stdout": "",
+  "stderr": "estatuto-tributario/art-0513-06 was not in the text on 2022-12-12 (it may have been inserted later or removed earlier).\n"
+}

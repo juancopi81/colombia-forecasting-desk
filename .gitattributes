@@ -1,0 +1,2 @@
+# Preserve archived evidence bytes and source formatting used by receipt hashes.
+reviews/global-law-trial-2026-11-02/evidence/* -text -whitespace

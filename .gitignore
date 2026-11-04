@@ -15,6 +15,10 @@ wheels/
 .pytest_cache/
 .coverage
 
+# Local OS metadata and forecast synchronization lock
+.DS_Store
+forecasts/.shadow_forecast_log.jsonl.lock
+
 # Local investigation and validation scratch files
 tmp/
 

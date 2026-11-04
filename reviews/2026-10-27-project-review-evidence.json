@@ -1,0 +1,928 @@
+{
+  "as_of": "2026-10-27",
+  "review_type": "retrospective product usefulness review and proposed reader brief",
+  "implementation_status": "proposal_only; production workflow unchanged",
+  "scope": "Archive inventory, relevant project contracts, selected qualitative cases and existing dashboard browser inspection; no fresh official-source/market research.",
+  "inventory": {
+    "as_of_date": "2026-10-27",
+    "generated_at_utc": "2026-10-27T16:23:57.406790+00:00",
+    "scope": "Read-only inventory of final saved dated run folders and current ledgers. No network, rerun, code edits or outcome verification.",
+    "run_inventory": {
+      "all_immediate_directories": 131,
+      "valid_dated_directories_through_as_of": 130,
+      "excluded_nondated_directories": [
+        "sandbox"
+      ],
+      "first_date": "2026-04-28",
+      "last_date": "2026-10-27",
+      "calendar_days_inclusive": 183,
+      "missing_weekday_dates": [
+        "2026-05-01",
+        "2026-07-20"
+      ],
+      "weekend_run_dates": [
+        "2026-05-16"
+      ],
+      "strict_pass_definition": "acceptance_report.json strict_pass is true. This is an archived acceptance proxy, not independent proof of live execution or substantive decision usefulness.",
+      "strict_pass_artifact_count": 124,
+      "missing_acceptance_dates": [
+        "2026-04-28",
+        "2026-04-29",
+        "2026-04-30",
+        "2026-05-04",
+        "2026-05-05",
+        "2026-05-06"
+      ],
+      "final_saved_failed_acceptance_dates": [],
+      "blocked_network_verdict_matches_in_authored_decisions": [],
+      "september21_final_state": {
+        "strict_pass": true,
+        "started_at": "2026-09-21T16:33:35Z"
+      },
+      "artifact_history": {
+        "acceptance_report.json": {
+          "count": 124,
+          "first": "2026-05-07",
+          "last": "2026-10-27",
+          "schemas": {
+            "m1_acceptance.v1": {
+              "count": 2,
+              "first": "2026-05-07",
+              "last": "2026-05-08"
+            },
+            "m1_acceptance.v2": {
+              "count": 122,
+              "first": "2026-05-11",
+              "last": "2026-10-27"
+            }
+          }
+        },
+        "run_manifest.json": {
+          "count": 116,
+          "first": "2026-05-18",
+          "last": "2026-10-27",
+          "schemas": {
+            "run_manifest.v1": {
+              "count": 116,
+              "first": "2026-05-18",
+              "last": "2026-10-27"
+            }
+          }
+        },
+        "agent_analysis.json": {
+          "count": 56,
+          "first": "2026-08-11",
+          "last": "2026-10-27",
+          "schemas": {
+            "agent_analysis.v1": {
+              "count": 56,
+              "first": "2026-08-11",
+              "last": "2026-10-27"
+            }
+          }
+        },
+        "m2_sampling_decisions.json": {
+          "count": 108,
+          "first": "2026-05-28",
+          "last": "2026-10-27",
+          "schemas": {
+            "m2_sampling_decisions.v1": {
+              "count": 108,
+              "first": "2026-05-28",
+              "last": "2026-10-27"
+            }
+          }
+        },
+        "daily_comparison.md": {
+          "count": 121,
+          "first": "2026-05-12",
+          "last": "2026-10-27"
+        },
+        "human_decisions.md": {
+          "count": 122,
+          "first": "2026-05-11",
+          "last": "2026-10-27"
+        },
+        "candidate_questions.md": {
+          "count": 123,
+          "first": "2026-05-07",
+          "last": "2026-10-27"
+        }
+      }
+    },
+    "ledger_inventory": {
+      "selected_public_lane": [
+        {
+          "forecast_id": "fcst_20260511_emmet_real_sales_mar2026",
+          "run_date": "2026-05-11",
+          "created_at": "2026-05-11T16:00:43Z",
+          "question": "Will the next DANE EMMET release, scheduled for 2026-05-15, show negative year-over-year real manufacturing sales for March 2026 at the total national level?",
+          "probability": 0.58,
+          "status": "resolved",
+          "outcome": "NO",
+          "resolved_at": "2026-05-15T15:12:20Z",
+          "resolution_deadline": "2026-05-15T10:00:00-05:00",
+          "resolution_check_window_end": "2026-05-22",
+          "brier_score": 0.3364,
+          "evidence_pack": "runs/2026-05-11/evidence_packs/emmet_real_sales_mar2026.md"
+        },
+        {
+          "forecast_id": "fcst_20260512_dian_tax_real_growth",
+          "run_date": "2026-05-12",
+          "created_at": "2026-05-12T16:28:29Z",
+          "question": "Will the next DIAN monthly tax-collection update after 2026-05-12 show nominal gross tax revenue growth below the latest DANE annual IPC rate available when the update is published?",
+          "probability": 0.56,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-07-23T16:04:55Z",
+          "resolution_deadline": "2026-06-15",
+          "resolution_check_window_end": "2026-06-15",
+          "brier_score": 0.1936,
+          "evidence_pack": "runs/2026-05-12/evidence_packs/dian_tax_real_growth.md"
+        },
+        {
+          "forecast_id": "fcst_20260513_icoced_costs_above_ipc",
+          "run_date": "2026-05-13",
+          "created_at": "2026-05-13T20:56:12Z",
+          "question": "Will the next DANE ICOCED release after 2026-05-13 show annual total building-construction cost inflation above the latest DANE annual IPC rate available when the ICOCED release is published?",
+          "probability": 0.6,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-06-05T15:48:23Z",
+          "resolution_deadline": "2026-06-05",
+          "resolution_check_window_end": "2026-06-05",
+          "brier_score": 0.16,
+          "evidence_pack": "runs/2026-05-13/evidence_packs/icoced_costs_above_ipc.md"
+        },
+        {
+          "forecast_id": "fcst_20260514_trm_persistence_20260521",
+          "run_date": "2026-05-14",
+          "created_at": "2026-05-14T15:57:43Z",
+          "question": "Will the official USD/COP TRM in force on 2026-05-21 be at or above 3780.57 COP/USD?",
+          "probability": 0.54,
+          "status": "resolved",
+          "outcome": "NO",
+          "resolved_at": "2026-07-23T16:04:55Z",
+          "resolution_deadline": "2026-05-21",
+          "resolution_check_window_end": "2026-05-23",
+          "brier_score": 0.2916,
+          "evidence_pack": "runs/2026-05-14/evidence_packs/trm_persistence_20260521.md"
+        },
+        {
+          "forecast_id": "fcst_20260515_senado_soat_bill_advancement",
+          "run_date": "2026-05-15",
+          "created_at": "2026-05-15T20:20:13Z",
+          "question": "Will Proyecto de Ley 372 de 2026 Senado advance beyond PENDIENTE DE ENVIAR A COMISION by 2026-06-30?",
+          "probability": 0.57,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-07-23T16:04:55Z",
+          "resolution_deadline": "2026-06-30",
+          "resolution_check_window_end": "2026-07-03",
+          "brier_score": 0.1849,
+          "evidence_pack": "runs/2026-05-15/evidence_packs/senado_soat_bill_advancement.md"
+        },
+        {
+          "forecast_id": "fcst_20260629_banrep_june30_policy_rate_hike",
+          "run_date": "2026-06-29",
+          "created_at": "2026-06-29T16:11:57Z",
+          "question": "Will Banco de la Republica raise its policy rate above 11.25% at the June 30, 2026 board decision?",
+          "probability": 0.7,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-07-01T15:39:39Z",
+          "resolution_deadline": "2026-06-30",
+          "resolution_check_window_end": "2026-07-02",
+          "brier_score": 0.09,
+          "evidence_pack": "runs/2026-06-29/evidence_packs/banrep_june30_policy_rate_hike.md"
+        }
+      ],
+      "internal_shadow": [
+        {
+          "forecast_id": "shadow_20260812_dane_core_ipc_july_at_or_below_6",
+          "run_date": "2026-08-12",
+          "created_at": "2026-08-12T15:48:52.030599Z",
+          "question": "Will DANE report annual IPC excluding food and regulated items for July 2026 at or below 6.0% in its scheduled August 13 release?",
+          "probability": 0.58,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-08-14T10:40:04-05:00",
+          "resolution_deadline": "2026-08-13",
+          "resolution_check_window_end": "2026-08-13",
+          "brier_score": 0.1764,
+          "baseline_brier_score": 0.25,
+          "source_analysis": "runs/2026-08-12/agent_analysis.json"
+        },
+        {
+          "forecast_id": "shadow_20260817_dane_ise_june_at_least_3",
+          "run_date": "2026-08-17",
+          "created_at": "2026-08-17T20:34:07.292040Z",
+          "question": "Will DANE report annual ISE growth for June 2026 at or above 3.0% in its scheduled August 18 release?",
+          "probability": 0.62,
+          "status": "resolved",
+          "outcome": "YES",
+          "resolved_at": "2026-08-18T10:36:47-05:00",
+          "resolution_deadline": "2026-08-18",
+          "resolution_check_window_end": "2026-08-19",
+          "brier_score": 0.1444,
+          "baseline_brier_score": 0.2178,
+          "source_analysis": "runs/2026-08-17/agent_analysis.json"
+        },
+        {
+          "forecast_id": "shadow_20260917_dane_ise_july_at_least_3",
+          "run_date": "2026-09-17",
+          "created_at": "2026-09-17T15:43:29.917885Z",
+          "question": "Will the first official DANE release for July 2026 report original-series total ISE annual growth at or above 3.00%?",
+          "probability": 0.55,
+          "status": "resolved",
+          "outcome": "NO",
+          "resolved_at": "2026-09-18T15:38:48Z",
+          "resolution_deadline": "2026-09-18",
+          "resolution_check_window_end": "2026-09-18",
+          "brier_score": 0.3025,
+          "baseline_brier_score": 0.4444,
+          "source_analysis": "runs/2026-09-17/agent_analysis.json"
+        },
+        {
+          "forecast_id": "shadow_20261026_camara_pl012_first_debate_approval",
+          "run_date": "2026-10-26",
+          "created_at": "2026-10-26T15:53:13.025581Z",
+          "question": "Will Comisión Tercera of the Cámara de Representantes approve Proyecto de Ley012 de2026 Cámara in first debate before2026-10-27T00:00:00-05:00?",
+          "probability": 0.55,
+          "status": "open",
+          "resolution_deadline": "2026-10-26",
+          "resolution_check_window_end": "2026-10-30",
+          "source_analysis": "runs/2026-10-26/agent_analysis.json"
+        }
+      ],
+      "last_selected_forecast_date": "2026-06-29",
+      "calendar_days_since_last_selected_forecast": 120,
+      "archived_run_days_after_last_selected_forecast": 85,
+      "publication_evidence": "No publication receipt or published post URL fields in selected ledger; June29 human_decisions.md recommends publication only after human review. Entries are not verified published posts.",
+      "sha256": {
+        "forecast_log.jsonl": "8087c8e1804e2ee1617c172fccb603fff5178b4e0eb7ce4031f340f86034fe99",
+        "shadow_forecast_log.jsonl": "6528e5b69476b875ed39de25211b917e8d698310d4dfbe2e6ccebbddf145627e"
+      }
+    },
+    "windows": {
+      "2026-04-28..2026-10-27": {
+        "run_folders": 130,
+        "strict_pass_artifacts": 124,
+        "acceptance_artifacts": 124,
+        "authored_comparison_files": 121,
+        "agent_analysis_files": 56,
+        "internal_dispositions": {
+          "insight_only": 48,
+          "promote_to_m3": 4,
+          "shadow_track": 4
+        },
+        "sampling_artifacts": 108,
+        "sampling_overall_decisions": {
+          "monitor_no_new_m3": 88,
+          "monitor_select_m3_research": 16,
+          "not_recorded": 3,
+          "select_m3_after_human_override": 1
+        },
+        "new_selected_ledger_forecasts": 6,
+        "new_shadow_forecasts": 4,
+        "sampling_rows": 1319,
+        "candidate_decisions": {
+          "research_more_before_m3": 853,
+          "monitor_no_new_m3": 355,
+          "reject": 100,
+          "select_for_evidence_pack": 9,
+          "reject_resolved": 1,
+          "shadow_track": 1
+        },
+        "missing_m3_fields": {
+          "deadline_or_window": 416,
+          "duplicate_check": 307,
+          "resolution_criteria": 248,
+          "question_considered": 14,
+          "resolution_source": 12,
+          "evidence_available_now": 8
+        },
+        "rows_with_canonical_bill_ids": 449,
+        "rows_with_legislative_rank_refs": 502,
+        "distinct_canonical_bill_identifiers_not_normalized_opportunities": 136,
+        "evidence_pack_files_in_dated_folders": 25
+      },
+      "2026-08-11..2026-10-27": {
+        "run_folders": 56,
+        "strict_pass_artifacts": 56,
+        "acceptance_artifacts": 56,
+        "authored_comparison_files": 56,
+        "agent_analysis_files": 56,
+        "internal_dispositions": {
+          "insight_only": 48,
+          "promote_to_m3": 4,
+          "shadow_track": 4
+        },
+        "sampling_artifacts": 56,
+        "sampling_overall_decisions": {
+          "monitor_no_new_m3": 49,
+          "monitor_select_m3_research": 6,
+          "not_recorded": 1
+        },
+        "new_selected_ledger_forecasts": 0,
+        "new_shadow_forecasts": 4,
+        "sampling_rows": 806,
+        "candidate_decisions": {
+          "research_more_before_m3": 540,
+          "monitor_no_new_m3": 195,
+          "reject": 66,
+          "select_for_evidence_pack": 4,
+          "shadow_track": 1
+        },
+        "missing_m3_fields": {
+          "deadline_or_window": 36,
+          "resolution_criteria": 11
+        },
+        "rows_with_canonical_bill_ids": 207,
+        "rows_with_legislative_rank_refs": 282,
+        "distinct_canonical_bill_identifiers_not_normalized_opportunities": 91,
+        "evidence_pack_files_in_dated_folders": 2
+      },
+      "2026-09-08..2026-10-27": {
+        "run_folders": 36,
+        "strict_pass_artifacts": 36,
+        "acceptance_artifacts": 36,
+        "authored_comparison_files": 36,
+        "agent_analysis_files": 36,
+        "internal_dispositions": {
+          "insight_only": 32,
+          "promote_to_m3": 2,
+          "shadow_track": 2
+        },
+        "sampling_artifacts": 36,
+        "sampling_overall_decisions": {
+          "monitor_no_new_m3": 34,
+          "monitor_select_m3_research": 2
+        },
+        "new_selected_ledger_forecasts": 0,
+        "new_shadow_forecasts": 2,
+        "sampling_rows": 632,
+        "candidate_decisions": {
+          "research_more_before_m3": 447,
+          "monitor_no_new_m3": 143,
+          "reject": 40,
+          "select_for_evidence_pack": 2
+        },
+        "missing_m3_fields": {
+          "deadline_or_window": 27
+        },
+        "rows_with_canonical_bill_ids": 180,
+        "rows_with_legislative_rank_refs": 246,
+        "distinct_canonical_bill_identifiers_not_normalized_opportunities": 81,
+        "blocker_text_mentions": {
+          "clock_or_window": {
+            "candidate_rows": 306,
+            "run_days": 36
+          },
+          "baseline_or_probability": {
+            "candidate_rows": 220,
+            "run_days": 36
+          },
+          "vote_support": {
+            "candidate_rows": 255,
+            "run_days": 36
+          },
+          "text_or_version": {
+            "candidate_rows": 295,
+            "run_days": 36
+          },
+          "resolver_or_result": {
+            "candidate_rows": 116,
+            "run_days": 29
+          }
+        },
+        "reporting_burden": {
+          "top_level_files": {
+            "sum": 1449,
+            "min": 38,
+            "median": 40.0,
+            "max": 44
+          },
+          "recursive_files": {
+            "sum": 2042,
+            "min": 40,
+            "median": 52.5,
+            "max": 100
+          },
+          "top_level_md_files": {
+            "sum": 560,
+            "min": 15,
+            "median": 15.5,
+            "max": 17
+          },
+          "top_level_md_words": {
+            "sum": 1439835,
+            "min": 32083,
+            "median": 38430.5,
+            "max": 49700
+          },
+          "four_authored_md_words": {
+            "sum": 194414,
+            "min": 2757,
+            "median": 5051.0,
+            "max": 9582
+          },
+          "agent_analysis_md_words": {
+            "sum": 42146,
+            "min": 785,
+            "median": 1151.0,
+            "max": 1877
+          }
+        },
+        "missing_m3_fields_days": [
+          {
+            "date": "2026-10-15",
+            "rows_with_missing_fields": 27
+          }
+        ],
+        "evidence_pack_files_in_dated_folders": 1
+      },
+      "2026-10-01..2026-10-27": {
+        "run_folders": 19,
+        "strict_pass_artifacts": 19,
+        "acceptance_artifacts": 19,
+        "authored_comparison_files": 19,
+        "agent_analysis_files": 19,
+        "internal_dispositions": {
+          "insight_only": 18,
+          "shadow_track": 1
+        },
+        "sampling_artifacts": 19,
+        "sampling_overall_decisions": {
+          "monitor_no_new_m3": 19
+        },
+        "new_selected_ledger_forecasts": 0,
+        "new_shadow_forecasts": 1,
+        "sampling_rows": 452,
+        "candidate_decisions": {
+          "research_more_before_m3": 323,
+          "monitor_no_new_m3": 110,
+          "reject": 19
+        },
+        "missing_m3_fields": {
+          "deadline_or_window": 27
+        },
+        "rows_with_canonical_bill_ids": 154,
+        "rows_with_legislative_rank_refs": 190,
+        "distinct_canonical_bill_identifiers_not_normalized_opportunities": 68,
+        "blocker_text_mentions": {
+          "clock_or_window": {
+            "candidate_rows": 240,
+            "run_days": 19
+          },
+          "baseline_or_probability": {
+            "candidate_rows": 159,
+            "run_days": 19
+          },
+          "vote_support": {
+            "candidate_rows": 180,
+            "run_days": 19
+          },
+          "text_or_version": {
+            "candidate_rows": 221,
+            "run_days": 19
+          },
+          "resolver_or_result": {
+            "candidate_rows": 98,
+            "run_days": 18
+          }
+        },
+        "reporting_burden": {
+          "top_level_files": {
+            "sum": 778,
+            "min": 39,
+            "median": 41,
+            "max": 44
+          },
+          "recursive_files": {
+            "sum": 1184,
+            "min": 45,
+            "median": 61,
+            "max": 100
+          },
+          "top_level_md_files": {
+            "sum": 299,
+            "min": 15,
+            "median": 16,
+            "max": 17
+          },
+          "top_level_md_words": {
+            "sum": 828275,
+            "min": 36272,
+            "median": 44549,
+            "max": 49700
+          },
+          "four_authored_md_words": {
+            "sum": 134594,
+            "min": 4783,
+            "median": 6963,
+            "max": 9582
+          },
+          "agent_analysis_md_words": {
+            "sum": 24650,
+            "min": 1051,
+            "median": 1326,
+            "max": 1877
+          }
+        },
+        "missing_m3_fields_days": [
+          {
+            "date": "2026-10-15",
+            "rows_with_missing_fields": 27
+          }
+        ],
+        "evidence_pack_files_in_dated_folders": 0
+      }
+    },
+    "evidence_pack_inventory": {
+      "files": 25,
+      "dated_parent_folders": 24,
+      "paths": [
+        "runs/2026-05-07/evidence_packs/dian_tax_vs_ipc.md",
+        "runs/2026-05-11/evidence_packs/emmet_real_sales_mar2026.md",
+        "runs/2026-05-12/evidence_packs/dian_tax_real_growth.md",
+        "runs/2026-05-13/evidence_packs/icoced_costs_above_ipc.md",
+        "runs/2026-05-14/evidence_packs/trm_persistence_20260521.md",
+        "runs/2026-05-15/evidence_packs/camara_gestoras_sociales_advancement.md",
+        "runs/2026-05-15/evidence_packs/senado_soat_bill_advancement.md",
+        "runs/2026-05-16/evidence_packs/camara_gestoras_sociales_advancement.md",
+        "runs/2026-05-18/evidence_packs/glp_san_andres_bill_advancement.md",
+        "runs/2026-05-19/evidence_packs/glp_san_andres_bill_advancement.md",
+        "runs/2026-05-20/evidence_packs/glp_san_andres_bill_advancement.md",
+        "runs/2026-05-28/evidence_packs/01_subsidios_transparentes_bill.draft.md",
+        "runs/2026-05-29/evidence_packs/03_glp_subsidy_for_san_andres_bill.draft.md",
+        "runs/2026-06-01/evidence_packs/01_election_result_runoff_market_reaction.draft.md",
+        "runs/2026-06-02/evidence_packs/05_pgn_2026_addition_fiscal_funding_pressure.draft.md",
+        "runs/2026-06-03/evidence_packs/02_pl_564_subsidios_transparentes.draft.md",
+        "runs/2026-06-04/evidence_packs/01_pl_562_obras_por_impuestos_san_andres.draft.md",
+        "runs/2026-06-08/evidence_packs/03_pl_373_repeal_of_law_2494_of_2025.draft.md",
+        "runs/2026-06-11/evidence_packs/01_pl_133_354_territorial_budget_and_fiscal_sustainability.draft.md",
+        "runs/2026-06-29/evidence_packs/banrep_june30_policy_rate_hike.md",
+        "runs/2026-07-29/evidence_packs/01_minhacienda_pension_omitted_contributions.draft.md",
+        "runs/2026-07-30/evidence_packs/01_pl_152_camara_pl_111_senado_presupuesto_general_de_la_nacion.draft.md",
+        "runs/2026-08-03/evidence_packs/01_pl_119_reconnection_fees_august_5.draft.md",
+        "runs/2026-08-31/evidence_packs/01_pl_136_290_tobacco_nicotine_tax_second_debate.draft.md",
+        "runs/2026-09-22/evidence_packs/01_pgn_article1_contingent_financing.draft.md"
+      ],
+      "unique_basename_count_not_unique_cases": 22,
+      "paths_referenced_by_selected_ledger": 6,
+      "last_new_pack_path": "runs/2026-09-22/evidence_packs/01_pgn_article1_contingent_financing.draft.md"
+    },
+    "october_source_health": {
+      "run_days": 19,
+      "format": "unversioned list of source rows; source_id and status; 33 rows each day",
+      "statuses_by_source": {
+        "eltiempo_colombia": {
+          "ok": 19
+        },
+        "banrep_rss": {
+          "no_rankable": 5,
+          "ok": 14
+        },
+        "banrep_junta_comunicados": {
+          "ok": 9,
+          "failed": 3,
+          "no_rankable": 7
+        },
+        "banrep_junta_calendar": {
+          "ok": 17,
+          "failed": 2
+        },
+        "banrep_eme_expectations": {
+          "failed": 19
+        },
+        "dane_publication_calendar": {
+          "ok": 12,
+          "no_raw": 7
+        },
+        "dane_comunicados_prensa": {
+          "no_rankable": 19
+        },
+        "camara_agenda_consolidada": {
+          "ok": 19
+        },
+        "senado_leyes_registry": {
+          "no_rankable": 17,
+          "failed": 2
+        },
+        "camara_proyectos_ley_registry": {
+          "ok": 19
+        },
+        "senado_agenda_legislativa": {
+          "ok": 19
+        },
+        "registraduria_noticias": {
+          "ok": 19
+        },
+        "funcion_publica_rss": {
+          "no_rankable": 19
+        },
+        "corte_constitucional_comunicados": {
+          "ok": 17,
+          "no_rankable": 1,
+          "failed": 1
+        },
+        "presidencia_noticias": {
+          "no_raw": 18,
+          "failed": 1
+        },
+        "centro_nacional_consultoria": {
+          "no_raw": 19
+        },
+        "portafolio_rss": {
+          "ok": 19
+        },
+        "secop_ii_procesos": {
+          "ok": 19
+        },
+        "secop_ii_contratos": {
+          "ok": 19
+        },
+        "secop_i_procesos": {
+          "ok": 19
+        },
+        "secop_ii_adiciones": {
+          "ok": 19
+        },
+        "diario_oficial": {
+          "ok": 19
+        },
+        "gacetas_congreso": {
+          "ok": 18,
+          "no_rankable": 1
+        },
+        "suin_juriscol": {
+          "failed": 19
+        },
+        "gestor_normativo_fp": {
+          "no_rankable": 19
+        },
+        "dian_proyectos_normas": {
+          "ok": 11,
+          "failed": 1,
+          "no_rankable": 7
+        },
+        "minhacienda_proyectos_decreto": {
+          "failed": 9,
+          "ok": 8,
+          "no_rankable": 2
+        },
+        "minhacienda_tes_reports": {
+          "ok": 17,
+          "failed": 2
+        },
+        "cne_encuestas_2026": {
+          "no_rankable": 19
+        },
+        "registraduria_calendario_presidencial_2026": {
+          "no_raw": 19
+        },
+        "moe_observatorio_politico_electoral": {
+          "no_raw": 11,
+          "no_rankable": 7,
+          "failed": 1
+        },
+        "mincit_zonas_francas": {
+          "no_rankable": 19
+        },
+        "dane_icoced": {
+          "ok": 9,
+          "no_rankable": 10
+        }
+      }
+    },
+    "october_indicator_watch": {
+      "run_days": 19,
+      "format": "unversioned list of 14 cards; indicator_id, status and freshness_status",
+      "status_freshness_by_indicator": {
+        "ipc_inflation": {
+          "observed/current": 19
+        },
+        "trm_usd_cop": {
+          "observed/current": 17,
+          "failed/failed": 2
+        },
+        "policy_rate_ibr": {
+          "failed/failed": 19
+        },
+        "labor_market": {
+          "failed/failed": 19
+        },
+        "gdp_growth": {
+          "observed/current": 19
+        },
+        "ise_activity": {
+          "observed/current": 19
+        },
+        "retail_sales": {
+          "observed/current": 19
+        },
+        "manufacturing": {
+          "observed/current": 19
+        },
+        "construction_bundle": {
+          "observed/current": 19
+        },
+        "secop_procurement": {
+          "observed/current": 19
+        },
+        "energy_system": {
+          "observed/current": 19
+        },
+        "external_trade": {
+          "observed/current": 19
+        },
+        "oil_gas_production": {
+          "observed/stale": 19
+        },
+        "fiscal_tax_pulse": {
+          "observed/current": 17,
+          "failed/failed": 2
+        }
+      }
+    },
+    "october27_reporting_burden": {
+      "top_level_files": 43,
+      "recursive_files": 58,
+      "top_level_md_files": 17,
+      "top_level_md_words": 39829,
+      "four_authored_md_words": 6113,
+      "agent_analysis_md_words": 1397,
+      "markdown_word_counts": {
+        "agent_analysis.md": 1397,
+        "analyst_leads.md": 833,
+        "candidate_questions.md": 3737,
+        "cooccurrence_bundles.md": 2105,
+        "daily_comparison.md": 1291,
+        "human_decisions.md": 503,
+        "indicator_tension_cards.md": 175,
+        "m2_handoff.md": 2939,
+        "m2_review_packet.md": 9093,
+        "m2_sampling_decisions.md": 3872,
+        "m3_preflight_opportunities.md": 148,
+        "market_pricing_watch.md": 343,
+        "metasource_brief.md": 11860,
+        "official_followup.md": 582,
+        "shadow_resolution_check.md": 210,
+        "spending_execution_audit.md": 285,
+        "supervisory_review.md": 456
+      }
+    },
+    "measurement_definitions": {
+      "word_count": "Whitespace-delimited tokens via str.split(); counts include headings, tables, URLs, excerpts and repeated/derived prose, excluding JSON/HTML and nested captures. Not unique information or required reading.",
+      "four_authored_md_files": [
+        "candidate_questions.md",
+        "human_decisions.md",
+        "daily_comparison.md",
+        "official_followup.md"
+      ],
+      "blocker_text_fields": [
+        "missing_evidence",
+        "why_not_m3"
+      ],
+      "blocker_text_regex_patterns": {
+        "clock_or_window": "\\bclock\\b|\\bdeadline\\b|\\bwindow\\b|\\bschedul(?:e|ed|ing)\\b|\\btim(?:e|ing)\\b|\\bprospective\\b",
+        "baseline_or_probability": "\\bbaseline\\b|\\bconsensus\\b|\\bprobabilit|\\bbase.rate\\b|\\bthreshold\\b|\\bmodel\\b",
+        "vote_support": "\\bsupport\\b|\\bvote\\b|\\bquorum\\b|\\bmajority\\b",
+        "text_or_version": "\\bversion\\b|\\btext\\b|\\boperative\\b",
+        "resolver_or_result": "\\bresolver\\b|\\bresolution\\b|\\bresult\\b|\\boutcome\\b"
+      },
+      "blocker_text_caution": "Nonexclusive lexical mentions in repeated daily candidate rows; not adjudicated root causes or unique opportunities.",
+      "sampling_comparability": "m2_sampling_decisions.v1 availability starts May28. Names/labels and authoring style changed; missing_m3_fields measures field presence, not substantive readiness. All 27 recent missing deadline fields occur October15.",
+      "m3_promote_caution": "promote_to_m3 or monitor_select_m3_research is research selection, not a selected probability, new pack, publication or ledger insertion.",
+      "failed_attempts_caution": "Final saved run folders can be overwritten by reruns and cannot establish number of blocked first attempts. September21 currently passes.",
+      "historical_schema_caution": "Acceptance v1 begins May7; v2 begins May11; manifests begin May18; agent_analysis.v1 appears only August11 onward. Do not impute insight_only to earlier missing analysis files.",
+      "opportunity_caution": "Evidence pack files may repeat/continue the same research and canonical bill identifiers may be aliases; neither file counts nor daily candidate rows are counts of unique opportunities.",
+      "research_probability_caution": "The June29 date is last selected/public-lane ledger entry, not last probability judgment of any kind. September22 contains a provisional untracked 20% YES research recommendation; October26 is newest tracked internal shadow."
+    },
+    "probability_bearing_research_drafts": {
+      "search_scope": "All evidence_pack/*.md files in dated folders July1–October27; inspect numeric probability/estimate/recommendation lines. This does not search all incidental percentages in daily prose.",
+      "records": [
+        {
+          "path": "runs/2026-09-22/evidence_packs/01_pgn_article1_contingent_financing.draft.md",
+          "dated_folder": "2026-09-22",
+          "numeric_probability_lines": [
+            "**Provisional estimate: 20% YES / 80% NO, low confidence.**",
+            "- Internal recommendation: forecast-ready for human review at 20% YES."
+          ],
+          "selected_ledger_linked": false,
+          "shadow_ledger_linked": false
+        }
+      ],
+      "latest": {
+        "date": "2026-09-22",
+        "question": "Will the PGN2027 first-debate text approved before 2026-09-25T00:00:00-05:00 include the Article1 COP30,212,508,000,000 financing-law contingency?",
+        "probability": 0.2,
+        "gate": "ready_for_m3",
+        "public_recommendation": "monitor; no post from this technical clause alone",
+        "tracking": "neither ledger; provisional, unscored research recommendation",
+        "calendar_days_since_dated_folder": 35
+      }
+    }
+  },
+  "qualitative_findings": [
+    {
+      "finding": "Output volume is high while selected forecast production is sparse",
+      "status": "observed",
+      "evidence": [
+        "forecasts/forecast_log.jsonl",
+        "forecasts/shadow_forecast_log.jsonl",
+        "inventory.windows"
+      ]
+    },
+    {
+      "finding": "Useful substantive findings exist but reader consequences and actions are not explicit required analysis fields",
+      "status": "observed schema plus editorial judgment",
+      "evidence": [
+        "docs/AGENT_ANALYSIS_CONTRACT.md",
+        "docs/FINAL_OUTPUT_CONTRACT.md",
+        "runs/2026-10-05/official_followup.md",
+        "runs/2026-10-23/official_followup.md"
+      ]
+    },
+    {
+      "finding": "A persistent case brief and earlier question/baseline preparation may improve usefulness",
+      "status": "proposal; not an experimentally established benefit",
+      "evidence": [
+        "runs/2026-10-12/manufacturing_forecast_assessment.md",
+        "forecasts/shadow_experiment_retrospective.md"
+      ]
+    }
+  ],
+  "browser_observation": {
+    "path": "runs/2026-10-27/review.html",
+    "viewport_width_px": 1280,
+    "document_width_px": 2938,
+    "document_height_px": 15184,
+    "rendered_whitespace_word_count": 3978,
+    "top_analyst_insights_y_px": 7669,
+    "agent_intelligence_section_y_px": 1225,
+    "method": "read-only DOM measurement and screenshot through cua_repl in-app browser"
+  },
+  "automation_review": {
+    "path": "/Users/juanpineros/.codex/automations/colombia-forecasting-weekday-review/automation.toml",
+    "read_only": true,
+    "finding": "Recurring prompt requests process counts, public/internal status, mandatory bounded follow-up and original 10-run experiment reporting; it does not request a concise reader-use brief.",
+    "changed": false
+  },
+  "review_artifacts": {
+    "html": "reviews/2026-10-27-project-review.html",
+    "html_sha256": "6cabf65d0e533d63c431491e4104aa6d74298d6156d1eb52154f6184687b634c",
+    "example_brief_words": 243
+  },
+  "source_sha256": {
+    "PROJECT_SPEC.md": "43c8aaa0dfb9f40ba62375696b8f1ebbd171771f194faa1f13121f7ddd78df9f",
+    "README.md": "786b54f187d5c8e20d372a6fbc909a6a1c210d805a1daaca306f8195edded3aa",
+    "config/agent_policy.yaml": "9c8dade5d46a5c376f099e9638caac5eef3e3e84c998b22712198ef2f8dc226d",
+    "prompts/agent_analysis.md": "9abf5cf9f6927997c0367277a1f7783a1484269dcb7928f45b3b3a11208f06ec",
+    "docs/AGENT_ANALYSIS_CONTRACT.md": "904398b64be88eeeab57c87763609d0020a6a5f0f59719435e7c2b8a2335b2ef",
+    "docs/FINAL_OUTPUT_CONTRACT.md": "2b19e57304c05a25de0c5be390f1574ca2032af47e4a78730b8adeadc598d176",
+    "docs/M3_CASE_FILE_CONTRACT.md": "8577a4962462fc00e35e406d23c0137022520dcbf8d0fac0d0716b50435f1a52",
+    "docs/REVIEW_SURFACE.md": "ff56b39af4c44046c8881fff17c9a01e8cee7496058105bc742b2e220b0a501a",
+    "colombia_forecasting_desk/agent_analysis.py": "01b88449fa712749b8caac753452031c6be299fdea561001ce3237f2543dcf74",
+    "colombia_forecasting_desk/review_html.py": "cac0be33adf6eef8c8d10e13db7b8aadb04d0e7668d0690e1fb649eef8e9874c",
+    "forecasts/shadow_experiment_retrospective.md": "1c4a7eff41da52905b9a05b08df825324e95807bed370bfaee8f3ce5a1ef75ea",
+    "forecasts/forecast_log.jsonl": "8087c8e1804e2ee1617c172fccb603fff5178b4e0eb7ce4031f340f86034fe99",
+    "forecasts/shadow_forecast_log.jsonl": "6528e5b69476b875ed39de25211b917e8d698310d4dfbe2e6ccebbddf145627e",
+    "runs/2026-09-22/evidence_packs/01_pgn_article1_contingent_financing.draft.md": "45373dd2123ffe70352155dca924ce87098781f01960f7c7e08f84e30d7c68d3",
+    "runs/2026-10-05/official_followup.md": "d7f5d5bf9b3d24149e1df50316f5dfcb5d555ee9223222243b5fcc11e64ec6c8",
+    "runs/2026-10-07/agent_analysis.json": "21c695489a6c30623d99c4cecc32b62ac880fb4371593056381cfdf4c639c594",
+    "runs/2026-10-12/manufacturing_forecast_assessment.md": "cb1c871f0b378066bfecf81065a27332d34a804d284d0ed4686794ab3aaedefe",
+    "runs/2026-10-16/official_followup.md": "9cc8d773f2bb297ef8d2a5d5d4e8edefcfeabefe22a1060b49a359971b6d2253",
+    "runs/2026-10-19/official_followup.md": "8126112eec7b9ed4371534501e356f95fc6795255185a3e22a6edf0e4862985f",
+    "runs/2026-10-23/official_followup.md": "f3dca3db9c6709421acb6387a03b3de08bb83b9fe082a3b5be8cd636c2429a8d",
+    "runs/2026-10-26/official_followup.md": "17572e4db9ef9f967d2252572f7f5d275336ba4b5d06c7f57e7be1b50dd7165b",
+    "runs/2026-10-27/daily_comparison.md": "fd68977eae0e14b23464c0f8537f5a9e0769a7024cfc8589a86f067351b31b52",
+    "runs/2026-10-27/official_followup.md": "dc6aab69f0dfd079aa58d95a1fd9674e93fb03441621fd369f4fe86b1e1c8d8a",
+    "runs/2026-10-27/shadow_resolution_check.md": "f76cd92df78da7b488c20c620e6b271b81d473c5749b1c748adb0bd227601eba",
+    "runs/2026-10-27/review.html": "6458aa399f78821b84d31a373e603464930b71adb6560d763c9e3f66c102a05b"
+  },
+  "preservation": {
+    "ledger_hashes_match_audit": true,
+    "tracked_existing_file_diff_empty": true,
+    "daily_finalizer_or_scanner_run": false,
+    "new_forecast_created": false,
+    "production_files_edited": false,
+    "automation_modified": false
+  },
+  "prototype_browser_observation": {
+    "viewport_width_px": 1280,
+    "document_width_px": 1265,
+    "document_height_px": 4421,
+    "rendered_words_with_details_closed": 1224,
+    "horizontal_overflow": false,
+    "screenshot_visually_reviewed": true,
+    "mobile_browser_tested": false
+  },
+  "validation": {
+    "relative_links_and_anchors_checked": 18,
+    "example_brief_word_count": 243,
+    "json_parsed": true,
+    "source_snapshot_hashes_match_at_close": true
+  }
+}

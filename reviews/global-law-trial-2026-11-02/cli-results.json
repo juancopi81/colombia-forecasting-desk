@@ -1,0 +1,69 @@
+{
+  "repository": "https://github.com/lexifina/colombia-law",
+  "sha": "366b1d6de06965a4ac927792a09522d7ec85eac6",
+  "tests": [
+    {
+      "id": "current_standard_number",
+      "query_date": "2026-11-02",
+      "article": "513-6",
+      "exit_code": 1,
+      "elapsed_seconds": 0.182,
+      "artifact": "cli-current_standard_number.json",
+      "output_first_line": "estatuto-tributario/513-6 was not in the text on 2026-11-02 (it may have been inserted later or removed earlier)."
+    },
+    {
+      "id": "before_enactment",
+      "query_date": "2022-12-12",
+      "article": "art-0513-06",
+      "exit_code": 1,
+      "elapsed_seconds": 0.13,
+      "artifact": "cli-before_enactment.json",
+      "output_first_line": "estatuto-tributario/art-0513-06 was not in the text on 2022-12-12 (it may have been inserted later or removed earlier)."
+    },
+    {
+      "id": "enactment_day",
+      "query_date": "2022-12-13",
+      "article": "art-0513-06",
+      "exit_code": 0,
+      "elapsed_seconds": 0.233,
+      "artifact": "cli-enactment_day.json",
+      "output_first_line": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)"
+    },
+    {
+      "id": "before_effective_day",
+      "query_date": "2023-10-31",
+      "article": "art-0513-06",
+      "exit_code": 0,
+      "elapsed_seconds": 0.238,
+      "artifact": "cli-before_effective_day.json",
+      "output_first_line": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)"
+    },
+    {
+      "id": "effective_day",
+      "query_date": "2023-11-01",
+      "article": "art-0513-06",
+      "exit_code": 0,
+      "elapsed_seconds": 0.246,
+      "artifact": "cli-effective_day.json",
+      "output_first_line": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)"
+    },
+    {
+      "id": "current_exact_path",
+      "query_date": "2026-11-02",
+      "article": "art-0513-06",
+      "exit_code": 0,
+      "elapsed_seconds": 0.256,
+      "artifact": "cli-current_exact_path.json",
+      "output_first_line": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)"
+    },
+    {
+      "id": "current_rate_article",
+      "query_date": "2026-11-02",
+      "article": "art-0513-09",
+      "exit_code": 0,
+      "elapsed_seconds": 0.235,
+      "artifact": "cli-current_rate_article.json",
+      "output_first_line": "# in force from 2022-12-13, last changed by Ley 2277 de 2022 (a2753724e4)"
+    }
+  ]
+}

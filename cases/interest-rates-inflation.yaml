@@ -11,16 +11,18 @@ identifiers:
   indicator_ids:
   - ipc_inflation
   - policy_rate_ibr
+  - trm_usd_cop
   nits: []
   keywords:
   - Banco de la República
   - inflación
 current_view:
-  date: '2026-11-02'
-  text: The October 30 board held the policy rate at 12.25%, with four votes for a hold and
-    three for a quarter-point rise. September annual inflation remains 6.29%; easing core inflation
-    and weaker demand coexist with elevated expectations and food-price risks. The next headline
-    inflation release is scheduled for November 9.
+  date: '2026-11-04'
+  text: The policy rate remains 12.25% and September annual inflation 6.29%. November 4's
+    official exchange rate is COP 3,235.59 per dollar, up 2.78% over seven days but down
+    1.16% over thirty days. A weaker peso can affect later import costs; it does not establish
+    immediate price transmission or change the recorded October inflation call. DANE's
+    next headline release is November 9.
   confidence: confirmed
 next_trigger:
   date: '2026-11-09'
@@ -32,6 +34,11 @@ forecast_ids:
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-04'
+  change: The official exchange rate reaches COP 3,235.59 per dollar, a seven-day peso
+    depreciation of 2.78%. This November observation does not rewrite the immutable
+    October inflation forecast or establish its outcome.
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
 - date: '2026-11-02'
   change: Verified the October 30 hold at 12.25%; the frozen 65% hike call resolves NO. Recorded
     a separate prospective 60% October inflation-up call for November 9, against an explicitly

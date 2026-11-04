@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/lexifina/colombia-law",
+  "commit": "366b1d6de06965a4ac927792a09522d7ec85eac6",
+  "global_law_submodule_observed": {
+    "name": "acts",
+    "path": "colombia/national/acts",
+    "sha": "366b1d6de06965a4ac927792a09522d7ec85eac6",
+    "size": 0,
+    "url": "https://api.github.com/repos/lexifina/global-law/contents/colombia/national/acts?ref=main",
+    "html_url": "https://github.com/lexifina/colombia-law/tree/366b1d6de06965a4ac927792a09522d7ec85eac6",
+    "git_url": "https://api.github.com/repos/lexifina/colombia-law/git/trees/366b1d6de06965a4ac927792a09522d7ec85eac6",
+    "download_url": null,
+    "type": "submodule",
+    "submodule_git_url": "https://github.com/lexifina/colombia-law.git",
+    "_links": {
+      "self": "https://api.github.com/repos/lexifina/global-law/contents/colombia/national/acts?ref=main",
+      "git": "https://api.github.com/repos/lexifina/colombia-law/git/trees/366b1d6de06965a4ac927792a09522d7ec85eac6",
+      "html": "https://github.com/lexifina/colombia-law/tree/366b1d6de06965a4ac927792a09522d7ec85eac6"
+    }
+  },
+  "scope": "One food-tax case; native Colombia CLI and captured official text. No global MCP installation or pipeline integration."
+}

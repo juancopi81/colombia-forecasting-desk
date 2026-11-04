@@ -13,17 +13,19 @@ identifiers:
   - manufacturing
   - retail_sales
   - labor_market
+  - external_trade
   nits: []
   keywords:
   - ISE
   - manufactura
   - comercio minorista
 current_view:
-  date: '2026-10-30'
-  text: September national unemployment fell to 8.0% from 8.2% a year earlier, while occupation
-    stayed at 58.7% and participation fell from 63.9% to 63.8%. The 13-city unemployment rate
-    instead rose to 8.3% from 8.1%. The national improvement does not establish a broad employment
-    recovery; August activity and manufacturing remain weak.
+  date: '2026-11-04'
+  text: September goods exports reached USD 5,410.7 million FOB, up 16.4% from a year earlier.
+    Nominal export growth does not establish a broad real-output recovery. Imports remain
+    August CIF data, so a comparable September trade balance is unavailable. September
+    national unemployment improved to 8.0%, with flat occupation and worse large-city
+    unemployment; August activity and factories remain weak.
   confidence: confirmed
 next_trigger:
   date: '2026-11-13'
@@ -35,6 +37,11 @@ forecast_ids:
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-04'
+  change: DANE reports September goods exports up 16.4% year over year to USD 5,410.7 million
+    FOB. Different periods and valuations prevent combining this with August CIF imports
+    into a September trade balance.
+  source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones
 - date: '2026-10-30'
   change: The original September GEIH bulletin reports national unemployment of 8.0%, below
     the 8.2% year-earlier threshold; the existing 35% internal call resolves YES. National

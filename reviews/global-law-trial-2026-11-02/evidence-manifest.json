@@ -1,0 +1,136 @@
+{
+  "recorded_at": "2026-11-02T09:41:48.046675-05:00",
+  "hash_algorithm": "sha256",
+  "files": [
+    {
+      "path": "assessment.json",
+      "bytes": 4136,
+      "sha256": "203e0f22ab1738767ecd431a5d46428df1ca4336673236d1dcc07ec8fc442a89"
+    },
+    {
+      "path": "cli-results.json",
+      "bytes": 2439,
+      "sha256": "06aaf2075b2bbc91b605903a861bede77f59f17a637ba884ca9262e5c2bd298d"
+    },
+    {
+      "path": "evidence/cli-before_effective_day.json",
+      "bytes": 7199,
+      "sha256": "3051b09d29389c621546a1b52f662a355162a22ecc7b42c947ab0bfe3aca80ea"
+    },
+    {
+      "path": "evidence/cli-before_enactment.json",
+      "bytes": 601,
+      "sha256": "917d11fb70e95536497aed42e9abb95c375cd40800cdfdee208b6d55fd0582b2"
+    },
+    {
+      "path": "evidence/cli-current_exact_path.json",
+      "bytes": 7197,
+      "sha256": "ff077ef5baf55679c9fef9f423cacdcfb9b7eb221216b346159ec7fcb6461a30"
+    },
+    {
+      "path": "evidence/cli-current_rate_article.json",
+      "bytes": 900,
+      "sha256": "9e38230a8e97a541591d431db886201e7df71a824d52a684c737120d903d3334"
+    },
+    {
+      "path": "evidence/cli-current_standard_number.json",
+      "bytes": 591,
+      "sha256": "988fecd611ab3a09d2b965d6ebc98c9c6c8305e76a5b46e5fb98278ed0088ed0"
+    },
+    {
+      "path": "evidence/cli-effective_day.json",
+      "bytes": 7192,
+      "sha256": "ab59800ee211a6116145ebf85f9c6a458670a08d96876c1c2d2b6f7d580c6f36"
+    },
+    {
+      "path": "evidence/cli-enactment_day.json",
+      "bytes": 7192,
+      "sha256": "2bfdc6f54a35d8b8edc0d4c7e4480294d965319c691eda229126d88753da0021"
+    },
+    {
+      "path": "evidence/dian-ley-2277-2022-extracted.txt",
+      "bytes": 242120,
+      "sha256": "dba74c105bd71ae56562047599d110bd8716bcc0d5103eaf7b21ee26c84f06fb"
+    },
+    {
+      "path": "evidence/dian-ley-2277-2022.html.txt",
+      "bytes": 425202,
+      "sha256": "4c64ed17c4b419e6ae47fb35ee6d1c50382bbb00713ec193fb08187f12d30664"
+    },
+    {
+      "path": "evidence/lexifina-art-513-6.md",
+      "bytes": 6612,
+      "sha256": "d842c07759dc3b98b2981f489d4dbb5a46fe88abfbbf88c3b3bf3ee6a9fecb17"
+    },
+    {
+      "path": "evidence/lexifina-art-513-9.md",
+      "bytes": 336,
+      "sha256": "8c610cb5a4c256d5113fe8fcaaf644ff6d453e4b87fd4177a2d0c0e7929a52fd"
+    },
+    {
+      "path": "evidence/lexifina-article-history.txt",
+      "bytes": 3830,
+      "sha256": "b2bb2bc2b343b3c0c7fb2e16d9af4fb00b9e3622f979d105e74e13d56fd5f0f8"
+    },
+    {
+      "path": "evidence/lexifina-en-vigor-el.py.txt",
+      "bytes": 2005,
+      "sha256": "2014b7d0a2f127c84d155730096361f1fe7cad2d617194ed8b7a8ff00d1399fa"
+    },
+    {
+      "path": "evidence/lexifina-methodology-excerpt.md",
+      "bytes": 7656,
+      "sha256": "2cf09659353bc38d3e9a20d4157c487c2fe0d6dafd430591a2379f710da4a19c"
+    },
+    {
+      "path": "evidence/lexifina-on.py.txt",
+      "bytes": 5138,
+      "sha256": "87bcfc8850ca39fe8a526be38d1e3c042793efd63e6e844a7d31cde70ff6afef"
+    },
+    {
+      "path": "evidence/lexifina-repo.json",
+      "bytes": 153,
+      "sha256": "ac6b45a8f4a6e65d2ae4878b857bad6dd54ffcc1ae6c10beabeb8c7d296178e8"
+    },
+    {
+      "path": "evidence/official-art-513-6.txt",
+      "bytes": 9375,
+      "sha256": "473f0645a938d4e0a89fda3e08b815cdd21b85a0a5162cc04e1bbf4d77c28ae9"
+    },
+    {
+      "path": "evidence/official-art-513-9.txt",
+      "bytes": 482,
+      "sha256": "339eb7ef0fe8ba2e0187d8517257b7bd84b560dde7a729dd8cb89a4df6a320c5"
+    },
+    {
+      "path": "evidence/official-ley-2277-art-96.txt",
+      "bytes": 3315,
+      "sha256": "926092afb6070c29ea246d5a8dc4e410926e8a17fffe90929423259d345f80bb"
+    },
+    {
+      "path": "evidence/sena-et-pr021-extracted.txt",
+      "bytes": 63762,
+      "sha256": "c985f348a145f10f211618d3f380c2160f51f42ba8f2d9a3ed2cac72aa66c776"
+    },
+    {
+      "path": "evidence/sena-et-pr021.html.txt",
+      "bytes": 160264,
+      "sha256": "612a8ee7b948cdeb8b1ba63f8ad835f6f9cd885d391eacf151de788c339c5960"
+    },
+    {
+      "path": "official-receipts.json",
+      "bytes": 1401,
+      "sha256": "43c984ba1e192c8e2d4197c57acbb5199a2bf99fac91cda002fa346ab464b4d1"
+    },
+    {
+      "path": "upstream.json",
+      "bytes": 1226,
+      "sha256": "5a5719f438f76fc6fcec2ff75a31686140513b09378890df47cb3908d4f768d0"
+    },
+    {
+      "path": "validation.json",
+      "bytes": 800,
+      "sha256": "8b5a2b9474ad2e0298eaa266f5dae98b2fc25aed4426faccb37865bdf9463af9"
+    }
+  ]
+}

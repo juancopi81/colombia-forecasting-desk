@@ -1,0 +1,17 @@
+{
+  "validated_at": "2026-11-02T09:41:48.046675-05:00",
+  "baseline_captured_at": "2026-11-02T09:32:32.316728-05:00",
+  "existing_files_verified_unchanged": 150,
+  "changed_existing_files": [],
+  "official_raw_response_hashes_verified": 2,
+  "json_files_parsed_before_final_receipts": 12,
+  "assessment_evidence_references_verified": true,
+  "cli_invocations_verified": 7,
+  "adoption_blockers": 2,
+  "automation_config_sha256": "c20a382362270b651036b5e1c210ea35961c487c6fba95a352f5fea74a5d5d84",
+  "automation_status": "ACTIVE",
+  "scheduled_next_local": "2026-11-02T10:30:00-05:00",
+  "finished_before_scheduled_run": true,
+  "minutes_until_scheduled_run": 48.2,
+  "verification_scope": "Review artifacts and unchanged production inputs; no runtime changes, so no production test suite was run."
+}

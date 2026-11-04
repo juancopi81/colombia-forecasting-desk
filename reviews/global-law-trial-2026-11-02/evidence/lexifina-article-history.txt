@@ -1,0 +1,47 @@
+a2753724e43585aa94161f3e38db85141e785ce7
+CPen + ET + LCE19 + LEC97 + LIS21 + LRT16 + PND18 + RIE + RT00: 110 pro…
+
+por medio de la cual se adopta una reforma tributaria para la igualdad y la justicia social y se
+dictan otras disposiciones
+
+CPen, changed: Art. 83, Art. 434A, Art. 434B
+ET, inserted: Art. 20-3, Art. 29-1, Art. 66-2, Art. 244-1, Art. 254-1, Art. 259-1, Art. 292-3, Art.
+294-3, Art. 295-3, Art. 296-3, Art. 297-3, Art. 336-1, Art. 401-4, Art. 513-1, Art. 513-2, Art.
+513-3, Art. 513-4, Art. 513-5, Art. 513-6, Art. 513-7, Art. 513-8, Art. 513-9, Art. 513-10, Art.
+513-11, Art. 513-12, Art. 513-13, Art. 719-3, Art. 881-1
+ET, changed: Art. 12-1, Art. 22, Art. 24, Art. 36-1, Art. 105, Art. 115, Art. 126, Art. 143-1, Art.
+206, Art. 207-2, Art. 235-2, Art. 240, Art. 240-1, Art. 242, Art. 242-1, Art. 245, Art. 246, Art.
+256, Art. 256-1, Art. 298-2, Art. 298-8, Art. 303-1, Art. 307, Art. 311-1, Art. 313, Art. 314, Art.
+316, Art. 331, Art. 336, Art. 356-2, Art. 364-5, Art. 383, Art. 387, Art. 408, Art. 420, Art. 424,
+Art. 428, Art. 437, Art. 462-1, Art. 476, Art. 519, Art. 580-1, Art. 583, Art. 585, Art. 607, Art.
+643, Art. 651, Art. 800-1, Art. 814, Art. 839, Art. 871, Art. 905, Art. 906, Art. 908, Art. 910,
+Art. 912, Títulos y capítulos
+ET, removed: Art. 36-3, Art. 57, Art. 57-1, Art. 158-1, Art. 235-3, Art. 235-4, Art. 257-2, Art.
+306-1, Art. 616-5
+RIE, changed: Art. 41
+PND18, changed: Art. 180
+LIS21, removed: Art. 37, Art. 38, Art. 39
+LCE19, changed: Art. 151
+LRT16, changed: Art. 221, Art. 222, Art. 223, Art. 238
+LRT16, removed: Art. 365
+RT00, removed: Art. 97
+LEC97, inserted: Art. 23
+
+Law: Ley 2277 de 2022
+Kind: law
+Enacted: 2022-12-13
+Published: 2022-12-13
+In-force: 2022-12-13
+Source: http://www.secretariasenado.gov.co/senado/basedoc/ley_2277_2022.html
+Words-changed: yes
+Affecting: CPen Art. 83, Art. 434A, Art. 434B; ET Art. 12-1, Art. 20-3, Art. 22, Art. 24, Art. 29-1, Art. 36-1, Art. 36-3, Art. 57, Art. 57-1, Art. 66-2, Art. 105, Art. 115, Art. 126, Art. 143-1, Art. 158-1, Art. 206, Art. 207-2, Art. 235-2, Art. 235-3, Art. 235-4, Art. 240, Art. 240-1, Art. 242, Art. 242-1, Art. 244-1, Art. 245, Art. 246, Art. 254-1, Art. 256, Art. 256-1, Art. 257-2, Art. 259-1, Art. 292-3, Art. 294-3, Art. 295-3, Art. 296-3, Art. 297-3, Art. 298-2, Art. 298-8, Art. 303-1, Art. 306-1, Art. 307, Art. 311-1, Art. 313, Art. 314, Art. 316, Art. 331, Art. 336, Art. 336-1, Art. 356-2, Art. 364-5, Art. 383, Art. 387, Art. 401-4, Art. 408, Art. 420, Art. 424, Art. 428, Art. 437, Art. 462-1, Art. 476, Art. 513-1, Art. 513-2, Art. 513-3, Art. 513-4, Art. 513-5, Art. 513-6, Art. 513-7, Art. 513-8, Art. 513-9, Art. 513-10, Art. 513-11, Art. 513-12, Art. 513-13, Art. 519, Art. 580-1, Art. 583, Art. 585, Art. 607, Art. 616-5, Art. 643, Art. 651, Art. 719-3, Art. 800-1, Art. 814, Art. 839, Art. 871, Art. 881-1, Art. 905, Art. 906, Art. 908, Art. 910, Art. 912, Títulos y capítulos; RIE Art. 41; PND18 Art. 180; LIS21 Art. 37, Art. 38, Art. 39; LCE19 Art. 151; LRT16 Art. 221, Art. 222, Art. 223, Art. 238, Art. 365; RT00 Art. 97; LEC97 Art. 23
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/estatuto_tributario.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_0383_1997.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_0599_2000.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_0633_2000.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_1116_2006.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_1819_2016.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_1955_2019.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_2010_2019.html
+Consolidated: http://www.secretariasenado.gov.co/senado/basedoc/ley_2155_2021.html
+
