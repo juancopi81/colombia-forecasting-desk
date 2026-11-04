@@ -21,6 +21,12 @@ Include, in this order and only when present:
    program registrations, application windows and filing deadlines. Say who
    can act and where. For consultations, say that the issuing agency takes
    comments from anyone, so readers don't mistake it for replying on X.
+4. Official news, only when items 1–3 leave nothing new: one post for each
+   confirmed change item in the brief that cites an official source, at most
+   two. Give the official figure, its period and what it is compared with, and
+   keep the brief's caveat in plain words. When the brief leaves one of these
+   out, take it from the item's case file in today's `cases_snapshot`. Add no
+   causes, forecasts or advice.
 
 Leave out calls whose event has passed but whose record is pending (they become
 results once resolved), watchlist or procurement patterns about named companies
@@ -34,7 +40,7 @@ dates such as "viernes 30 de octubre", and the word "probabilidad" next to every
 probability so it cannot be read as the indicator's value. Separate posts with
 a line containing only `---`. End every post with
 `🤖 Hecho con IA · No es asesoría financiera` and link the official source when
-it fits.
+it fits. Use a period for thousands (5.410,7).
 
 Each post must fit X's 280 limit as X counts it: every URL counts 23;
 characters in U+0000–U+10FF, U+2000–U+200D, U+2010–U+201F and U+2032–U+2037
@@ -72,4 +78,10 @@ Example of a public-action post:
 
     📍 ¿Te cambiaste de casa? Desde este sábado 31 de octubre puedes inscribir tu cédula en un nuevo puesto de votación para las elecciones de alcaldes, gobernadores, concejos y asambleas del 31 de octubre de 2027.
     https://www.registraduria.gov.co/Registraduria-Nacional-fijo-el-calendario-electoral-para-las-elecciones.html
+    🤖 Hecho con IA · No es asesoría financiera
+
+Example of an official-news post:
+
+    📦 En septiembre, Colombia exportó bienes por 5.410,7 millones de dólares, 16,4% más que hace un año (DANE). Es un aumento en valor, no necesariamente en cantidades; no prueba que la producción se recupere.
+    https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones
     🤖 Hecho con IA · No es asesoría financiera
