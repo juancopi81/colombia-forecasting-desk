@@ -1,9 +1,10 @@
 schema_version: case_file.v1
 case_id: security-purchases
-plain_title: Publication rules for security purchases
-plain_summary: Joint committees approved a narrower reserved-procurement mechanism. Infrastructure
-  and territorial cofinancing are excluded; final plenary text and disclosure effects still
-  need verification.
+plain_title: 'Ley de Sometimiento: security purchases'
+plain_summary: Known publicly as Ley de Sometimiento, the bill sets conditions for illegal armed groups to surrender to the justice
+  system. The House-approved version omits an earlier proposal to let the Interior Ministry
+  buy certain security-sensitive goods and services directly for the military and police.
+  Subsequent adopted versions and any enacted law need separate verification.
 why_it_matters: Publication rules affect public oversight of security spending.
 who_is_affected: Security agencies, suppliers and people monitoring public procurement.
 identifiers:
@@ -16,42 +17,47 @@ identifiers:
   keywords:
   - compras reservadas
   - orden publico
+  - ley de sometimiento
 current_view:
-  date: '2026-11-03'
-  text: The official registry records approval of Articles 5 and 14 as in the report and
-    rejected deletion propositions during the November 2 plenary. This establishes partial
-    progress, not completed passage or adoption of the reserved-procurement clause. The
-    previously verified committee text excludes infrastructure and territorial cofinancing;
-    final procurement wording and disclosure effects remain unverified.
+  date: '2026-11-05'
+  text: Gaceta 1716 publishes the complete House version and certifies approval with modifications
+    on November 2–3, Acts 024 and 025. Its Articles 1–30 omit the FONSECON reserved-procurement provision
+    previously present as committee Article 25. In this House version, Article 24 concerns criminal
+    procedure and Article 25 policy monitoring. This establishes a House-stage text change, not Senate
+    completion, enactment or repeal of existing procurement and secrecy rules.
   confidence: confirmed
 next_trigger:
   date: null
-  event: A certified completed plenary outcome and adopted text establish the final
-    procurement provision and its disclosure effects.
+  event: A subsequent Senate/reconciled adopted version or promulgated text establishes whether the
+    procurement proposal returns and whether current law changes.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-05'
+  change: Verified the complete House final text in Gaceta 1716 and its signed certification of November
+    2–3 approval. The House version omits the committee FONSECON reserved-procurement clause; its
+    Article 25 is now policy monitoring. Subsequent legislative and enacted text remains unverified.
+  source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1716
 - date: '2026-11-03'
-  change: The registry now records November 2 plenary approval of Articles 5 and 14 and
-    rejected deletion propositions. Completed passage and adoption of the procurement
-    provision remain unverified.
+  change: The registry now records November 2 plenary approval of Articles 5 and 14 and rejected
+    deletion propositions. Completed passage and adoption of the procurement provision remain unverified.
   source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
 - date: '2026-11-02'
-  change: Verified the October 21 committee text and renumbering to Article 25, with explicit
-    infrastructure and territorial-cofinance exclusions. The registry now lists plenary processing
-    and the weekly agenda lists November 2 second debate.
+  change: Verified the October 21 committee text and renumbering to Article 25, with explicit infrastructure
+    and territorial-cofinance exclusions. The registry now lists plenary processing and the weekly
+    agenda lists November 2 second debate.
   source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
 - date: '2026-11-02'
-  change: The approved committee text records Acta 01 of October 21. Article 24 now concerns
-    criminal procedure; Article 25 contains the reserved-procurement mechanism. This is committee
-    adoption, without verified final enactment.
+  change: The approved committee text records Acta 01 of October 21. Article 24 now concerns criminal
+    procedure; Article 25 contains the reserved-procurement mechanism. This is committee adoption,
+    without verified final enactment.
   source_url: https://www.camara.gov.co/wp-content/uploads/2026/10/proyectos-ley/publicaciones/proyecto-36505/Texto-Aprobado-PL2-96-26S-433-26C-Conjuntas-Revisado.docx
 - date: '2026-10-27'
-  change: Official material includes competing reports on the public-order bill. The October
-    21 debate opportunity does not establish a certified vote or an adopted publication exemption.
+  change: Official material includes competing reports on the public-order bill. The October 21 debate
+    opportunity does not establish a certified vote or an adopted publication exemption.
   source_url: https://www.camara.gov.co/politica-estatal-para-garantizar-el-orden-publico
 - date: '2026-10-27'
-  change: Reconciled the case with the already verified revised proposal, rather than repeating
-    the filed version.
+  change: Reconciled the case with the already verified revised proposal, rather than repeating the
+    filed version.
   source_url: https://www.camara.gov.co/wp-content/uploads/2026/10/proyectos-ley/publicaciones/proyecto-36505/PONENCIA-PL-433-26C-296-26S-ORDEN-PA_BLICO-1.pdf

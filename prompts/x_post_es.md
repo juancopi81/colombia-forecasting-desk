@@ -9,6 +9,29 @@ Use only what today's finalized brief and the two ledgers already establish.
 Copy probabilities, thresholds, dates and official links exactly; never create,
 round or update a call here, and add no new claims.
 
+Every post must stand on its own for someone who has not read the brief or
+followed the story. Name the issue, explain the concrete change and say why it
+matters. The source link supports the explanation; it must not be needed to
+understand the post.
+
+Use a verified, familiar public name first, with a short explanation on first
+mention. For example, this bill is known as "Ley de Sometimiento"; calling it
+only a "bill on public order" hides a name readers may already recognize. Verify
+the name against the exact bill identity. A familiar name containing "law" does
+not establish that the proposal is already in force.
+
+For legislation, explain what the bill concerns before describing its progress.
+When comparing versions, explain what the earlier proposal would have allowed
+and what changed. Translate legal and procedural terms into everyday actions;
+phrases such as "reserved procurement", "committee version" and "promulgation"
+need an explanation. State approval by one chamber and uncertain current-law
+status in plain words. Do not imply that a missing proposal repeals existing law.
+
+Read the draft as a new reader: can they explain the issue and the change
+without opening the link? If the necessary context and caveat cannot fit within
+280 characters, skip the item. A difficult legislative item does not need a post
+just because it is the only new development.
+
 Include, in this order and only when present:
 
 1. Results: calls resolved since the most recent earlier draft, hits and misses
@@ -23,10 +46,12 @@ Include, in this order and only when present:
    comments from anyone, so readers don't mistake it for replying on X.
 4. Official news, only when items 1–3 leave nothing new: one post for each
    confirmed change item in the brief that cites an official source, at most
-   two. Give the official figure, its period and what it is compared with, and
-   keep the brief's caveat in plain words. When the brief leaves one of these
-   out, take it from the item's case file in today's `cases_snapshot`. Add no
-   causes, forecasts or advice.
+   two. For statistics, give the official figure, its period and what it is
+   compared with. For legal or policy news, explain the concrete proposed or
+   adopted change and who it affects. Keep the brief's caveat in plain words.
+   When necessary context is absent from the brief, use only verified context
+   in the item's case file in today's `cases_snapshot`; otherwise skip it.
+   Add no causes, forecasts or advice.
 
 Leave out calls whose event has passed but whose record is pending (they become
 results once resolved), watchlist or procurement patterns about named companies
