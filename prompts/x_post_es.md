@@ -60,6 +60,20 @@ trading, borrowing or betting language. Skip items already in any
 `runs/*/x_post_es.md` from the previous seven days unless their status changed.
 If nothing remains, write exactly `Hoy no hay borrador para X.`
 
+On Fridays, replace items 1–4 with a recap of the week from
+`weekly/<week>/weekly_brief.json`, in up to three posts:
+
+- The week: top stories that fit in one short line each, with the official
+  figure.
+- One top legal or policy story that needs more explanation, written by the
+  rules above, or none.
+- Our calls: those resolved this week, hits and misses alike, and the
+  probability of each open call whose official event falls in the next seven
+  days.
+
+The recap may repeat items drafted earlier in the week; every other rule still
+applies.
+
 Write plain Colombian Spanish: decimal comma and `%` without a space (12,25%),
 dates such as "viernes 30 de octubre", and the word "probabilidad" next to every
 probability so it cannot be read as the indicator's value. Separate posts with
@@ -109,4 +123,11 @@ Example of an official-news post:
 
     📦 En septiembre, Colombia exportó bienes por 5.410,7 millones de dólares, 16,4% más que hace un año (DANE). Es un aumento en valor, no necesariamente en cantidades; no prueba que la producción se recupere.
     https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones
+    🤖 Hecho con IA · No es asesoría financiera
+
+Example of a Friday recap post:
+
+    📰 La semana en Colombia:
+    • El Banco de la República mantuvo su tasa en 12,25% por 4 votos a 3; sus minutas dejan abierto el próximo paso.
+    • Las exportaciones de septiembre subieron 16,4% frente a hace un año, en valor (DANE).
     🤖 Hecho con IA · No es asesoría financiera
