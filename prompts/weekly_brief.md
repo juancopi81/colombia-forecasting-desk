@@ -29,7 +29,9 @@ finding. Missing official results remain unknown; never infer NO from silence.
 Keep public and internal forecast records distinct. State counts and sample sizes
 with any score. Only forecasts and resolutions recorded by the cutoff count.
 Do not create or backdate calls while preparing a historical example. Every
-next_week event must be established in facts.events; include its optional
+next_week event must fall after as_of and within the following 14 days, and be
+established in facts.events. Keep the schema key next_week; its displayed heading
+is "Coming up — next two weeks". Include its optional
 family_id to identify the exact event. Supply either a recorded call with the
 same ID/probability or a one-sentence no_call_reason. The forecast date and target
 event must agree. A meeting time is not automatically an announcement time.

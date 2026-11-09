@@ -462,7 +462,7 @@ def _markdown(brief: dict[str, Any]) -> str:
                      f"{record_check_label(item['resolves_by'], as_of=brief['as_of'])}."
                      for item in brief["open_forecasts"])
     if brief["next_week"]:
-        lines.extend(["", "**Next week**"])
+        lines.extend(["", "**Coming up — next two weeks**"])
         for event in brief["next_week"]:
             call = event.get("our_call")
             view = f"Our call: {call['probability'] * 100:g}% — {_md(call['outcome'])}." if call else _md(event["no_call_reason"])
@@ -593,7 +593,7 @@ def render_weekly_html(brief: dict[str, Any]) -> str:
                      for item in brief["open_forecasts"])
         parts.append("</ul></section>")
     if brief["next_week"]:
-        parts.append("<section><h2>Next week</h2><ul>")
+        parts.append("<section><h2>Coming up — next two weeks</h2><ul>")
         for event in brief["next_week"]:
             call = event.get("our_call")
             view = f"Our call: {call['probability'] * 100:g}% — {esc(call['outcome'])}." if call else esc(event["no_call_reason"])
