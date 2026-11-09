@@ -54,6 +54,11 @@ unknown result. Author `agent_analysis.json` using
 Review every triggered tension and at least one cross-bundle or unbundled
 relationship. Distinguish the public editorial decision from internal calls.
 
+The optional [Croma MCP connection](CROMA_RESEARCH.md) can help retrieve a
+missing Gaceta document, full court ruling, tax doctrine or legal act during
+this same follow-up. Use it only when it addresses a concrete evidence gap.
+Unavailable access does not block the normal workflow.
+
 Review the due PL012 capture before choosing additional follow-up sources.
 Its PDFs remain unread until their identity and outcome are reviewed. For a
 separate selected Cámara Comisión Tercera minutes follow-up, use

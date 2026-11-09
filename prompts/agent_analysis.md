@@ -67,6 +67,14 @@ model's conclusion.
 7. Decide whether one clean discretionary internal shadow forecast is justified.
    Scheduled family calls are handled separately through the reader workflow.
 
+When a missing official document warrants it, use the optional `croma` MCP
+research tools within the same bounded follow-up. See
+`docs/CROMA_RESEARCH.md` for scope, evidence capture and verification. Croma is
+a retrieval intermediary: preserve freshness and official provenance, inspect
+the complete relevant text, and keep missing or ambiguous outcomes unknown.
+If the connection is unavailable, continue with the existing official-source
+routes; Croma is not a daily requirement.
+
 The experiment aims to collect roughly one to three shadow forecasts per week,
 but this is not a quota. Never lower the resolver, baseline, or evidence bar to
 hit that range, and never create more than one discretionary shadow forecast in a run.

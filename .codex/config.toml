@@ -1,0 +1,19 @@
+# Optional document retrieval for this trusted project; credentials stay in Codex.
+[mcp_servers.croma]
+url = "https://api.croma.run/mcp"
+enabled = true
+required = false
+startup_timeout_sec = 15
+tool_timeout_sec = 60
+enabled_tools = [
+  "imprenta_gaceta_documents_search",
+  "imprenta_gaceta_document",
+  "imprenta_gacetas_search",
+  "imprenta_diarios_search",
+  "corte_constitucional_rulings_search",
+  "corte_constitucional_ruling",
+  "dian_doctrina_search",
+  "dian_doctrina_document",
+  "funcion_publica_norms_search",
+  "funcion_publica_norm",
+]
