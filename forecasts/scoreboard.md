@@ -1,4 +1,4 @@
-# Forecast scoreboard — 2026-11-05
+# Forecast scoreboard — 2026-11-09
 
 ## Public forecasts
 
@@ -13,8 +13,9 @@
 - Right side: 2/5 directional calls (40%); 0 calls at 50/50.
 - Mean Brier score: 0.29366 (n=5).
 - Paired model / baseline Brier: 0.29366 / 0.26476 (n=5); baseline minus model: -0.0289.
-- Waiting for official records: 1.
+- Waiting for official records: 2.
   - Will Comisión Tercera of the Cámara de Representantes approve Proyecto de Ley012 de2026 Cámara in first debate before2026-10-27T00:00:00-05:00? (shadow_20261026_camara_pl012_first_debate_approval)
+  - Will DANE report annual inflation for 2026-10 above 6.29%? (family_ipc_annual_up_2026-11-09)
 
 ## Scheduled families
 
