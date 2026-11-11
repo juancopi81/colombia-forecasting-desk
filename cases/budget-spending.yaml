@@ -1,8 +1,9 @@
 schema_version: case_file.v1
 case_id: budget-spending
 plain_title: The spending cut and next year’s budget
-plain_summary: The government reduced 2026 appropriations and issued the 2027 budget by decree.
-  Implementation and legal questions remain separate from the existence of the instruments.
+plain_summary: Existing decrees reduced 2026 appropriations and issued the 2027 budget.
+  A published committee-approved supplementary 2026 bill adds and reallocates appropriations;
+  final enactment and execution remain unverified.
 why_it_matters: Budget authority can change public services and project funding.
 who_is_affected: Public bodies, contractors and users of public services.
 identifiers:
@@ -18,20 +19,31 @@ identifiers:
   keywords:
   - presupuesto general
 current_view:
-  date: '2026-11-02'
-  text: The verified decrees retain a COP 13.8 trillion 2026 appropriation reduction and COP
-    634.95 trillion 2027 budget. The separate supplementary 2026 budget bill is scheduled for
-    joint economic commissions on November 3. This is a debate opportunity, not adopted spending,
-    cash savings or proof of implementation.
+  date: '2026-11-11'
+  text: Gaceta 1755 publishes committee-approved supplementary 2026 budget text with
+    COP 3.857426 trillion in additions and COP 1.466290 trillion in reallocations.
+    Article 5 conditionally transfers unclaimed pension balances after three years
+    to finance Colombia Mayor, preserving succession and indexed-return safeguards.
+    This is committee text, not verified enactment or spending. The separate decrees'
+    COP 13.8 trillion cut and COP 634.95 trillion 2027 budget remain unchanged.
   confidence: confirmed
 next_trigger:
   date: null
-  event: Official adopted text or certified outcome clarifies the supplementary 2026 budget
-    bill after its scheduled November 3 committee debate; the schedule alone is not approval.
+  event: Final plenary or reconciled text and promulgated law establish whether the
+    supplementary 2026 additions, reallocations and pension clause become law;
+    committee publication alone does not establish enactment or execution.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-11'
+  change: Verified the complete supplementary-budget text on pages 1–2 of November 10
+    Gaceta 1755, identifying PL 401/2026 Cámara and 280/2026 Senado as approved in
+    joint economic committees. It adds COP 3,857,426,000,000 and reallocates
+    COP 1,466,289,786,310. The new pension clause requires specified absent heirs,
+    three years without a qualifying claim and indexed return if claims arise.
+    Final enactment, the exact committee vote date and execution remain unverified.
+  source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1755
 - date: '2026-11-02'
   change: The new weekly agenda schedules the supplementary 2026 budget bill for November 3
     at 07:00 in joint economic commissions. Keep this separate from the existing decrees, royalties

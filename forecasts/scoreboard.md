@@ -1,4 +1,4 @@
-# Forecast scoreboard — 2026-11-09
+# Forecast scoreboard — 2026-11-11
 
 ## Public forecasts
 
@@ -9,19 +9,18 @@
 
 ## Internal forecasts
 
-- Open: 2; resolved: 5; void and unscored: 0.
-- Right side: 2/5 directional calls (40%); 0 calls at 50/50.
-- Mean Brier score: 0.29366 (n=5).
-- Paired model / baseline Brier: 0.29366 / 0.26476 (n=5); baseline minus model: -0.0289.
-- Waiting for official records: 2.
+- Open: 2; resolved: 6; void and unscored: 0.
+- Right side: 3/6 directional calls (50%); 0 calls at 50/50.
+- Mean Brier score: 0.271383 (n=6).
+- Paired model / baseline Brier: 0.271383 / 0.2623 (n=6); baseline minus model: -0.009083.
+- Waiting for official records: 1.
   - Will Comisión Tercera of the Cámara de Representantes approve Proyecto de Ley012 de2026 Cámara in first debate before2026-10-27T00:00:00-05:00? (shadow_20261026_camara_pl012_first_debate_approval)
-  - Will DANE report annual inflation for 2026-10 above 6.29%? (family_ipc_annual_up_2026-11-09)
 
 ## Scheduled families
 
 - banrep_rate_decision: 1 events, 1 calls, 0 skips (0 disabled), 0 missed.
 - ipc_annual_up: 1 events, 1 calls, 0 skips (0 disabled), 0 missed.
-- ise_annual_up: 0 events, 0 calls, 0 skips (0 disabled), 0 missed.
+- ise_annual_up: 1 events, 1 calls, 0 skips (0 disabled), 0 missed.
 - unemployment_down_yoy: 1 events, 1 calls, 0 skips (0 disabled), 0 missed.
 
 Descriptive scores only; these samples do not establish calibration. Public and internal forecasts remain separate. A 50/50 call has no directional success or failure.

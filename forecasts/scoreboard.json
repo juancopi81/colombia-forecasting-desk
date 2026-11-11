@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-11-09",
+  "as_of": "2026-11-11",
   "caveat": "Descriptive scores only; these samples do not establish calibration. Public and internal forecasts remain separate. A 50/50 call has no directional success or failure.",
   "coverage": {
     "complete_calendar_coverage": false,
@@ -14,7 +14,9 @@
       "2026-11-04",
       "2026-11-05",
       "2026-11-06",
-      "2026-11-09"
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11"
     ],
     "scope": "observed_calendar_slots"
   },
@@ -138,6 +140,134 @@
       "missed_events": 0,
       "missed_slot_ids": [],
       "scores": {
+        "baseline_brier": 0.25,
+        "baseline_n": 1,
+        "directional_n": 1,
+        "improvement": 0.09,
+        "mean_brier": 0.16,
+        "model_brier_paired": 0.16,
+        "n_scored": 1,
+        "needs_review": [],
+        "no_direction_n": 0,
+        "open": [],
+        "resolved": [
+          {
+            "baseline": {
+              "inputs": [],
+              "label": "uninformative_50_50",
+              "probability": 0.5,
+              "rationale": "No published outcome distribution or comparable official historical frequency is available; 50/50 is explicitly uninformative.",
+              "rule": "uninformative_50_50",
+              "window": null
+            },
+            "baseline_brier_score": 0.25,
+            "brier_improvement_vs_baseline": 0.09,
+            "brier_score": 0.16,
+            "created_at": "2026-11-02T15:42:25.981833+00:00",
+            "evidence_refs": [
+              {
+                "artifact": "indicator_watch.json",
+                "locator": "indicator_id=ipc_inflation"
+              },
+              {
+                "artifact": "raw_items.json",
+                "locator": "id=2fc9671fbdc7f6a1"
+              },
+              {
+                "artifact": "raw_items.json",
+                "locator": "id=7dfe329b2b73dcde"
+              },
+              {
+                "artifact": "sources/banrep_oct30.txt",
+                "locator": "Cuatro directores votaron a favor de esta decisión"
+              }
+            ],
+            "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
+            "family_event": {
+              "comparison": "gt",
+              "cutoff_at": "2026-11-09T18:00:00-05:00",
+              "cutoff_basis": "official_event_clock",
+              "event_at": "2026-11-09T18:00:00-05:00",
+              "event_date": "2026-11-09",
+              "indicator_id": "ipc_inflation",
+              "reference_period": "2026-10",
+              "series_variant": "headline_annual",
+              "threshold": 6.29,
+              "value_key": "annual_variation_pct"
+            },
+            "forecast_family": "ipc_annual_up",
+            "forecast_id": "family_ipc_annual_up_2026-11-09",
+            "model": "GPT-6 (exact runtime variant unavailable)",
+            "outcome": "YES",
+            "probability": 0.6,
+            "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
+            "rationale_against": [
+              "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
+              "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
+              "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
+            ],
+            "rationale_for": [
+              "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
+              "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
+            ],
+            "reasoning_effort": "unavailable from runtime",
+            "resolution_artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
+            "resolution_check_window_end": "2026-11-12",
+            "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
+            "resolution_deadline": "2026-11-09",
+            "resolution_evidence": {
+              "artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
+              "captured_at": "2026-11-10T15:37:28.737766+00:00",
+              "document_kind": "dated_original_technical_bulletin",
+              "event_date": "2026-11-09",
+              "extraction_scope": "first twelve pages; exact period and original national series",
+              "first_release_verified": true,
+              "last_modified": "Mon, 09 Nov 2026 22:41:00 GMT",
+              "locator": "family_release_evidence.json:slot_id=ipc_annual_up:2026-11-09",
+              "pdf_metadata": {
+                "Author": "Paula Daniela Delgado Gomez",
+                "CreationDate": "D:20261109164537-05'00'",
+                "Creator": "Microsoft® Word para Microsoft 365",
+                "ModDate": "D:20261109164537-05'00'",
+                "Producer": "Microsoft® Word para Microsoft 365"
+              },
+              "period": "2026-10",
+              "published_at": "2026-11-09T00:00:00-05:00",
+              "series_variant": "headline_annual",
+              "sha256": "5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd",
+              "source_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+              "text_sha256": "439eb33ac4f1c3752acf3d8cd7382b3aae6137541712e1f1b5b91955f72069fd",
+              "value": 6.3,
+              "value_key": "annual_variation_pct"
+            },
+            "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
+            "resolution_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+            "resolution_value": "First official 2026-10 headline_annual value: 6.3%",
+            "resolved_at": "2026-11-10T15:46:28.970007+00:00",
+            "run_date": "2026-11-02",
+            "schema_version": "shadow_forecast.v1",
+            "slot_id": "ipc_annual_up:2026-11-09",
+            "source_analysis": "runs/2026-11-02/family_forecasts.json",
+            "status": "resolved",
+            "visibility": "internal"
+          }
+        ],
+        "right_side_n": 1,
+        "right_side_rate": 1.0,
+        "void": [],
+        "waiting_for_records": []
+      },
+      "skips": 0,
+      "upcoming_slot_ids": []
+    },
+    {
+      "calls": 1,
+      "disabled_events": 0,
+      "events": 1,
+      "family_id": "ise_annual_up",
+      "missed_events": 0,
+      "missed_slot_ids": [],
+      "scores": {
         "baseline_brier": null,
         "baseline_n": 0,
         "directional_n": 0,
@@ -157,61 +287,70 @@
               "rule": "uninformative_50_50",
               "window": null
             },
-            "created_at": "2026-11-02T15:42:25.981833+00:00",
+            "created_at": "2026-11-10T15:46:28.771151+00:00",
             "evidence_refs": [
               {
                 "artifact": "indicator_watch.json",
-                "locator": "indicator_id=ipc_inflation"
+                "locator": "indicator_id=ise_activity",
+                "note": "Exact August original annual comparator -0.04%; September release is the target."
+              },
+              {
+                "artifact": "indicator_watch.json",
+                "locator": "indicator_id=retail_sales",
+                "note": "August real sales +7.3% and retail employment +1.4%; imperfect prior-month support."
+              },
+              {
+                "artifact": "indicator_watch.json",
+                "locator": "indicator_id=manufacturing",
+                "note": "August real production -3.7%, sales -3.5%, employment -1.3% weigh against recovery."
+              },
+              {
+                "artifact": "indicator_watch.json",
+                "locator": "indicator_id=labor_market",
+                "note": "September national unemployment 8.0% versus 8.2% a year earlier, but occupation flat and large-city unemployment worse."
               },
               {
                 "artifact": "raw_items.json",
-                "locator": "id=2fc9671fbdc7f6a1"
-              },
-              {
-                "artifact": "raw_items.json",
-                "locator": "id=7dfe329b2b73dcde"
-              },
-              {
-                "artifact": "sources/banrep_oct30.txt",
-                "locator": "Cuatro directores votaron a favor de esta decisión"
+                "locator": "id=7ce99ef365346a8d",
+                "note": "Official November 17 10:00 Bogotá event clock."
               }
             ],
-            "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
+            "falsifier": "The first comparable official DANE September 2026 total original-series annual ISE growth is at or below -0.04% at published precision, resolving NO. A missing, postponed, conflicting, adjusted-series or wrong-period release remains unresolved; later revisions do not change the first-release outcome.",
             "family_event": {
               "comparison": "gt",
-              "cutoff_at": "2026-11-09T18:00:00-05:00",
+              "cutoff_at": "2026-11-17T10:00:00-05:00",
               "cutoff_basis": "official_event_clock",
-              "event_at": "2026-11-09T18:00:00-05:00",
-              "event_date": "2026-11-09",
-              "indicator_id": "ipc_inflation",
-              "reference_period": "2026-10",
-              "series_variant": "headline_annual",
-              "threshold": 6.29,
-              "value_key": "annual_variation_pct"
+              "event_at": "2026-11-17T10:00:00-05:00",
+              "event_date": "2026-11-17",
+              "indicator_id": "ise_activity",
+              "reference_period": "2026-09",
+              "series_variant": "original_total_annual",
+              "threshold": -0.04,
+              "value_key": "annual_growth_pct"
             },
-            "forecast_family": "ipc_annual_up",
-            "forecast_id": "family_ipc_annual_up_2026-11-09",
+            "forecast_family": "ise_annual_up",
+            "forecast_id": "family_ise_annual_up_2026-11-17",
             "model": "GPT-6 (exact runtime variant unavailable)",
-            "probability": 0.6,
-            "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
+            "probability": 0.55,
+            "question": "Will DANE report original-series annual ISE growth for 2026-09 above -0.04%?",
             "rationale_against": [
-              "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
-              "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
-              "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
+              "August manufacturing production, sales and employment contracted, and original ISE growth was -0.04%. These weaknesses can persist or spread; the strong retail reading does not cover the whole economy.",
+              "September national occupation was flat year on year and large-city unemployment rose. September manufacturing and retail releases are still pending; cross-month and sector coverage are incomplete. Nominal exports and mismatched daily electricity observations do not establish real September total activity.",
+              "No verified relevant official ISE historical YES frequency or published distribution is available in this run. Retain the explicitly uninformative 50/50 baseline and substantial uncertainty; original versus adjusted series or revisions cannot be interchanged."
             ],
             "rationale_for": [
-              "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
-              "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
+              "The threshold is August’s nearly flat -0.04% original annual growth, rather than a demand for strong growth. August retail sales and employment were expanding, while September national unemployment improved slightly year on year. These provide limited support for September growth exceeding that low comparator.",
+              "A modest rebound or sector offset is plausible even if third-quarter growth is weaker than the second quarter. This is a subjective prospective 55% estimate, not a fitted extrapolation, survey probability or calibrated forecast."
             ],
             "reasoning_effort": "unavailable from runtime",
-            "resolution_check_window_end": "2026-11-12",
-            "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
-            "resolution_deadline": "2026-11-09",
-            "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
-            "run_date": "2026-11-02",
+            "resolution_check_window_end": "2026-11-20",
+            "resolution_criteria": "YES: The first comparable official release for 2026-09, series original_total_annual, reports a value strictly above -0.04%. NO: That release expressly reports a value at or below -0.04%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
+            "resolution_deadline": "2026-11-17",
+            "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise",
+            "run_date": "2026-11-10",
             "schema_version": "shadow_forecast.v1",
-            "slot_id": "ipc_annual_up:2026-11-09",
-            "source_analysis": "runs/2026-11-02/family_forecasts.json",
+            "slot_id": "ise_annual_up:2026-11-17",
+            "source_analysis": "runs/2026-11-10/family_forecasts.json",
             "status": "open",
             "visibility": "internal"
           }
@@ -220,105 +359,12 @@
         "right_side_n": 0,
         "right_side_rate": null,
         "void": [],
-        "waiting_for_records": [
-          {
-            "baseline": {
-              "inputs": [],
-              "label": "uninformative_50_50",
-              "probability": 0.5,
-              "rationale": "No published outcome distribution or comparable official historical frequency is available; 50/50 is explicitly uninformative.",
-              "rule": "uninformative_50_50",
-              "window": null
-            },
-            "created_at": "2026-11-02T15:42:25.981833+00:00",
-            "evidence_refs": [
-              {
-                "artifact": "indicator_watch.json",
-                "locator": "indicator_id=ipc_inflation"
-              },
-              {
-                "artifact": "raw_items.json",
-                "locator": "id=2fc9671fbdc7f6a1"
-              },
-              {
-                "artifact": "raw_items.json",
-                "locator": "id=7dfe329b2b73dcde"
-              },
-              {
-                "artifact": "sources/banrep_oct30.txt",
-                "locator": "Cuatro directores votaron a favor de esta decisión"
-              }
-            ],
-            "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
-            "family_event": {
-              "comparison": "gt",
-              "cutoff_at": "2026-11-09T18:00:00-05:00",
-              "cutoff_basis": "official_event_clock",
-              "event_at": "2026-11-09T18:00:00-05:00",
-              "event_date": "2026-11-09",
-              "indicator_id": "ipc_inflation",
-              "reference_period": "2026-10",
-              "series_variant": "headline_annual",
-              "threshold": 6.29,
-              "value_key": "annual_variation_pct"
-            },
-            "forecast_family": "ipc_annual_up",
-            "forecast_id": "family_ipc_annual_up_2026-11-09",
-            "model": "GPT-6 (exact runtime variant unavailable)",
-            "probability": 0.6,
-            "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
-            "rationale_against": [
-              "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
-              "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
-              "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
-            ],
-            "rationale_for": [
-              "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
-              "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
-            ],
-            "reasoning_effort": "unavailable from runtime",
-            "resolution_check_window_end": "2026-11-12",
-            "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
-            "resolution_deadline": "2026-11-09",
-            "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
-            "run_date": "2026-11-02",
-            "schema_version": "shadow_forecast.v1",
-            "slot_id": "ipc_annual_up:2026-11-09",
-            "source_analysis": "runs/2026-11-02/family_forecasts.json",
-            "status": "open",
-            "visibility": "internal"
-          }
-        ]
-      },
-      "skips": 0,
-      "upcoming_slot_ids": []
-    },
-    {
-      "calls": 0,
-      "disabled_events": 0,
-      "events": 0,
-      "family_id": "ise_annual_up",
-      "missed_events": 0,
-      "missed_slot_ids": [],
-      "scores": {
-        "baseline_brier": null,
-        "baseline_n": 0,
-        "directional_n": 0,
-        "improvement": null,
-        "mean_brier": null,
-        "model_brier_paired": null,
-        "n_scored": 0,
-        "needs_review": [],
-        "no_direction_n": 0,
-        "open": [],
-        "resolved": [],
-        "right_side_n": 0,
-        "right_side_rate": null,
-        "void": [],
         "waiting_for_records": []
       },
       "skips": 0,
-      "upcoming_slot_ids": []
+      "upcoming_slot_ids": [
+        "ise_annual_up:2026-11-17"
+      ]
     },
     {
       "calls": 1,
@@ -2926,9 +2972,9 @@
     }
   ],
   "internal": {
-    "baseline_brier": 0.26476,
-    "baseline_n": 5,
-    "directional_n": 5,
+    "baseline_brier": 0.2623,
+    "baseline_n": 6,
+    "directional_n": 6,
     "discretionary": {
       "baseline_brier": 0.304067,
       "baseline_n": 3,
@@ -3255,13 +3301,13 @@
       ]
     },
     "family": {
-      "baseline_brier": 0.2058,
-      "baseline_n": 2,
-      "directional_n": 2,
-      "improvement": -0.2167,
-      "mean_brier": 0.4225,
-      "model_brier_paired": 0.4225,
-      "n_scored": 2,
+      "baseline_brier": 0.220533,
+      "baseline_n": 3,
+      "directional_n": 3,
+      "improvement": -0.114467,
+      "mean_brier": 0.335,
+      "model_brier_paired": 0.335,
+      "n_scored": 3,
       "needs_review": [],
       "no_direction_n": 0,
       "open": [
@@ -3274,61 +3320,70 @@
             "rule": "uninformative_50_50",
             "window": null
           },
-          "created_at": "2026-11-02T15:42:25.981833+00:00",
+          "created_at": "2026-11-10T15:46:28.771151+00:00",
           "evidence_refs": [
             {
               "artifact": "indicator_watch.json",
-              "locator": "indicator_id=ipc_inflation"
+              "locator": "indicator_id=ise_activity",
+              "note": "Exact August original annual comparator -0.04%; September release is the target."
+            },
+            {
+              "artifact": "indicator_watch.json",
+              "locator": "indicator_id=retail_sales",
+              "note": "August real sales +7.3% and retail employment +1.4%; imperfect prior-month support."
+            },
+            {
+              "artifact": "indicator_watch.json",
+              "locator": "indicator_id=manufacturing",
+              "note": "August real production -3.7%, sales -3.5%, employment -1.3% weigh against recovery."
+            },
+            {
+              "artifact": "indicator_watch.json",
+              "locator": "indicator_id=labor_market",
+              "note": "September national unemployment 8.0% versus 8.2% a year earlier, but occupation flat and large-city unemployment worse."
             },
             {
               "artifact": "raw_items.json",
-              "locator": "id=2fc9671fbdc7f6a1"
-            },
-            {
-              "artifact": "raw_items.json",
-              "locator": "id=7dfe329b2b73dcde"
-            },
-            {
-              "artifact": "sources/banrep_oct30.txt",
-              "locator": "Cuatro directores votaron a favor de esta decisión"
+              "locator": "id=7ce99ef365346a8d",
+              "note": "Official November 17 10:00 Bogotá event clock."
             }
           ],
-          "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
+          "falsifier": "The first comparable official DANE September 2026 total original-series annual ISE growth is at or below -0.04% at published precision, resolving NO. A missing, postponed, conflicting, adjusted-series or wrong-period release remains unresolved; later revisions do not change the first-release outcome.",
           "family_event": {
             "comparison": "gt",
-            "cutoff_at": "2026-11-09T18:00:00-05:00",
+            "cutoff_at": "2026-11-17T10:00:00-05:00",
             "cutoff_basis": "official_event_clock",
-            "event_at": "2026-11-09T18:00:00-05:00",
-            "event_date": "2026-11-09",
-            "indicator_id": "ipc_inflation",
-            "reference_period": "2026-10",
-            "series_variant": "headline_annual",
-            "threshold": 6.29,
-            "value_key": "annual_variation_pct"
+            "event_at": "2026-11-17T10:00:00-05:00",
+            "event_date": "2026-11-17",
+            "indicator_id": "ise_activity",
+            "reference_period": "2026-09",
+            "series_variant": "original_total_annual",
+            "threshold": -0.04,
+            "value_key": "annual_growth_pct"
           },
-          "forecast_family": "ipc_annual_up",
-          "forecast_id": "family_ipc_annual_up_2026-11-09",
+          "forecast_family": "ise_annual_up",
+          "forecast_id": "family_ise_annual_up_2026-11-17",
           "model": "GPT-6 (exact runtime variant unavailable)",
-          "probability": 0.6,
-          "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
+          "probability": 0.55,
+          "question": "Will DANE report original-series annual ISE growth for 2026-09 above -0.04%?",
           "rationale_against": [
-            "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
-            "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
-            "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
+            "August manufacturing production, sales and employment contracted, and original ISE growth was -0.04%. These weaknesses can persist or spread; the strong retail reading does not cover the whole economy.",
+            "September national occupation was flat year on year and large-city unemployment rose. September manufacturing and retail releases are still pending; cross-month and sector coverage are incomplete. Nominal exports and mismatched daily electricity observations do not establish real September total activity.",
+            "No verified relevant official ISE historical YES frequency or published distribution is available in this run. Retain the explicitly uninformative 50/50 baseline and substantial uncertainty; original versus adjusted series or revisions cannot be interchanged."
           ],
           "rationale_for": [
-            "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
-            "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
+            "The threshold is August’s nearly flat -0.04% original annual growth, rather than a demand for strong growth. August retail sales and employment were expanding, while September national unemployment improved slightly year on year. These provide limited support for September growth exceeding that low comparator.",
+            "A modest rebound or sector offset is plausible even if third-quarter growth is weaker than the second quarter. This is a subjective prospective 55% estimate, not a fitted extrapolation, survey probability or calibrated forecast."
           ],
           "reasoning_effort": "unavailable from runtime",
-          "resolution_check_window_end": "2026-11-12",
-          "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
-          "resolution_deadline": "2026-11-09",
-          "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
-          "run_date": "2026-11-02",
+          "resolution_check_window_end": "2026-11-20",
+          "resolution_criteria": "YES: The first comparable official release for 2026-09, series original_total_annual, reports a value strictly above -0.04%. NO: That release expressly reports a value at or below -0.04%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
+          "resolution_deadline": "2026-11-17",
+          "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise",
+          "run_date": "2026-11-10",
           "schema_version": "shadow_forecast.v1",
-          "slot_id": "ipc_annual_up:2026-11-09",
-          "source_analysis": "runs/2026-11-02/family_forecasts.json",
+          "slot_id": "ise_annual_up:2026-11-17",
+          "source_analysis": "runs/2026-11-10/family_forecasts.json",
           "status": "open",
           "visibility": "internal"
         }
@@ -5992,12 +6047,7 @@
           "source_analysis": "runs/2026-10-27/family_forecasts.json",
           "status": "resolved",
           "visibility": "internal"
-        }
-      ],
-      "right_side_n": 0,
-      "right_side_rate": 0.0,
-      "void": [],
-      "waiting_for_records": [
+        },
         {
           "baseline": {
             "inputs": [],
@@ -6007,6 +6057,9 @@
             "rule": "uninformative_50_50",
             "window": null
           },
+          "baseline_brier_score": 0.25,
+          "brier_improvement_vs_baseline": 0.09,
+          "brier_score": 0.16,
           "created_at": "2026-11-02T15:42:25.981833+00:00",
           "evidence_refs": [
             {
@@ -6042,6 +6095,7 @@
           "forecast_family": "ipc_annual_up",
           "forecast_id": "family_ipc_annual_up_2026-11-09",
           "model": "GPT-6 (exact runtime variant unavailable)",
+          "outcome": "YES",
           "probability": 0.6,
           "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
           "rationale_against": [
@@ -6054,23 +6108,56 @@
             "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
           ],
           "reasoning_effort": "unavailable from runtime",
+          "resolution_artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
           "resolution_check_window_end": "2026-11-12",
           "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
           "resolution_deadline": "2026-11-09",
+          "resolution_evidence": {
+            "artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
+            "captured_at": "2026-11-10T15:37:28.737766+00:00",
+            "document_kind": "dated_original_technical_bulletin",
+            "event_date": "2026-11-09",
+            "extraction_scope": "first twelve pages; exact period and original national series",
+            "first_release_verified": true,
+            "last_modified": "Mon, 09 Nov 2026 22:41:00 GMT",
+            "locator": "family_release_evidence.json:slot_id=ipc_annual_up:2026-11-09",
+            "pdf_metadata": {
+              "Author": "Paula Daniela Delgado Gomez",
+              "CreationDate": "D:20261109164537-05'00'",
+              "Creator": "Microsoft® Word para Microsoft 365",
+              "ModDate": "D:20261109164537-05'00'",
+              "Producer": "Microsoft® Word para Microsoft 365"
+            },
+            "period": "2026-10",
+            "published_at": "2026-11-09T00:00:00-05:00",
+            "series_variant": "headline_annual",
+            "sha256": "5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd",
+            "source_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+            "text_sha256": "439eb33ac4f1c3752acf3d8cd7382b3aae6137541712e1f1b5b91955f72069fd",
+            "value": 6.3,
+            "value_key": "annual_variation_pct"
+          },
           "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
+          "resolution_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+          "resolution_value": "First official 2026-10 headline_annual value: 6.3%",
+          "resolved_at": "2026-11-10T15:46:28.970007+00:00",
           "run_date": "2026-11-02",
           "schema_version": "shadow_forecast.v1",
           "slot_id": "ipc_annual_up:2026-11-09",
           "source_analysis": "runs/2026-11-02/family_forecasts.json",
-          "status": "open",
+          "status": "resolved",
           "visibility": "internal"
         }
-      ]
+      ],
+      "right_side_n": 1,
+      "right_side_rate": 0.3333333333333333,
+      "void": [],
+      "waiting_for_records": []
     },
-    "improvement": -0.0289,
-    "mean_brier": 0.29366,
-    "model_brier_paired": 0.29366,
-    "n_scored": 5,
+    "improvement": -0.009083,
+    "mean_brier": 0.271383,
+    "model_brier_paired": 0.271383,
+    "n_scored": 6,
     "needs_review": [],
     "no_direction_n": 0,
     "open": [
@@ -6137,61 +6224,70 @@
           "rule": "uninformative_50_50",
           "window": null
         },
-        "created_at": "2026-11-02T15:42:25.981833+00:00",
+        "created_at": "2026-11-10T15:46:28.771151+00:00",
         "evidence_refs": [
           {
             "artifact": "indicator_watch.json",
-            "locator": "indicator_id=ipc_inflation"
+            "locator": "indicator_id=ise_activity",
+            "note": "Exact August original annual comparator -0.04%; September release is the target."
+          },
+          {
+            "artifact": "indicator_watch.json",
+            "locator": "indicator_id=retail_sales",
+            "note": "August real sales +7.3% and retail employment +1.4%; imperfect prior-month support."
+          },
+          {
+            "artifact": "indicator_watch.json",
+            "locator": "indicator_id=manufacturing",
+            "note": "August real production -3.7%, sales -3.5%, employment -1.3% weigh against recovery."
+          },
+          {
+            "artifact": "indicator_watch.json",
+            "locator": "indicator_id=labor_market",
+            "note": "September national unemployment 8.0% versus 8.2% a year earlier, but occupation flat and large-city unemployment worse."
           },
           {
             "artifact": "raw_items.json",
-            "locator": "id=2fc9671fbdc7f6a1"
-          },
-          {
-            "artifact": "raw_items.json",
-            "locator": "id=7dfe329b2b73dcde"
-          },
-          {
-            "artifact": "sources/banrep_oct30.txt",
-            "locator": "Cuatro directores votaron a favor de esta decisión"
+            "locator": "id=7ce99ef365346a8d",
+            "note": "Official November 17 10:00 Bogotá event clock."
           }
         ],
-        "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
+        "falsifier": "The first comparable official DANE September 2026 total original-series annual ISE growth is at or below -0.04% at published precision, resolving NO. A missing, postponed, conflicting, adjusted-series or wrong-period release remains unresolved; later revisions do not change the first-release outcome.",
         "family_event": {
           "comparison": "gt",
-          "cutoff_at": "2026-11-09T18:00:00-05:00",
+          "cutoff_at": "2026-11-17T10:00:00-05:00",
           "cutoff_basis": "official_event_clock",
-          "event_at": "2026-11-09T18:00:00-05:00",
-          "event_date": "2026-11-09",
-          "indicator_id": "ipc_inflation",
-          "reference_period": "2026-10",
-          "series_variant": "headline_annual",
-          "threshold": 6.29,
-          "value_key": "annual_variation_pct"
+          "event_at": "2026-11-17T10:00:00-05:00",
+          "event_date": "2026-11-17",
+          "indicator_id": "ise_activity",
+          "reference_period": "2026-09",
+          "series_variant": "original_total_annual",
+          "threshold": -0.04,
+          "value_key": "annual_growth_pct"
         },
-        "forecast_family": "ipc_annual_up",
-        "forecast_id": "family_ipc_annual_up_2026-11-09",
+        "forecast_family": "ise_annual_up",
+        "forecast_id": "family_ise_annual_up_2026-11-17",
         "model": "GPT-6 (exact runtime variant unavailable)",
-        "probability": 0.6,
-        "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
+        "probability": 0.55,
+        "question": "Will DANE report original-series annual ISE growth for 2026-09 above -0.04%?",
         "rationale_against": [
-          "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
-          "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
-          "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
+          "August manufacturing production, sales and employment contracted, and original ISE growth was -0.04%. These weaknesses can persist or spread; the strong retail reading does not cover the whole economy.",
+          "September national occupation was flat year on year and large-city unemployment rose. September manufacturing and retail releases are still pending; cross-month and sector coverage are incomplete. Nominal exports and mismatched daily electricity observations do not establish real September total activity.",
+          "No verified relevant official ISE historical YES frequency or published distribution is available in this run. Retain the explicitly uninformative 50/50 baseline and substantial uncertainty; original versus adjusted series or revisions cannot be interchanged."
         ],
         "rationale_for": [
-          "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
-          "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
+          "The threshold is August’s nearly flat -0.04% original annual growth, rather than a demand for strong growth. August retail sales and employment were expanding, while September national unemployment improved slightly year on year. These provide limited support for September growth exceeding that low comparator.",
+          "A modest rebound or sector offset is plausible even if third-quarter growth is weaker than the second quarter. This is a subjective prospective 55% estimate, not a fitted extrapolation, survey probability or calibrated forecast."
         ],
         "reasoning_effort": "unavailable from runtime",
-        "resolution_check_window_end": "2026-11-12",
-        "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
-        "resolution_deadline": "2026-11-09",
-        "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
-        "run_date": "2026-11-02",
+        "resolution_check_window_end": "2026-11-20",
+        "resolution_criteria": "YES: The first comparable official release for 2026-09, series original_total_annual, reports a value strictly above -0.04%. NO: That release expressly reports a value at or below -0.04%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
+        "resolution_deadline": "2026-11-17",
+        "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise",
+        "run_date": "2026-11-10",
         "schema_version": "shadow_forecast.v1",
-        "slot_id": "ipc_annual_up:2026-11-09",
-        "source_analysis": "runs/2026-11-02/family_forecasts.json",
+        "slot_id": "ise_annual_up:2026-11-17",
+        "source_analysis": "runs/2026-11-10/family_forecasts.json",
         "status": "open",
         "visibility": "internal"
       }
@@ -9052,10 +9148,110 @@
         "source_analysis": "runs/2026-10-27/family_forecasts.json",
         "status": "resolved",
         "visibility": "internal"
+      },
+      {
+        "baseline": {
+          "inputs": [],
+          "label": "uninformative_50_50",
+          "probability": 0.5,
+          "rationale": "No published outcome distribution or comparable official historical frequency is available; 50/50 is explicitly uninformative.",
+          "rule": "uninformative_50_50",
+          "window": null
+        },
+        "baseline_brier_score": 0.25,
+        "brier_improvement_vs_baseline": 0.09,
+        "brier_score": 0.16,
+        "created_at": "2026-11-02T15:42:25.981833+00:00",
+        "evidence_refs": [
+          {
+            "artifact": "indicator_watch.json",
+            "locator": "indicator_id=ipc_inflation"
+          },
+          {
+            "artifact": "raw_items.json",
+            "locator": "id=2fc9671fbdc7f6a1"
+          },
+          {
+            "artifact": "raw_items.json",
+            "locator": "id=7dfe329b2b73dcde"
+          },
+          {
+            "artifact": "sources/banrep_oct30.txt",
+            "locator": "Cuatro directores votaron a favor de esta decisión"
+          }
+        ],
+        "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
+        "family_event": {
+          "comparison": "gt",
+          "cutoff_at": "2026-11-09T18:00:00-05:00",
+          "cutoff_basis": "official_event_clock",
+          "event_at": "2026-11-09T18:00:00-05:00",
+          "event_date": "2026-11-09",
+          "indicator_id": "ipc_inflation",
+          "reference_period": "2026-10",
+          "series_variant": "headline_annual",
+          "threshold": 6.29,
+          "value_key": "annual_variation_pct"
+        },
+        "forecast_family": "ipc_annual_up",
+        "forecast_id": "family_ipc_annual_up_2026-11-09",
+        "model": "GPT-6 (exact runtime variant unavailable)",
+        "outcome": "YES",
+        "probability": 0.6,
+        "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
+        "rationale_against": [
+          "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
+          "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
+          "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
+        ],
+        "rationale_for": [
+          "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
+          "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
+        ],
+        "reasoning_effort": "unavailable from runtime",
+        "resolution_artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
+        "resolution_check_window_end": "2026-11-12",
+        "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
+        "resolution_deadline": "2026-11-09",
+        "resolution_evidence": {
+          "artifact": "runs/2026-11-10/sources/family_evidence/5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd.pdf",
+          "captured_at": "2026-11-10T15:37:28.737766+00:00",
+          "document_kind": "dated_original_technical_bulletin",
+          "event_date": "2026-11-09",
+          "extraction_scope": "first twelve pages; exact period and original national series",
+          "first_release_verified": true,
+          "last_modified": "Mon, 09 Nov 2026 22:41:00 GMT",
+          "locator": "family_release_evidence.json:slot_id=ipc_annual_up:2026-11-09",
+          "pdf_metadata": {
+            "Author": "Paula Daniela Delgado Gomez",
+            "CreationDate": "D:20261109164537-05'00'",
+            "Creator": "Microsoft® Word para Microsoft 365",
+            "ModDate": "D:20261109164537-05'00'",
+            "Producer": "Microsoft® Word para Microsoft 365"
+          },
+          "period": "2026-10",
+          "published_at": "2026-11-09T00:00:00-05:00",
+          "series_variant": "headline_annual",
+          "sha256": "5c89ffaa17bee2d3ed6782898fa7eabb8e5eabbc680dd5f3abc5f256e47f4abd",
+          "source_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+          "text_sha256": "439eb33ac4f1c3752acf3d8cd7382b3aae6137541712e1f1b5b91955f72069fd",
+          "value": 6.3,
+          "value_key": "annual_variation_pct"
+        },
+        "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
+        "resolution_url": "https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf",
+        "resolution_value": "First official 2026-10 headline_annual value: 6.3%",
+        "resolved_at": "2026-11-10T15:46:28.970007+00:00",
+        "run_date": "2026-11-02",
+        "schema_version": "shadow_forecast.v1",
+        "slot_id": "ipc_annual_up:2026-11-09",
+        "source_analysis": "runs/2026-11-02/family_forecasts.json",
+        "status": "resolved",
+        "visibility": "internal"
       }
     ],
-    "right_side_n": 2,
-    "right_side_rate": 0.4,
+    "right_side_n": 3,
+    "right_side_rate": 0.5,
     "void": [],
     "waiting_for_records": [
       {
@@ -9109,73 +9305,6 @@
         "run_date": "2026-10-26",
         "schema_version": "shadow_forecast.v1",
         "source_analysis": "runs/2026-10-26/agent_analysis.json",
-        "status": "open",
-        "visibility": "internal"
-      },
-      {
-        "baseline": {
-          "inputs": [],
-          "label": "uninformative_50_50",
-          "probability": 0.5,
-          "rationale": "No published outcome distribution or comparable official historical frequency is available; 50/50 is explicitly uninformative.",
-          "rule": "uninformative_50_50",
-          "window": null
-        },
-        "created_at": "2026-11-02T15:42:25.981833+00:00",
-        "evidence_refs": [
-          {
-            "artifact": "indicator_watch.json",
-            "locator": "indicator_id=ipc_inflation"
-          },
-          {
-            "artifact": "raw_items.json",
-            "locator": "id=2fc9671fbdc7f6a1"
-          },
-          {
-            "artifact": "raw_items.json",
-            "locator": "id=7dfe329b2b73dcde"
-          },
-          {
-            "artifact": "sources/banrep_oct30.txt",
-            "locator": "Cuatro directores votaron a favor de esta decisión"
-          }
-        ],
-        "falsifier": "The first comparable official DANE October2026 headline annual IPC value is at or below6.29% at published precision, resolving NO. Wrong period, core series, conflicting or corrected/unverified first-release records remain unresolved rather than substituted.",
-        "family_event": {
-          "comparison": "gt",
-          "cutoff_at": "2026-11-09T18:00:00-05:00",
-          "cutoff_basis": "official_event_clock",
-          "event_at": "2026-11-09T18:00:00-05:00",
-          "event_date": "2026-11-09",
-          "indicator_id": "ipc_inflation",
-          "reference_period": "2026-10",
-          "series_variant": "headline_annual",
-          "threshold": 6.29,
-          "value_key": "annual_variation_pct"
-        },
-        "forecast_family": "ipc_annual_up",
-        "forecast_id": "family_ipc_annual_up_2026-11-09",
-        "model": "GPT-6 (exact runtime variant unavailable)",
-        "probability": 0.6,
-        "question": "Will DANE report annual inflation for 2026-10 above 6.29%?",
-        "rationale_against": [
-          "The communiqué reports core inflation easing from6.1% inAugust to6.0% inSeptember, weaker consumption and subdued productive sectors, supporting disinflation or a pause instead.",
-          "A year-end expectation does not identify the October monthly path. October category contributions and exact year-earlier monthly base are not in the reviewed evidence; seasonal/base effects could leave annual inflation at or below6.29%.",
-          "There is no informative forecast distribution or comparable verified historical frequency in the preserved run. Use the explicitly uninformative50/50 baseline and retain substantial uncertainty."
-        ],
-        "rationale_for": [
-          "The October30 official board communiqué reports higher year-end analyst inflation expectations, still above target at longer horizons, and upside food/regulated-price risks. Together with September headline6.29%, this supports a modest upward lean for October annual inflation.",
-          "The October EME year-end mean6.83% is a different-horizon point estimate and directional context only. The60% estimate is a subjective judgment, not a survey YES share or a computed/calibrated probability."
-        ],
-        "reasoning_effort": "unavailable from runtime",
-        "resolution_check_window_end": "2026-11-12",
-        "resolution_criteria": "YES: The first comparable official release for 2026-10, series headline_annual, reports a value strictly above 6.29%. NO: That release expressly reports a value at or below 6.29%. Missing, postponed, contradictory or incomparable records remain unresolved. Later revisions do not change the first-release outcome.",
-        "resolution_deadline": "2026-11-09",
-        "resolution_source": "https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc/ipc-informacion-tecnica",
-        "run_date": "2026-11-02",
-        "schema_version": "shadow_forecast.v1",
-        "slot_id": "ipc_annual_up:2026-11-09",
-        "source_analysis": "runs/2026-11-02/family_forecasts.json",
         "status": "open",
         "visibility": "internal"
       }

@@ -17,24 +17,31 @@ identifiers:
   - Banco de la República
   - inflación
 current_view:
-  date: '2026-11-09'
-  text: BanRep's November 6 announcement reports a completed USD 2,000 million government
-    purchase for reserve accumulation, following October's authorization. Its captured
-    headline establishes neither liquidity treatment nor peso effects. Policy remains
-    12.25%; the minutes explain a divided hold. September annual inflation remains 6.29%;
-    today's 18:00 October release is pending and the 60% call stays fixed. Today's
-    exchange-rate feed failed.
+  date: '2026-11-10'
+  text: The original November 9 bulletin reports October annual inflation of 6.30%
+    and monthly inflation of 0.20%. The unchanged 60% call above September's 6.29%
+    resolves YES, by only 0.01 percentage points. Policy remains 12.25%. November 10
+    TRM is COP 3,269.88 per dollar, up 2.73% over seven days; this later observation
+    establishes no cause for October inflation. Failed headline HTML did not prevent
+    exact bulletin verification.
   confidence: confirmed
 next_trigger:
-  date: '2026-11-09'
-  event: DANE publishes October headline inflation at 18:00 Bogotá; the internal call is 60%
-    that the annual rate exceeds 6.29%.
+  date: '2026-11-12'
+  event: DANE schedules core inflation excluding food and regulated items for 14:00
+    Bogotá. This is a separate series; no directional call is recorded.
 forecast_ids:
 - family_banrep_rate_decision_2026-10-30
 - family_ipc_annual_up_2026-11-09
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-10'
+  change: The exact October first-release bulletin reports annual inflation of 6.30%,
+    above the unchanged 6.29% threshold. The original 60% call resolves YES through
+    the family resolver; its probability, baseline and cutoff remain unchanged.
+    Monthly inflation is 0.20%; the small annual rise does not establish broad
+    acceleration or forecasting calibration.
+  source_url: https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf
 - date: '2026-11-09'
   change: The November 6 official announcement reports a completed USD 2,000 million
     government purchase for reserve accumulation, distinct from the earlier authorization.

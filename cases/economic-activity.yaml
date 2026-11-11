@@ -20,23 +20,33 @@ identifiers:
   - manufactura
   - comercio minorista
 current_view:
-  date: '2026-11-04'
-  text: September goods exports reached USD 5,410.7 million FOB, up 16.4% from a year earlier.
-    Nominal export growth does not establish a broad real-output recovery. Imports remain
-    August CIF data, so a comparable September trade balance is unavailable. September
-    national unemployment improved to 8.0%, with flat occupation and worse large-city
-    unemployment; August activity and factories remain weak.
+  date: '2026-11-10'
+  text: September exports rose 16.4% in value to USD 5,410.7 million FOB; August CIF
+    imports cannot form a comparable balance. September national unemployment was
+    8.0%, with flat occupation and worse large-city unemployment. August activity and
+    factories were weak. The new internal call is 55% that September original-series
+    annual ISE growth exceeds August's -0.04%, against an uninformative 50/50 baseline.
+    September activity has not been released.
   confidence: confirmed
 next_trigger:
   date: '2026-11-13'
   event: DANE schedules manufacturing and retail releases for November 13 at 10:00 Bogotá,
-    activity for November 17 at 10:00 and headline national jobs for November 30 at 10:00.
-    Thematic labor releases on November 13 are distinct from national monthly jobs.
+    September activity for November 17 at 10:00 with the recorded 55% call above
+    -0.04%, and headline national jobs for November 30 at 10:00. Thematic labor
+    releases on November 13 are distinct from national monthly jobs.
 forecast_ids:
 - family_unemployment_down_yoy_2026-10-30
+- family_ise_annual_up_2026-11-17
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-10'
+  change: Recorded the prospective November 17 September activity call at 55% that
+    original-series annual ISE growth exceeds -0.04%, against an explicitly
+    uninformative 50/50 baseline. Prior-month retail strength and slight national
+    jobs improvement offset weak factories only modestly; this is a subjective
+    estimate, not new September activity data or a calibration claim.
+  source_url: https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/11/17/11151/-/indicador-de-seguimiento-a-la-economia-ise
 - date: '2026-11-04'
   change: DANE reports September goods exports up 16.4% year over year to USD 5,410.7 million
     FOB. Different periods and valuations prevent combining this with August CIF imports
