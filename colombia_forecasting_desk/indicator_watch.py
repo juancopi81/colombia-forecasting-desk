@@ -2,7 +2,7 @@
 
 Responsibility inventory:
 - Load the durable indicator card catalog and bundle component defaults.
-- Parse supported official HTML/API/XLSX snippets into observations/components.
+- Parse supported official HTML/API/XLSX/PDF inputs into observations/components.
 - Fetch live structured indicator inputs with fail-closed source-specific cards.
 - Convert selected RawItem families, such as ICOCED, TES auctions, and SECOP, into
   indicator observations.
@@ -15,6 +15,7 @@ logic here so source-specific behavior remains testable in Python.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import re
@@ -25,10 +26,11 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from importlib import resources
 from typing import Any, Callable, Iterable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree
 
 import httpx
+import pdfplumber
 from bs4 import BeautifulSoup
 
 from .cleaner import fold_accents, normalize_whitespace
@@ -681,6 +683,221 @@ def ipc_observation_from_html(html: str) -> IndicatorObservation | None:
         headline=headline,
         values=values,
     )
+
+
+def _official_dane_url(url: str) -> bool:
+    parts = urlsplit(url)
+    return (
+        parts.scheme == "https"
+        and parts.netloc.lower() in {"www.dane.gov.co", "dane.gov.co"}
+        and not parts.query
+        and not parts.fragment
+    )
+
+
+def _ipc_bulletin_url_period(url: str) -> str:
+    if not _official_dane_url(url):
+        return ""
+    match = re.fullmatch(
+        r"/files/operaciones/IPC/(?:([a-z]{3}20\d{2})/)?"
+        r"bol-IPC-([a-z]{3})(20\d{2})\.pdf",
+        urlsplit(url).path,
+        re.IGNORECASE,
+    )
+    if not match or match[2].lower() not in _MONTH_ABBR_ES:
+        return ""
+    if match[1] and match[1].lower() != (match[2] + match[3]).lower():
+        return ""
+    return f"{match[3]}-{_MONTH_ABBR_ES[match[2].lower()]:02d}"
+
+
+def _current_ipc_bulletin(html: str, landing_url: str) -> tuple[str, str, str]:
+    """Select one dated technical PDF under the current information heading."""
+    if not _official_dane_url(landing_url):
+        raise ValueError("IPC landing page is not an official DANE URL")
+    soup = BeautifulSoup(html, "html.parser")
+    headings = soup.find_all(re.compile(r"^h[1-6]$"))
+    current = []
+    for heading in headings:
+        text = fold_accents(normalize_whitespace(heading.get_text(" ")).lower())
+        match = re.fullmatch(
+            rf"informacion\s+({_MONTH_NAMES})\s+(?:de\s+)?(20\d{{2}})", text
+        )
+        if match:
+            current.append((heading, _month_period(match[1], match[2])))
+    if len(current) != 1:
+        raise ValueError("IPC current reference-period heading is missing or ambiguous")
+    heading, period = current[0]
+    candidates: set[tuple[str, str]] = set()
+    for anchor in soup.find_all("a", href=True):
+        # A later history/current-format heading cannot supply a fallback link.
+        if anchor.find_previous(re.compile(r"^h[1-6]$")) is not heading:
+            continue
+        row = anchor.find_parent("tr")
+        cells = row.find_all(["td", "th"]) if row else []
+        if not cells or _folded_text_from_html(str(cells[0])) != "boletin tecnico":
+            continue
+        url = urljoin(landing_url, str(anchor["href"]))
+        if _ipc_bulletin_url_period(url) != period:
+            continue
+        dates = {
+            _release_date_from_text(match[0])
+            for match in re.finditer(r"\b\d{1,2}/\d{1,2}/20\d{2}\b", row.get_text(" "))
+        }
+        if len(dates) != 1 or "" in dates:
+            raise ValueError("IPC bulletin row has no unambiguous publication date")
+        candidates.add((url, dates.pop()))
+    if len(candidates) != 1:
+        raise ValueError("IPC current-period technical bulletin link is missing or ambiguous")
+    url, release_date = candidates.pop()
+    return url, period, release_date
+
+
+def _ipc_bulletin_values(
+    content: bytes, *, period: str, release_date: str
+) -> dict[str, Any]:
+    """Extract current national headline facts, without first-release claims."""
+    if not content.startswith(b"%PDF"):
+        raise ValueError("IPC technical bulletin is not a PDF")
+    try:
+        with pdfplumber.open(io.BytesIO(content)) as document:
+            pages = [page.extract_text() or "" for page in document.pages[:12]]
+    except Exception as exc:
+        raise ValueError("IPC technical bulletin PDF is unreadable") from exc
+    if not pages or len(pages[0].strip()) < 60:
+        raise ValueError("IPC technical bulletin has no readable title page")
+    folded_pages = [fold_accents(normalize_whitespace(page).lower()) for page in pages]
+    cover = folded_pages[0]
+    title_pattern = (
+        rf"indice de precios al consumidor\s*\(ipc\)\s+"
+        rf"({_MONTH_NAMES})\s+(20\d{{2}})\b"
+    )
+    core_series = r"sin alimentos|sin regulados|inflacion (?:basica|subyacente)|nucleo"
+    title_periods = {
+        _month_period(match[1], match[2])
+        for page in folded_pages
+        for match in re.finditer(title_pattern, page)
+    }
+    if (
+        "boletin tecnico" not in cover[:300]
+        or not re.search(title_pattern, cover[:500])
+        or title_periods != {period}
+        or "total nacional" not in cover[:1500]
+        or re.search(core_series, cover[:500])
+    ):
+        raise ValueError("IPC bulletin does not identify the exact national headline period/series")
+    publication_dates = {
+        _release_date_from_text(match[0])
+        for match in re.finditer(
+            rf"\b\d{{1,2}}\s+de\s+(?:{_MONTH_NAMES})\s+de\s+20\d{{2}}\b", cover[:500]
+        )
+    }
+    if publication_dates != {release_date}:
+        raise ValueError("IPC bulletin publication date disagrees with the landing-page row")
+
+    year, month = map(int, period.split("-"))
+    month_name = next(name for name, number in _MONTHS_ES.items() if number == month)
+    previous = datetime(year, month, 1) - timedelta(days=1)
+    comparison_keys = {
+        (previous.year, previous.month): "monthly_variation_pct",
+        (year - 1, month): "annual_variation_pct",
+    }
+    percent = r"(-?\d+(?:[,.]\d+)?)\s*%"
+    comparison_pattern = (
+        rf"en (?:el mes de )?{month_name} de {year},?\s+"
+        rf"el ipc registro una variacion de\s+{percent}\s+"
+        rf"en comparacion con\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\b"
+    )
+    ytd_pattern = (
+        rf"en lo corrido del ano,?\s*\(enero\s*[-–]\s*{month_name}\),?"
+        rf".{{0,300}}?promedio nacional\s*\({percent}\)"
+    )
+    evidence: dict[str, list[dict[str, Any]]] = {
+        key: []
+        for key in (
+            "monthly_variation_pct", "year_to_date_variation_pct", "annual_variation_pct"
+        )
+    }
+    for page_number, text in enumerate(folded_pages, 1):
+        # Year-to-date narrative omits its year; require that page's exact title.
+        if not re.search(title_pattern, text):
+            continue
+        for match in re.finditer(comparison_pattern, text):
+            key = comparison_keys.get((int(match[3]), _MONTHS_ES[match[2]]))
+            if key:
+                evidence[key].append({
+                    "page": page_number,
+                    "text": match[0],
+                    "value": float(match[1].replace(",", ".")),
+                })
+        for match in re.finditer(ytd_pattern, text):
+            if re.search(core_series, match[0]):
+                raise ValueError("IPC year-to-date narrative identifies a core series")
+            evidence["year_to_date_variation_pct"].append({
+                "page": page_number,
+                "text": match[0],
+                "value": float(match[1].replace(",", ".")),
+            })
+    values: dict[str, Any] = {}
+    for key, matches in evidence.items():
+        candidates = {match["value"] for match in matches}
+        if len(candidates) != 1:
+            raise ValueError(f"IPC national headline {key} is missing or conflicting")
+        values[key] = candidates.pop()
+    values.update({
+        "content_extraction": "dane_ipc_technical_bulletin_pdf",
+        "series_variant": "national_headline",
+        "source_sha256": hashlib.sha256(content).hexdigest(),
+        "extraction_scope": "first twelve pages; exact-period national headline narratives",
+        "metric_provenance": evidence,
+    })
+    return values
+
+
+def _fetch_ipc_bulletin_observation(
+    client: httpx.Client, html: str, landing_url: str
+) -> IndicatorObservation:
+    linked_url, period, release_date = _current_ipc_bulletin(html, landing_url)
+    url = linked_url
+    for _ in range(4):
+        # Check before each request, even when the supplied client follows redirects.
+        if _ipc_bulletin_url_period(url) != period:
+            raise ValueError("IPC bulletin redirected outside the official exact-period source")
+        with client.stream("GET", url, follow_redirects=False) as response:
+            if response.is_redirect:
+                location = response.headers.get("location")
+                if not location:
+                    raise ValueError("IPC bulletin redirect has no destination")
+                url = urljoin(url, location)
+                continue
+            response.raise_for_status()
+            if _ipc_bulletin_url_period(str(response.url)) != period:
+                raise ValueError("IPC bulletin response is not the official exact-period source")
+            chunks = []
+            size = 0
+            for chunk in response.iter_bytes():
+                size += len(chunk)
+                if size > 25_000_000:
+                    raise ValueError("IPC technical bulletin exceeds the bounded 25 MB download")
+                chunks.append(chunk)
+            values = _ipc_bulletin_values(
+                b"".join(chunks), period=period, release_date=release_date
+            )
+            values.update({"landing_page_url": landing_url, "linked_bulletin_url": linked_url})
+            definition = replace(_definition_map()["ipc_inflation"], source_url=str(response.url))
+            return _headline_definition(
+                definition,
+                status="observed",
+                period=period,
+                release_date=release_date,
+                headline=(
+                    f"DANE IPC {period}: monthly variation {values['monthly_variation_pct']:.2f}%, "
+                    f"year-to-date {values['year_to_date_variation_pct']:.2f}%, "
+                    f"annual {values['annual_variation_pct']:.2f}%."
+                ),
+                values=values,
+            )
+    raise ValueError("IPC bulletin exceeded the bounded redirect limit")
 
 
 def retail_sales_observation_from_html(html: str) -> IndicatorObservation | None:
@@ -2531,6 +2748,14 @@ def _fetch_dane_html_observation(
             f"DANE headline fetch failed: {exc.__class__.__name__}: {exc}",
         )
     observation = parser(response.text)
+    if observation is None and indicator_id == "ipc_inflation":
+        try:
+            return _fetch_ipc_bulletin_observation(client, response.text, str(response.url))
+        except (httpx.HTTPError, ValueError) as exc:
+            return _failed_observation(
+                definition,
+                f"DANE IPC headline bulletin fallback failed: {exc.__class__.__name__}: {exc}",
+            )
     if observation is None:
         return _failed_observation(
             definition,

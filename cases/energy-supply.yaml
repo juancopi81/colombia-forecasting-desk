@@ -1,8 +1,7 @@
 schema_version: case_file.v1
 case_id: energy-supply
 plain_title: Gas and electricity supply
-plain_summary: Supply rules, spot electricity prices and reservoirs can reveal pressure
-  on households and productive activity. Price movements alone do not prove a shortage.
+plain_summary: Supply rules, spot electricity prices and reservoirs can reveal pressure on households and productive activity. Price movements alone do not prove a shortage.
 why_it_matters: Restrictions and supply costs can affect essential services and production.
 who_is_affected: Households, industrial users, generators and distributors.
 identifiers:
@@ -16,11 +15,9 @@ identifiers:
   - abastecimiento de gas
   - embalses
 current_view:
-  date: '2026-10-27'
-  text: Track official supply measures alongside electricity and reservoir observations.
-    An exact restriction, affected group or compliance date needs the complete official
-    rule before a forecast.
-  confidence: uncertain
+  date: '2026-11-12'
+  text: XM reports a November 9 spot electricity price of COP 383.13/kWh, above November 8’s COP 275.48/kWh. Reservoir useful volume is 78.74% on November 11, versus 79.07% on November 10. November 7 demand is 231.50 GWh, but this Saturday reading cannot establish a normalized demand trend against Friday. These different clocks establish no shortage, consumer-tariff change or supply restriction.
+  confidence: confirmed
 next_trigger:
   date: null
   event: A new official supply measure or a material reservoir or price change appears.
@@ -28,8 +25,9 @@ forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-12'
+  change: Updated XM spot-price and reservoir observations warrant monitoring, while the demand observation is a Saturday. Preserve separate dates and avoid inferring shortage, causation, rationing or retail tariffs from these observations alone.
+  source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-10-27'
-  change: Track official supply measures alongside electricity and reservoir observations.
-    An exact restriction, affected group or compliance date needs the complete official
-    rule before a forecast.
+  change: Track official supply measures alongside electricity and reservoir observations. An exact restriction, affected group or compliance date needs the complete official rule before a forecast.
   source_url: https://www.minenergia.gov.co/
