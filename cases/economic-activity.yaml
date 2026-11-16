@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: economic-activity
 plain_title: Economic activity and jobs
-plain_summary: Monthly activity, factories, shops, trade and employment reveal whether growth
-  is broad and whether it is reaching workers.
+plain_summary: Monthly activity, factories, shops, building permits, trade and employment reveal whether
+  growth is broad and whether it is reaching workers.
 why_it_matters: Weak output can affect employment, tax revenue and business demand.
 who_is_affected: Workers, consumers, firms and public budgets.
 identifiers:
@@ -19,45 +19,58 @@ identifiers:
   - ISE
   - manufactura
   - comercio minorista
+  - licencias de construcción
 current_view:
-  date: '2026-11-10'
-  text: September exports rose 16.4% in value to USD 5,410.7 million FOB; August CIF
-    imports cannot form a comparable balance. September national unemployment was
-    8.0%, with flat occupation and worse large-city unemployment. August activity and
-    factories were weak. The new internal call is 55% that September original-series
-    annual ISE growth exceeds August's -0.04%, against an uninformative 50/50 baseline.
-    September activity has not been released.
+  date: '2026-11-16'
+  text: September permitted building area rose 4.8% year on year, with housing +1.0% and non-residential +17.1%.
+    These are preliminary authorizations, not completed building activity. Factory production +1.5% and retail
+    sales +9.7% coexist with factory employment -1.4%. Tomorrow’s September activity and third-quarter GDP
+    remain unobserved. Preserve the 55% original annual ISE call above -0.04% and its uninformative 50/50 baseline.
   confidence: confirmed
 next_trigger:
-  date: '2026-11-13'
-  event: DANE schedules manufacturing and retail releases for November 13 at 10:00 Bogotá,
-    September activity for November 17 at 10:00 with the recorded 55% call above
-    -0.04%, and headline national jobs for November 30 at 10:00. Thematic labor
-    releases on November 13 are distinct from national monthly jobs.
+  date: '2026-11-17'
+  event: DANE schedules September ISE and third-quarter GDP for November 17 at 10:00 Bogotá; imports on November
+    18 at 10:00. Preserve the recorded ISE call; sector surveys do not resolve total activity. National jobs
+    remain scheduled November 30, separate from thematic GEIH.
 forecast_ids:
 - family_unemployment_down_yoy_2026-10-30
 - family_ise_annual_up_2026-11-17
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-16'
+  change: Recovered DANE’s November 13 September permit release missed by the headline parser. Total authorized
+    area is 1,880,073 square metres, up 4.8% year on year; housing +1.0% and non-residential +17.1%. January–September
+    total rises 10.8%. The complete bulletin identifies preliminary data, revised earlier months and formal
+    permits that may never become construction; these figures do not resolve ISE or GDP.
+  source_url: https://www.dane.gov.co/files/operaciones/ELIC/bol-ELIC-sep2026.pdf
+- date: '2026-11-13'
+  change: DANE September retail release reports real sales +9.7%, employment +1.2% and ex-fuel real sales +11.6%
+    year on year. These are survey measures, not total household consumption or national employment.
+  source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-interno/encuesta-mensual-de-comercio-emc
+- date: '2026-11-13'
+  change: Verified September factory production +1.5%, real sales +0.6%, employment -1.4%, with 19 of 39 activities
+    expanding; retail real sales +9.7%, employment +1.2%. Complete EMMET bulletin page 3 confirms the factory
+    figures and page 5 reports January–September production +0.5%, employment -1.0%. Provisional data; landing
+    label November 12 differs from PDF cover November 13. Its revised August chart cannot replace archived
+    forecast evidence.
+  source_url: https://www.dane.gov.co/files/operaciones/EMMET/bol-EMMET-sep2026.pdf
 - date: '2026-11-10'
-  change: Recorded the prospective November 17 September activity call at 55% that
-    original-series annual ISE growth exceeds -0.04%, against an explicitly
-    uninformative 50/50 baseline. Prior-month retail strength and slight national
-    jobs improvement offset weak factories only modestly; this is a subjective
-    estimate, not new September activity data or a calibration claim.
+  change: Recorded the prospective November 17 September activity call at 55% that original-series annual ISE
+    growth exceeds -0.04%, against an explicitly uninformative 50/50 baseline. Prior-month retail strength
+    and slight national jobs improvement offset weak factories only modestly; this is a subjective estimate,
+    not new September activity data or a calibration claim.
   source_url: https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/11/17/11151/-/indicador-de-seguimiento-a-la-economia-ise
 - date: '2026-11-04'
-  change: DANE reports September goods exports up 16.4% year over year to USD 5,410.7 million
-    FOB. Different periods and valuations prevent combining this with August CIF imports
-    into a September trade balance.
+  change: DANE reports September goods exports up 16.4% year over year to USD 5,410.7 million FOB. Different
+    periods and valuations prevent combining this with August CIF imports into a September trade balance.
   source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones
 - date: '2026-10-30'
-  change: The original September GEIH bulletin reports national unemployment of 8.0%, below
-    the 8.2% year-earlier threshold; the existing 35% internal call resolves YES. National
-    occupation is unchanged and large-city unemployment worsens.
+  change: The original September GEIH bulletin reports national unemployment of 8.0%, below the 8.2% year-earlier
+    threshold; the existing 35% internal call resolves YES. National occupation is unchanged and large-city
+    unemployment worsens.
   source_url: https://www.dane.gov.co/files/operaciones/GEIH/bol-GEIH-sep2026.pdf
 - date: '2026-10-27'
-  change: The August activity index was 0.04% below a year earlier. Factory and retail readings
-    diverge; one weak month does not establish a sustained contraction.
+  change: The August activity index was 0.04% below a year earlier. Factory and retail readings diverge; one
+    weak month does not establish a sustained contraction.
   source_url: https://www.dane.gov.co/index.php/estadisticas-por-tema/cuentas-nacionales/indicador-de-seguimiento-a-la-economia-ise
