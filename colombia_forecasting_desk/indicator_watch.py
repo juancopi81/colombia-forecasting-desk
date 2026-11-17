@@ -1169,19 +1169,64 @@ def labor_market_observation_from_html(html: str) -> IndicatorObservation | None
     )
 
 
-def _gdp_sector_drivers_from_html(html: str) -> list[dict[str, Any]]:
+def _gdp_sector_drivers_from_html(
+    html: str, *, quarterly_narrative: str
+) -> list[dict[str, Any]]:
     soup = BeautifulSoup(html, "html.parser")
+    anchors = [
+        paragraph
+        for paragraph in soup.find_all("p")
+        if _folded_text_from_html(str(paragraph)).startswith(quarterly_narrative)
+    ]
+    if len(anchors) != 1:
+        return []
+
+    # The headline and list have different div wrappers on DANE's page. Walk
+    # through those wrappers, but never carry quarterly context into a new
+    # period/series paragraph, heading, document table, or semantic section.
+    anchor = anchors[0]
+    scope_tags = ["section", "article", "main", "nav", "aside", "footer"]
+    scope = anchor.find_parent(scope_tags)
+    introduction = (
+        "las actividades economicas que mas contribuyen a la dinamica "
+        "del valor agregado son:"
+    )
+    driver_list = None
+    for node in anchor.find_all_next(
+        ["p", "ul", "ol", "table", "h1", "h2", "h3", "h4", "h5", "h6"]
+        + scope_tags
+    ):
+        if node.find_parent(["ul", "ol"]):
+            continue
+        if node.find_parent(scope_tags) is not scope:
+            break
+        if node.name == "p":
+            text = _folded_text_from_html(str(node))
+            if not text or text == introduction:
+                continue
+            if driver_list is None and text.startswith("fuente:"):
+                continue
+            break
+        if node.name not in {"ul", "ol"}:
+            break
+        if driver_list is not None:
+            # Two unlabelled lists in the same context are not a safe match.
+            return []
+        driver_list = node
+    if driver_list is None:
+        return []
+
     drivers: list[dict[str, Any]] = []
-    for item in soup.find_all("li"):
+    for item in driver_list.find_all("li"):
         text = normalize_whitespace(item.get_text(" ", strip=True))
         match = re.search(
             rf"(.+?)\s+crece\s+{_PERCENT}\s+\(contribuye\s+{_NUMBER}\s+"
-            r"puntos porcentuales",
+            r"puntos? porcentual(?:es)? a la variaci[oó]n anual",
             text,
             re.IGNORECASE,
         )
         if not match:
-            continue
+            return []
         drivers.append(
             {
                 "name": normalize_whitespace(match.group(1)),
@@ -1227,7 +1272,9 @@ def gdp_observation_from_html(html: str) -> IndicatorObservation | None:
         values={
             "real_gdp_annual_growth_pct": annual_growth,
             "real_gdp_qoq_adjusted_growth_pct": adjusted_growth,
-            "sector_drivers": _gdp_sector_drivers_from_html(html),
+            "sector_drivers": _gdp_sector_drivers_from_html(
+                html, quarterly_narrative=match.group(0)
+            ),
             "official_documents": _current_document_links_from_html(
                 html,
                 source_url=definition.source_url,

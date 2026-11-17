@@ -1,4 +1,4 @@
-# Forecast scoreboard — 2026-11-16
+# Forecast scoreboard — 2026-11-17
 
 ## Public forecasts
 
@@ -9,10 +9,10 @@
 
 ## Internal forecasts
 
-- Open: 2; resolved: 6; void and unscored: 0.
-- Right side: 3/6 directional calls (50%); 0 calls at 50/50.
-- Mean Brier score: 0.271383 (n=6).
-- Paired model / baseline Brier: 0.271383 / 0.2623 (n=6); baseline minus model: -0.009083.
+- Open: 1; resolved: 7; void and unscored: 0.
+- Right side: 4/7 directional calls (57%); 0 calls at 50/50.
+- Mean Brier score: 0.261543 (n=7).
+- Paired model / baseline Brier: 0.261543 / 0.260543 (n=7); baseline minus model: -0.001.
 - Waiting for official records: 1.
   - Will Comisión Tercera of the Cámara de Representantes approve Proyecto de Ley012 de2026 Cámara in first debate before2026-10-27T00:00:00-05:00? (shadow_20261026_camara_pl012_first_debate_approval)
 

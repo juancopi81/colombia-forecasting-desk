@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: economic-activity
 plain_title: Economic activity and jobs
-plain_summary: Monthly activity, factories, shops, building permits, trade and employment reveal whether
-  growth is broad and whether it is reaching workers.
+plain_summary: Monthly activity, factories, shops, building permits, trade and employment reveal whether growth
+  is broad and whether it is reaching workers.
 why_it_matters: Weak output can affect employment, tax revenue and business demand.
 who_is_affected: Workers, consumers, firms and public budgets.
 identifiers:
@@ -14,6 +14,7 @@ identifiers:
   - retail_sales
   - labor_market
   - external_trade
+  - gdp_growth
   nits: []
   keywords:
   - ISE
@@ -21,23 +22,37 @@ identifiers:
   - comercio minorista
   - licencias de construcción
 current_view:
-  date: '2026-11-16'
-  text: September permitted building area rose 4.8% year on year, with housing +1.0% and non-residential +17.1%.
-    These are preliminary authorizations, not completed building activity. Factory production +1.5% and retail
-    sales +9.7% coexist with factory employment -1.4%. Tomorrow’s September activity and third-quarter GDP
-    remain unobserved. Preserve the 55% original annual ISE call above -0.04% and its uninformative 50/50 baseline.
+  date: '2026-11-17'
+  text: 'Third-quarter GDP grew 0.5% year on year but fell 0.8% from the previous quarter after seasonal/calendar
+    adjustment. September original annual activity grew 1.44%, resolving the unchanged 55% call above -0.04%
+    YES. A monthly rebound does not establish broad recovery: quarterly agriculture and manufacturing contracted.
+    August activity was revised to -0.56%; the recorded threshold stays -0.04%. All new output estimates are
+    preliminary.'
   confidence: confirmed
 next_trigger:
-  date: '2026-11-17'
-  event: DANE schedules September ISE and third-quarter GDP for November 17 at 10:00 Bogotá; imports on November
-    18 at 10:00. Preserve the recorded ISE call; sector surveys do not resolve total activity. National jobs
-    remain scheduled November 30, separate from thematic GEIH.
+  date: '2026-11-18'
+  event: DANE schedules September imports at 10:00 Bogotá; require matching periods and valuations for trade-balance
+    claims. National jobs on November 30 and later monthly activity will test breadth; no new GDP/ISE call
+    after today’s releases.
 forecast_ids:
 - family_unemployment_down_yoy_2026-10-30
 - family_ise_annual_up_2026-11-17
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-17'
+  change: First September bulletin reports original annual ISE +1.44%, adjusted annual +1.52% and adjusted
+    monthly +2.82%. Original annual primary activities -1.81%, secondary +2.34%, tertiary +1.93%. The existing
+    November 10 call at 55% above -0.04% resolves YES through the resolver; prediction fields stay fixed. July
+    revised +1.06% to +0.25%, August -0.04% to -0.56%; later revisions cannot change the first-release threshold
+    or outcome. Preliminary estimates.
+  source_url: https://www.dane.gov.co/files/operaciones/ISE/bol-ISE-sep2026.pdf
+- date: '2026-11-17'
+  change: 'Verified November 17 preliminary GDP bulletin: Q3 original real GDP +0.5% year on year, -0.8% seasonally/calendar-adjusted
+    quarter on quarter, January–September +2.1%. Q3 agriculture -6.7%, manufacturing -1.2%, construction +0.6%,
+    mining +7.8%. Q2 annual GDP revised +3.5% to +3.6%, Q1 +2.2% to +2.1%. Quarterly and year-to-date sector
+    contributions must stay separate; monthly activity improvement does not establish sustained recovery.'
+  source_url: https://www.dane.gov.co/files/operaciones/PIB/bol-PIB-IIItrim2026.pdf
 - date: '2026-11-16'
   change: Recovered DANE’s November 13 September permit release missed by the headline parser. Total authorized
     area is 1,880,073 square metres, up 4.8% year on year; housing +1.0% and non-residential +17.1%. January–September

@@ -600,6 +600,103 @@ def test_gdp_observation_from_html_extracts_dane_headline() -> None:
     )
 
 
+def test_gdp_drivers_from_saved_november_17_page_keep_quarterly_values() -> None:
+    html = (
+        Path(__file__).parent / "fixtures" / "dane_gdp" / "2026-11-17.html"
+    ).read_text()
+
+    observation = gdp_observation_from_html(html)
+
+    assert observation is not None
+    assert observation.status == "observed"
+    assert observation.period == "2026-Q3"
+    assert observation.release_date == "2026-11-17T00:00:00Z"
+    assert observation.headline == "DANE GDP 2026-Q3: real GDP +0.50% y/y."
+    assert observation.values["real_gdp_annual_growth_pct"] == 0.5
+    assert observation.values.get("real_gdp_qoq_adjusted_growth_pct") is None
+    drivers = observation.values["sector_drivers"]
+    assert len(drivers) == 3
+    assert [driver["annual_growth_pct"] for driver in drivers] == [7.8, 1.6, 5.2]
+    assert [driver["contribution_pp"] for driver in drivers] == [0.3, 0.3, 0.2]
+    assert [driver["name"].split(";")[0] for driver in drivers] == [
+        "Explotación de minas y canteras",
+        "Administración pública y defensa",
+        "Actividades artísticas, de entretenimiento y recreación y otras "
+        "actividades de servicios",
+    ]
+    assert [doc["url"] for doc in observation.values["official_documents"]] == [
+        "https://www.dane.gov.co/files/operaciones/PIB/bol-PIB-IIItrim2026.pdf"
+    ]
+
+
+@pytest.mark.parametrize("with_quarterly_list", [True, False])
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "<p>En lo corrido del año 2026, el PIB crece 2,1%.</p>",
+        "<p>En el tercer trimestre de 2025, el PIB crece 3,0%.</p>",
+        "<p>Respecto al trimestre inmediatamente anterior, el PIB en su "
+        "serie ajustada crece 0,6%.</p>",
+        "<h3>Información histórica</h3>",
+        "<section>Otra sección</section>",
+    ],
+)
+def test_gdp_driver_context_stops_at_period_series_and_section_boundaries(
+    boundary: str, with_quarterly_list: bool
+) -> None:
+    quarterly_list = (
+        "<ul><li>Educación crece 1,6% "
+        "(contribuye 1,0 punto porcentual a la variación anual).</li></ul>"
+        if with_quarterly_list
+        else ""
+    )
+    unrelated_list = (
+        "<ul><li>Educación crece 5,8% "
+        "(contribuye 0,9 puntos porcentuales a la variación anual).</li></ul>"
+    )
+    observation = gdp_observation_from_html(
+        unrelated_list
+        + "<main><p>En el tercer trimestre de 2026, el Producto Interno Bruto "
+        "en su serie original, crece 0,5% respecto al mismo periodo de 2025.</p>"
+        + quarterly_list
+        + boundary
+        + unrelated_list
+        + "</main>"
+    )
+
+    assert observation is not None
+    assert observation.period == "2026-Q3"
+    assert observation.values["real_gdp_annual_growth_pct"] == 0.5
+    assert observation.values["sector_drivers"] == (
+        [{"name": "Educación", "annual_growth_pct": 1.6, "contribution_pp": 1.0}]
+        if with_quarterly_list
+        else []
+    )
+
+
+@pytest.mark.parametrize("ambiguous_part", ["narrative", "list"])
+def test_gdp_drivers_abstain_when_quarterly_context_is_ambiguous(
+    ambiguous_part: str,
+) -> None:
+    narrative = (
+        "<p>En el tercer trimestre de 2026, el Producto Interno Bruto "
+        "en su serie original, crece 0,5% respecto al mismo periodo de 2025.</p>"
+    )
+    driver_list = (
+        "<ul><li>Educación crece 1,6% "
+        "(contribuye 0,3 puntos porcentuales a la variación anual).</li></ul>"
+    )
+    observation = gdp_observation_from_html(
+        narrative + driver_list
+        + (narrative if ambiguous_part == "narrative" else "") + driver_list
+    )
+
+    assert observation is not None
+    assert observation.period == "2026-Q3"
+    assert observation.values["real_gdp_annual_growth_pct"] == 0.5
+    assert observation.values["sector_drivers"] == []
+
+
 def test_ise_observation_from_html_extracts_dane_headline() -> None:
     observation = ise_observation_from_html(
         """
