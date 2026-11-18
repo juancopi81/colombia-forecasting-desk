@@ -1,8 +1,8 @@
 schema_version: case_file.v1
 case_id: energy-supply
 plain_title: Gas and electricity supply
-plain_summary: Supply rules, spot electricity prices and reservoirs can reveal pressure on households and productive
-  activity. Price movements alone do not prove a shortage.
+plain_summary: Supply rules, spot electricity prices and reservoirs can reveal pressure on households
+  and productive activity. Price movements alone do not prove a shortage.
 why_it_matters: Restrictions and supply costs can affect essential services and production.
 who_is_affected: Households, industrial users, generators and distributors.
 identifiers:
@@ -16,11 +16,11 @@ identifiers:
   - abastecimiento de gas
   - embalses
 current_view:
-  date: '2026-11-17'
-  text: XM’s November 14 wholesale spot price is COP 374.40/kWh, below November 13’s COP 457.70/kWh. Useful
-    reservoir volume is 77.75% on November 16 versus 77.88% on November 15. November 12 demand is 258.19 GWh.
-    These separate daily observations establish neither a shortage nor a household tariff change; demand comparisons
-    need calendar and weather controls.
+  date: '2026-11-18'
+  text: XM’s November 15 wholesale spot price is COP 473.77/kWh, above November 14’s COP 374.40/kWh. Useful
+    reservoir volume is 77.48% on November 17 versus 77.75% on November 16. November 13 demand is 258.98
+    GWh. These separate daily observations establish neither a shortage nor a household tariff change;
+    demand comparisons need calendar and weather controls.
   confidence: confirmed
 next_trigger:
   date: null
@@ -29,10 +29,16 @@ forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-18'
+  change: Latest captured XM observations advance spot price to November 15, useful reservoir volume to
+    November 17 and demand to November 13. Prices rise and reservoir percentage falls on separate dates;
+    retain weather/calendar caveats and withhold shortage, consumer-tariff or normalized demand-growth
+    inference. Failed ANH production intake supplies no new hydrocarbon-volume conclusion.
+  source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-17'
-  change: Latest captured XM observations show a lower November 14 spot price and slightly lower November 16
-    useful reservoir percentage. November 12 demand advances the observation clock. Retain separate dates and
-    withhold shortage, consumer-tariff or normalized demand-growth inference.
+  change: Latest captured XM observations show a lower November 14 spot price and slightly lower November
+    16 useful reservoir percentage. November 12 demand advances the observation clock. Retain separate
+    dates and withhold shortage, consumer-tariff or normalized demand-growth inference.
   source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-16'
   change: Updated XM observations show a higher wholesale spot price and lower useful reservoir percentage
@@ -40,13 +46,13 @@ updates:
     no verified rationing, shortage or retail-tariff change follows from these moves.
   source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-13'
-  change: Updated XM spot price, reservoir and Sunday demand observations. Preserve separate dates and weekend
-    effects; these moves alone do not establish shortages, rationing or retail-tariff effects.
+  change: Updated XM spot price, reservoir and Sunday demand observations. Preserve separate dates and
+    weekend effects; these moves alone do not establish shortages, rationing or retail-tariff effects.
   source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-12'
   change: Updated XM spot-price and reservoir observations warrant monitoring, while the demand observation
-    is a Saturday. Preserve separate dates and avoid inferring shortage, causation, rationing or retail tariffs
-    from these observations alone.
+    is a Saturday. Preserve separate dates and avoid inferring shortage, causation, rationing or retail
+    tariffs from these observations alone.
   source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-10-27'
   change: Track official supply measures alongside electricity and reservoir observations. An exact restriction,

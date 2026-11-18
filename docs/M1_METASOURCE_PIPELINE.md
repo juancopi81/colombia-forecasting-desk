@@ -693,8 +693,10 @@ Current observed cards:
 - `policy_rate_ibr`: BanRep SUAMECA latest policy rate and IBR overnight
   nominal series, including the IBR-policy spread.
 - `external_trade`: DANE / DIAN headline exports and imports, including sector
-  shares. FOB exports and CIF imports remain separate until an official
-  comparable balance is available.
+  shares, plus DANE's published monthly FOB trade balance. Only a balance for
+  the same month as both trade components enters the combined headline; failed
+  or mismatched balance evidence remains explicit. Never subtract CIF imports
+  from FOB exports.
 - `oil_gas_production`: ANH / datos.gov.co consolidated crude and fiscalized
   gas production aggregates, including top departments by volume.
 - `fiscal_tax_pulse`: DIAN monthly gross tax collection by broad bucket from

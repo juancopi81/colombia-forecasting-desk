@@ -94,6 +94,7 @@ def test_indicator_watch_registers_all_core_indicators() -> None:
     assert [component.component_id for component in external_trade.components] == [
         "exports",
         "imports",
+        "trade_balance",
     ]
 
 
@@ -1048,7 +1049,7 @@ def test_external_trade_components_from_dane_html_build_bundle() -> None:
     assert "goods_trade_balance_usd_millions" not in bundle.values
     assert (
         bundle.values["goods_trade_balance_status"]
-        == "unavailable_mixed_valuation"
+        == "unavailable_official_balance"
     )
     assert "FOB" in bundle.values["goods_trade_balance_caveat"]
     assert "CIF" in bundle.values["goods_trade_balance_caveat"]

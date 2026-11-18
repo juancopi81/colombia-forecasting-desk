@@ -67,6 +67,13 @@
         "next_step": "Headline HTML is wired; add origin/CUODE/product annex drivers later.",
         "source_name": "DANE / DIAN",
         "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/importaciones"
+      },
+      {
+        "component_id": "trade_balance",
+        "name": "Goods trade balance",
+        "next_step": "Use the official monthly FOB balance; never subtract CIF imports from FOB exports.",
+        "source_name": "DANE / DIAN",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/balanza-comercial"
       }
     ],
     "fiscal_tax_pulse": [
@@ -273,7 +280,7 @@
       "frequency": "monthly",
       "indicator_id": "external_trade",
       "name": "External trade",
-      "next_step": "DANE headline exports and imports pages are wired; add annex country/product drivers when needed.",
+      "next_step": "DANE headline exports, imports, and official monthly FOB balance pages are wired; add annex country/product drivers when needed.",
       "source_name": "DANE / DIAN",
       "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones",
       "why_it_matters": "Imports, exports, and trade balance connect domestic demand, FX pressure, and industrial investment."

@@ -271,6 +271,15 @@
         "source_name": "DANE / DIAN",
         "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/importaciones",
         "status": "pending_source"
+      },
+      {
+        "component_id": "trade_balance",
+        "freshness_status": "pending",
+        "name": "Goods trade balance",
+        "next_step": "Use the official monthly FOB balance; never subtract CIF imports from FOB exports.",
+        "source_name": "DANE / DIAN",
+        "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/balanza-comercial",
+        "status": "pending_source"
       }
     ],
     "correlations": [
@@ -281,7 +290,7 @@
     "freshness_status": "pending",
     "indicator_id": "external_trade",
     "name": "External trade",
-    "next_step": "DANE headline exports and imports pages are wired; add annex country/product drivers when needed.",
+    "next_step": "DANE headline exports, imports, and official monthly FOB balance pages are wired; add annex country/product drivers when needed.",
     "source_name": "DANE / DIAN",
     "source_url": "https://www.dane.gov.co/index.php/estadisticas-por-tema/comercio-internacional/exportaciones",
     "status": "pending_source",

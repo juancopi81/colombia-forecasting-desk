@@ -127,6 +127,10 @@ IMPORTS_URL = (
     "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
     "comercio-internacional/importaciones"
 )
+TRADE_BALANCE_URL = (
+    "https://www.dane.gov.co/index.php/estadisticas-por-tema/"
+    "comercio-internacional/balanza-comercial"
+)
 ANH_PRODUCTION_URL = (
     "https://www.anh.gov.co/es/operaciones-y-regal%C3%ADas/"
     "sistemas-integrados-operaciones/estad%C3%ADsticas-de-producci%C3%B3n/"
@@ -1672,6 +1676,67 @@ def imports_component_from_html(html: str) -> IndicatorComponent | None:
     )
 
 
+def trade_balance_component_from_html(html: str) -> IndicatorComponent | None:
+    text = _folded_text_from_html(html)
+    headings = re.findall(
+        rf"\binformacion\s+({_MONTH_NAMES})\s+(?:de\s+)?(20\d{{2}})\b", text
+    )
+    # Require the published monthly narrative, including its explicit FOB basis.
+    # A year-to-date total or a CIF figure is not a substitute.
+    amount = r"((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)"
+    matches = list(re.finditer(
+        rf"\ben\s+({_MONTH_NAMES})\s+de\s+(20\d{{2}})\s+se registro un "
+        rf"(deficit|superavit) en la balanza comercial colombiana de "
+        rf"us\$\s*{amount}\s+millones fob,\s+mientras que en "
+        rf"({_MONTH_NAMES})\s+de\s+(20\d{{2}})\s+se presento un "
+        rf"(deficit|superavit) de us\$\s*{amount}\s+millones fob\.",
+        text,
+    ))
+    updates = re.findall(
+        rf"informacion actualizada el \d{{1,2}} de (?:{_MONTH_NAMES}) de 20\d{{2}}\b",
+        text,
+    )
+    if len(headings) != 1 or len(matches) != 1 or len(updates) != 1:
+        return None
+    match = matches[0]
+    period = _month_period(match[1], match[2])
+    prior_period = _month_period(match[5], match[6])
+    release_date = _release_date_from_text(updates[0])
+    if (
+        period != _month_period(*headings[0])
+        or prior_period != f"{int(match[2]) - 1}-{period[-2:]}"
+        or not release_date
+        or release_date[:7] <= period
+    ):
+        return None
+    balance = float(match[4].replace(".", "").replace(",", "."))
+    prior_balance = float(match[8].replace(".", "").replace(",", "."))
+    if match[3] == "deficit":
+        balance = -balance
+    if match[7] == "deficit":
+        prior_balance = -prior_balance
+    return _component(
+        component_id="trade_balance",
+        name="Goods trade balance",
+        status="observed",
+        source_name="DANE / DIAN",
+        source_url=TRADE_BALANCE_URL,
+        period=period,
+        release_date=release_date,
+        headline=f"DANE goods trade balance {period}: US${balance:,.1f}m FOB.",
+        values={
+            "goods_trade_balance_usd_millions": balance,
+            "valuation": "FOB",
+            "frequency": "monthly",
+            "prior_year_period": prior_period,
+            "prior_year_goods_trade_balance_usd_millions": prior_balance,
+            "content_extraction": "dane_trade_balance_headline_html",
+            "source_text": match[0],
+        },
+        next_step="Use the official monthly FOB balance; never subtract CIF imports from FOB exports.",
+    )
+
+
 def _quarter_period(quarter_text: str, year: str) -> str:
     folded = fold_accents(quarter_text.lower())
     mapping = {
@@ -1793,6 +1858,7 @@ def external_trade_observation_from_components(
     }
     exports = by_id.get("exports")
     imports = by_id.get("imports")
+    balance = by_id.get("trade_balance")
     if (
         exports is None
         or imports is None
@@ -1800,23 +1866,75 @@ def external_trade_observation_from_components(
         or not isinstance(exports.values.get("exports_usd_millions_fob"), float)
         or not isinstance(imports.values.get("imports_usd_millions_cif"), float)
     ):
-        return observation
+        caveat = (
+            "Exports, imports, and the official FOB balance are not all collected "
+            "for one matching month; consult each component's period."
+        )
+        trade_components = [item for item in (exports, imports) if item is not None]
+        latest_trade = max(trade_components, key=lambda item: item.period, default=None)
+        return replace(
+            observation,
+            period=latest_trade.period if latest_trade else observation.period,
+            release_date=latest_trade.release_date if latest_trade else observation.release_date,
+            headline=f"{observation.headline} {caveat}",
+            values={
+                **observation.values,
+                "goods_trade_balance_status": "unavailable_matched_components",
+                "goods_trade_balance_caveat": caveat,
+            },
+        )
     caveat = (
-        "Exports are valued FOB while imports are valued CIF; a comparable "
-        "goods trade balance is unavailable."
+        "Exports are valued FOB while imports are valued CIF and cannot be "
+        "subtracted. The official monthly FOB balance was not collected."
     )
     values = {
         **observation.values,
-        "goods_trade_balance_status": "unavailable_mixed_valuation",
+        "goods_trade_balance_status": "unavailable_official_balance",
         "goods_trade_balance_caveat": caveat,
     }
+    balance_text = "official comparable balance unavailable"
+    if balance is not None and balance.period != exports.period:
+        values["goods_trade_balance_status"] = "unavailable_period_mismatch"
+        values["goods_trade_balance_caveat"] = (
+            f"Official FOB balance covers {balance.period}, while exports and "
+            f"imports cover {exports.period}; no matched balance is available. "
+            "FOB exports and CIF imports cannot be subtracted."
+        )
+    elif (
+        balance is not None
+        and balance.values.get("valuation") == "FOB"
+        and balance.values.get("frequency") == "monthly"
+        and isinstance(balance.values.get("goods_trade_balance_usd_millions"), float)
+    ):
+        amount = balance.values["goods_trade_balance_usd_millions"]
+        values.update({
+            "goods_trade_balance_status": "observed_official_fob",
+            "goods_trade_balance_usd_millions": amount,
+            "goods_trade_balance_valuation": "FOB",
+            "goods_trade_balance_source_url": balance.source_url,
+            "goods_trade_balance_release_date": balance.release_date,
+            "goods_trade_balance_caveat": (
+                "Balance is DANE's published monthly FOB result, not a subtraction "
+                "of the separately reported FOB exports and CIF imports."
+            ),
+        })
+        balance_text = f"official balance US${amount:,.1f}m FOB"
     headline = (
         f"DANE external trade {exports.period}: exports "
         f"US${exports.values['exports_usd_millions_fob']:,.1f}m FOB, imports "
         f"US${imports.values['imports_usd_millions_cif']:,.1f}m CIF, "
-        "comparable balance unavailable (mixed FOB/CIF valuations)."
+        f"{balance_text}."
     )
-    return replace(observation, period=exports.period, headline=headline, values=values)
+    matched_components = [exports, imports]
+    if values["goods_trade_balance_status"] == "observed_official_fob":
+        matched_components.append(balance)
+    return replace(
+        observation,
+        period=exports.period,
+        release_date=max(item.release_date or "" for item in matched_components),
+        headline=headline,
+        values=values,
+    )
 
 
 def fiscal_tax_observation_from_components(
@@ -2721,6 +2839,7 @@ _DANE_TRADE_COMPONENTS: tuple[
 ] = (
     ("exports", EXPORTS_URL, exports_component_from_html),
     ("imports", IMPORTS_URL, imports_component_from_html),
+    ("trade_balance", TRADE_BALANCE_URL, trade_balance_component_from_html),
 )
 
 _XM_ENERGY_COMPONENTS: tuple[

@@ -1,4 +1,4 @@
-# Forecast scoreboard — 2026-11-17
+# Forecast scoreboard — 2026-11-18
 
 ## Public forecasts
 
