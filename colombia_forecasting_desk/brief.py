@@ -565,8 +565,8 @@ def _indicator_alerts(
         imports = by_component.get("imports")
         periods = {
             component.period
-            for component in indicator.components
-            if component.status == "observed" and component.period
+            for component in (exports, imports)
+            if component is not None and component.period
         }
         if len(periods) > 1:
             alerts.append(
@@ -583,9 +583,16 @@ def _indicator_alerts(
                 imports.values.get("imports_usd_millions_cif"), int | float
             )
         ):
+            balance_caveat = indicator.values.get("goods_trade_balance_caveat")
+            if not isinstance(balance_caveat, str) or not balance_caveat.strip():
+                balance_caveat = (
+                    "DANE's official monthly FOB balance is available."
+                    if indicator.values.get("goods_trade_balance_status") == "observed_official_fob"
+                    else "Official balance availability is not established by this observation."
+                )
             alerts.append(
                 "`mixed_valuation_components`: exports are FOB and imports are "
-                "CIF, so a comparable trade balance is unavailable."
+                f"CIF; do not subtract them to calculate a trade balance. {balance_caveat}"
             )
 
     if indicator.indicator_id == "fiscal_tax_pulse":

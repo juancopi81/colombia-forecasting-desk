@@ -1,8 +1,7 @@
 schema_version: case_file.v1
 case_id: interest-rates-inflation
 plain_title: Interest rates and inflation
-plain_summary: The central bank balances persistent inflation against the effects of expensive
-  borrowing.
+plain_summary: The central bank balances persistent inflation against the effects of expensive borrowing.
 why_it_matters: Policy decisions affect credit costs and household purchasing power.
 who_is_affected: Borrowers, savers, firms and public borrowers.
 identifiers:
@@ -17,53 +16,59 @@ identifiers:
   - Banco de la República
   - inflación
 current_view:
-  date: '2026-11-10'
-  text: The original November 9 bulletin reports October annual inflation of 6.30%
-    and monthly inflation of 0.20%. The unchanged 60% call above September's 6.29%
-    resolves YES, by only 0.01 percentage points. Policy remains 12.25%. November 10
-    TRM is COP 3,269.88 per dollar, up 2.73% over seven days; this later observation
-    establishes no cause for October inflation. Failed headline HTML did not prevent
-    exact bulletin verification.
+  date: '2026-11-19'
+  text: November’s official analyst survey, conducted November 10–12, puts mean annual December inflation
+    at 6.79%, versus 6.83% in October’s survey, with 35 versus 41 respondents. This is an expectation,
+    with different panels and unknown exact publication day. November and December month-end policy medians
+    are 12.25%; neither establishes a December 18 hike probability. Observed October annual IPC remains
+    6.30%, policy 12.25%, and November 19 TRM COP 3,326.96 per dollar.
   confidence: confirmed
 next_trigger:
-  date: '2026-11-12'
-  event: DANE schedules core inflation excluding food and regulated items for 14:00
-    Bogotá. This is a separate series; no directional call is recorded.
+  date: '2026-12-07'
+  event: DANE schedules November headline IPC for December 7 at 18:00 Bogotá; its family window opens
+    November 30. BanRep’s December 18 decision window opens December 11. Require exact first-release outcomes;
+    survey month-end columns do not establish board timing.
 forecast_ids:
 - family_banrep_rate_decision_2026-10-30
 - family_ipc_annual_up_2026-11-09
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-19'
+  change: 'Verified the complete relevant November EME workbook sheets: fieldwork November 10–12; annual
+    December mean 6.792571428571428% and 35 participants, compared with October same-horizon mean 6.83%
+    and 41 participants. November 30/December 31 policy medians are 12.25%. The workbook includes coarse
+    inflation bins but no exact annual-November-above-6.30% YES share or December 18 rate-hike share.
+    Keep first-release CPI outcomes and recorded forecasts unchanged.'
+  source_url: https://suameca.banrep.gov.co/archivos/encuestas/encuesta_mensual_analistas_economicos/res_inf_nov2026.xlsx
 - date: '2026-11-10'
-  change: The exact October first-release bulletin reports annual inflation of 6.30%,
-    above the unchanged 6.29% threshold. The original 60% call resolves YES through
-    the family resolver; its probability, baseline and cutoff remain unchanged.
-    Monthly inflation is 0.20%; the small annual rise does not establish broad
-    acceleration or forecasting calibration.
+  change: The exact October first-release bulletin reports annual inflation of 6.30%, above the unchanged
+    6.29% threshold. The original 60% call resolves YES through the family resolver; its probability,
+    baseline and cutoff remain unchanged. Monthly inflation is 0.20%; the small annual rise does not establish
+    broad acceleration or forecasting calibration.
   source_url: https://www.dane.gov.co/files/operaciones/IPC/oct2026/bol-IPC-oct2026.pdf
 - date: '2026-11-09'
-  change: The November 6 official announcement reports a completed USD 2,000 million
-    government purchase for reserve accumulation, distinct from the earlier authorization.
-    Its captured headline does not establish liquidity treatment or peso effects; it
-    does not change the policy rate or the recorded inflation forecast.
+  change: The November 6 official announcement reports a completed USD 2,000 million government purchase
+    for reserve accumulation, distinct from the earlier authorization. Its captured headline does not
+    establish liquidity treatment or peso effects; it does not change the policy rate or the recorded
+    inflation forecast.
   source_url: https://www.banrep.gov.co/es/noticias/junta-directiva/banrep-compro-2000-millones-dolares-nov-2026
 - date: '2026-11-06'
-  change: The complete new minutes explain the October hold without promising easing.
-    One director initially favored a cut before joining the hold majority; three favored
-    a further increase. This later evidence does not rewrite the existing inflation call.
+  change: The complete new minutes explain the October hold without promising easing. One director initially
+    favored a cut before joining the hold majority; three favored a further increase. This later evidence
+    does not rewrite the existing inflation call.
   source_url: https://www.banrep.gov.co/es/noticias/junta-directiva/minutas-banrep-octubre-2026
 - date: '2026-11-04'
-  change: The official exchange rate reaches COP 3,235.59 per dollar, a seven-day peso
-    depreciation of 2.78%. This November observation does not rewrite the immutable
-    October inflation forecast or establish its outcome.
+  change: The official exchange rate reaches COP 3,235.59 per dollar, a seven-day peso depreciation of
+    2.78%. This November observation does not rewrite the immutable October inflation forecast or establish
+    its outcome.
   source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
 - date: '2026-11-02'
-  change: Verified the October 30 hold at 12.25%; the frozen 65% hike call resolves NO. Recorded
-    a separate prospective 60% October inflation-up call for November 9, against an explicitly
-    uninformative 50/50 baseline.
+  change: Verified the October 30 hold at 12.25%; the frozen 65% hike call resolves NO. Recorded a separate
+    prospective 60% October inflation-up call for November 9, against an explicitly uninformative 50/50
+    baseline.
   source_url: https://www.banrep.gov.co/es/noticias/junta-directiva/junta-directiva-octubre-2026
 - date: '2026-10-27'
-  change: September annual inflation is 6.29%. The September 30 board decision raised the policy
-    rate to 12.25%; the next decision is October 30.
+  change: September annual inflation is 6.29%. The September 30 board decision raised the policy rate
+    to 12.25%; the next decision is October 30.
   source_url: https://banrep.gov.co/es/noticias/junta-directiva/junta-directiva-septiembre-2026

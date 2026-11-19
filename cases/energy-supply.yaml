@@ -16,11 +16,12 @@ identifiers:
   - abastecimiento de gas
   - embalses
 current_view:
-  date: '2026-11-18'
-  text: XM’s November 15 wholesale spot price is COP 473.77/kWh, above November 14’s COP 374.40/kWh. Useful
-    reservoir volume is 77.48% on November 17 versus 77.75% on November 16. November 13 demand is 258.98
-    GWh. These separate daily observations establish neither a shortage nor a household tariff change;
-    demand comparisons need calendar and weather controls.
+  date: '2026-11-19'
+  text: XM’s November 16 wholesale spot price is COP 648.30/kWh, above November 15’s COP 473.77/kWh. Useful
+    reservoir volume is 77.14% on November 18 versus 77.48% on November 17. Saturday November 14 demand
+    is 241.26 GWh, compared with Friday’s 258.98 GWh. Different observation dates and weekend effects
+    prevent a normalized demand-growth conclusion. These observations do not establish shortages or household
+    tariff changes.
   confidence: confirmed
 next_trigger:
   date: null
@@ -29,6 +30,13 @@ forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-19'
+  change: New XM clocks advance wholesale spot price to November 16, reservoirs to November 18 and demand
+    to Saturday November 14. Price rises and reservoir percentage falls on separate dates; Saturday demand
+    cannot establish weaker activity against Friday. Current hydrocarbon production remains unknown because
+    recovered ANH observations are still March 2026. No shortage, rationing or household tariff effect
+    is verified.
+  source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-18'
   change: Latest captured XM observations advance spot price to November 15, useful reservoir volume to
     November 17 and demand to November 13. Prices rise and reservoir percentage falls on separate dates;

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from colombia_forecasting_desk.candidates import build_m1_candidates
 from colombia_forecasting_desk.models import (
     Cluster,
+    IndicatorComponent,
     IndicatorObservation,
     RunSummary,
     SourceFailure,
@@ -453,6 +456,52 @@ def test_indicator_seed_candidate_from_ise_activity_acceleration() -> None:
     )
     assert candidate["resolution_source"] == "DANE ISE next monthly release."
     assert candidate["evidence"]["values"]["annual_growth_pct"] == 3.98
+
+
+@pytest.mark.parametrize("exports_status,imports_period,balance_period,expected", [
+    ("observed", "2026-03", "2026-02", False),
+    ("observed", "2026-03", "2026-03", False),
+    ("observed", "2026-02", "2026-03", True),
+    ("failed", "2026-02", "2026-03", False),
+])
+def test_trade_alignment_candidate_compares_only_observed_exports_and_imports(
+    exports_status, imports_period, balance_period, expected
+):
+    trade = IndicatorObservation(
+        indicator_id="external_trade",
+        name="External trade",
+        category="external",
+        status="observed",
+        frequency="monthly",
+        source_name="DANE",
+        source_url="https://example.com/trade",
+        period="2026-03",
+        freshness_status="current",
+        components=[
+            IndicatorComponent(
+                component_id=component_id,
+                name=component_id,
+                status=status,
+                source_name="DANE",
+                source_url=f"https://example.com/{component_id}",
+                period=period,
+            )
+            for component_id, status, period in (
+                ("exports", exports_status, "2026-03"),
+                ("imports", "observed", imports_period),
+                ("trade_balance", "observed", balance_period),
+            )
+        ],
+    )
+    result = build_m1_candidates(
+        _summary(), [], [], topic_keywords=[], indicator_watch=[trade],
+        generated_at="2026-05-06T12:00:31Z",
+    )
+    candidates = result["candidates"]
+    assert len(candidates) == int(expected)
+    if expected:
+        assert candidates[0]["theme"] == "External trade alignment"
+        assert candidates[0]["reasons"] == ["indicator:mixed_period_components"]
 
 
 def test_indicator_seed_candidate_from_tes_auction_cost() -> None:

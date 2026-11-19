@@ -689,7 +689,9 @@ def _indicator_candidates(
         periods = {
             component.period
             for component in trade.components
-            if component.status == "observed" and component.period
+            if component.component_id in {"exports", "imports"}
+            and component.status == "observed"
+            and component.period
         }
         if len(periods) > 1:
             seeds.append(

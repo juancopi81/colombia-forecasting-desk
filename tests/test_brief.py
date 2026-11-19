@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
+import pytest
+
 from colombia_forecasting_desk.brief import render_brief, render_m2_handoff
+from colombia_forecasting_desk.indicator_watch import external_trade_observation_from_components
 from colombia_forecasting_desk.models import (
     Cluster,
     IndicatorComponent,
@@ -302,6 +307,96 @@ def test_brief_handles_no_clusters_no_failures() -> None:
     assert "_No clusters._" in out
     assert "_No source failures during this run._" in out
     assert "_None flagged._" in out
+
+
+def _trade_observation(balance_state: str) -> IndicatorObservation:
+    components = [
+        IndicatorComponent(
+            component_id=component_id,
+            name=component_id,
+            status="observed",
+            source_name="DANE",
+            source_url=f"https://example.com/{component_id}",
+            period="2026-09",
+            release_date="2026-11-18T00:00:00Z",
+            values=values,
+        )
+        for component_id, values in (
+            ("exports", {"exports_usd_millions_fob": 5410.7}),
+            ("imports", {"imports_usd_millions_cif": 8192.8}),
+            ("trade_balance", {
+                "goods_trade_balance_usd_millions": -2268.2,
+                "valuation": "FOB",
+                "frequency": "monthly",
+            }),
+        )
+    ]
+    if balance_state == "missing":
+        components.pop()
+    elif balance_state == "failed":
+        components[-1] = replace(components[-1], status="failed", values={})
+    elif balance_state == "balance_period_mismatch":
+        components[-1] = replace(components[-1], period="2026-08")
+    elif balance_state == "trade_period_mismatch":
+        components[1] = replace(components[1], period="2026-08")
+    observation = external_trade_observation_from_components(components)
+    assert observation is not None
+    return observation
+
+
+@pytest.mark.parametrize("balance_state", [
+    "available", "missing", "failed", "balance_period_mismatch", "trade_period_mismatch",
+])
+@pytest.mark.parametrize("renderer", ["brief", "handoff"])
+def test_trade_alerts_and_m2_seeds_follow_collected_balance_status(balance_state, renderer):
+    summary = RunSummary(
+        run_date="2026-11-19",
+        started_at="2026-11-19T12:00:00Z",
+        finished_at="2026-11-19T12:00:30Z",
+        sources_checked=3,
+        sources_failed=0,
+        raw_items=0,
+        cleaned_items=0,
+        clusters=0,
+    )
+    trade = _trade_observation(balance_state)
+    if renderer == "brief":
+        out = render_brief(summary, [], [], [], topic_keywords=[], indicator_watch=[trade])
+    else:
+        out = render_m2_handoff(summary, [], [], [], indicator_watch=[trade])
+
+    assert "`mixed_valuation_components`" in out
+    assert "do not subtract them to calculate a trade balance" in out
+    assert trade.values["goods_trade_balance_caveat"] in out
+    assert "so a comparable trade balance is unavailable" not in out
+    mismatched_trade = balance_state == "trade_period_mismatch"
+    assert ("`mixed_period_components`" in out) == mismatched_trade
+    assert ("External trade alignment" in out) == mismatched_trade
+    if balance_state == "available":
+        assert "DANE's published monthly FOB result" in out
+        assert "unavailable" not in out
+        if renderer == "brief":
+            assert "official balance US$-2,268.2m FOB" in out
+    elif balance_state in {"missing", "failed"}:
+        assert "official monthly FOB balance was not collected" in out
+    elif balance_state == "balance_period_mismatch":
+        assert "Official FOB balance covers 2026-08" in out
+        assert "no matched balance is available" in out
+
+
+@pytest.mark.parametrize("status,expected", [
+    ("observed_official_fob", "DANE's official monthly FOB balance is available."),
+    (None, "Official balance availability is not established by this observation."),
+])
+def test_trade_alert_without_caveat_uses_status_without_inventing_unavailability(status, expected):
+    from colombia_forecasting_desk.brief import _indicator_alerts
+
+    trade = _trade_observation("available")
+    trade = replace(trade, values={"goods_trade_balance_status": status})
+    alerts = _indicator_alerts(trade, [trade], "2026-11-19")
+    assert len(alerts) == 1
+    assert expected in alerts[0]
+    assert "do not subtract them" in alerts[0]
 
 
 def test_m2_handoff_is_paste_ready(make_cleaned) -> None:
