@@ -75,6 +75,7 @@ JSON_ARTIFACTS = (
     "agent_analysis.json",
     "source_health.json",
     "reader_brief.json",
+    "brief_chart_data.json",
 )
 
 # Ordered list of files the daily view links back to, when present.
@@ -2633,12 +2634,13 @@ def render_daily_review_html(art: dict[str, Any]) -> str:
         queue_section = ""
 
     brief = art.get("reader_brief.json")
-    if brief is not None and not validate_reader_brief(brief, run_date=run_date):
+    chart_data = art.get("brief_chart_data.json")
+    if brief is not None and not validate_reader_brief(brief, run_date=run_date, chart_data=chart_data):
         def details(label: str, content: str) -> str:
             return f'<details class="reader-details"><summary>{_esc(label)}</summary>{content}</details>'
 
         body = (
-            render_reader_brief_html(brief)
+            render_reader_brief_html(brief, chart_data=chart_data)
             + details("Daily analysis and decisions", masthead + _render_banner(decision)
                       + stats + why_section + _render_agent_intelligence(art, index=3)
                       + insight_section + inv_section + queue_section)

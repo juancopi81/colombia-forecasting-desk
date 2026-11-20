@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 from colombia_forecasting_desk.reader_brief import validate_reader_brief
+from colombia_forecasting_desk.brief_charts import DATA_FILE, day_cutoff, load_chart_data, selected_chart
 
 
 def check_usefulness(runs_dir: Path, as_of: str) -> dict:
@@ -24,16 +25,18 @@ def check_usefulness(runs_dir: Path, as_of: str) -> dict:
             brief = json.loads((folder / "reader_brief.json").read_text(encoding="utf-8"))
             acceptance = json.loads((folder / "acceptance_report.json").read_text(encoding="utf-8"))
             receipt = json.loads((folder / "reader_brief_receipt.json").read_text(encoding="utf-8"))
+            chart_data = load_chart_data(folder, cutoff=day_cutoff(folder.name)) if selected_chart(brief) else None
+            chart_files = (DATA_FILE, "brief_chart.svg", "brief_chart.png") if chart_data else ()
             finalized = (
                 receipt.get("schema_version") == "reader_brief_receipt.v1"
                 and receipt.get("run_date") == folder.name
                 and receipt.get("context_validated") is True
                 and all(receipt.get("sha256", {}).get(name) == hashlib.sha256((folder / name).read_bytes()).hexdigest()
-                        for name in ("reader_brief.json", "reader_brief.md"))
+                        for name in ("reader_brief.json", "reader_brief.md", *chart_files))
             )
-        except (OSError, ValueError):
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             continue
-        if finalized and acceptance.get("status") == "pass" and acceptance.get("strict_pass") is True and not validate_reader_brief(brief, run_date=folder.name):
+        if finalized and acceptance.get("status") == "pass" and acceptance.get("strict_pass") is True and not validate_reader_brief(brief, run_date=folder.name, chart_data=chart_data):
             dates.append(folder.name)
     return {"schema_version": "usefulness_check.v1", "as_of": as_of,
             "target_runs": 10, "decision_grade_reader_runs": len(dates), "run_dates": dates,

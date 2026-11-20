@@ -40,7 +40,7 @@ paired rows only for comparison; neutral 50/50 calls are separate from the
 directional right-side rate. Skips require an eligible timestamp. This is
 descriptive history, not evidence of calibration from a small sample.
 
-weekly_brief.v1 is LLM-authored JSON. Its shared validator plus the weekly module
+weekly_brief.v2 is LLM-authored JSON; historical v1 remains readable. Its shared validator plus the weekly module
 enforce two sentences for the big picture, three top stories, three patterns,
 two material data-problem lines and 450 words in the complete rendered Markdown.
 Each story links to an HTTPS source already in the dated facts. Upcoming events
@@ -48,6 +48,15 @@ are limited to fourteen days and need a recorded call or one-sentence skip.
 The finalizer validates against weekly_facts.json before writing weekly_brief.md
 and a responsive, escaped weekly.html with light and dark modes. Authored HTML
 is rejected. It does not touch the daily review or generate a forecast.
+
+V2 requires a chart decision with a reason and one chart or null. The facts
+builder validates captured chart originals and copies eligible prepared data
+into `weekly_facts.json.chart_data` before the exact cutoff. The finalizer selects
+only a matching frozen `data_id`, generates SVG/PNG, and embeds the image beneath
+one top story. It never reads later originals to redraw historical charts. Title
+and caption text count toward 450 words. See [the chart contract](BRIEF_CHART_CONTRACT.md).
+Normal finalizer CLI calls require v2; use `--allow-legacy` only to rebuild an
+existing historical v1 artifact, including explicit feedback-file maintenance.
 
 When there are open forecasts, list them in the optional open_forecasts field
 using the daily brief's forecast_id, plain_question, probability and resolves_by

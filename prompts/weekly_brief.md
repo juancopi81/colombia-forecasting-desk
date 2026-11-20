@@ -12,13 +12,24 @@ snapshots or watchlist outputs; acknowledge those gaps. Preserve explicit parser
 corrections and distinguish them from a new official release or official revision.
 Repetition is not a new story. A missing calendar entry is not cancellation.
 
-Author `weekly_brief.json` using the frozen weekly_brief.v1 schema and shared
-fixture. Use English and plain text. Write a big_picture of at most two sentences,
+Author `weekly_brief.json` using weekly_brief.v2 and the chart contract in
+`docs/BRIEF_CHART_CONTRACT.md` and `tests/fixtures/brief_charts/weekly_brief.v2.json`.
+Use English and plain text. Write a big_picture of at most two sentences,
 at most three top_stories, our_calls, next_week, at most three patterns, at most
 two data_problems and one question for Juan. Each story needs what happened, why
 it matters, who is affected and an HTTPS source_url already in the dated facts.
 Use plain names before bill or decree codes. The complete rendered brief must
 contain at most 450 words, including headings and source labels.
+
+Always assess whether one historical chart would materially clarify a top story.
+Record `chart_decision` with a specific reason and either one selected chart or
+null. Make the prior/current comparison and significance prominent; no chart
+quota or numeric importance threshold. Prepare any needed current-run dataset
+before `build_weekly_facts.py` captures the actual cutoff. Select only a `data_id`
+already frozen in `weekly_facts.json.chart_data`, attached to one top story by
+zero-based index. Do not add later captures, revised values or live source reads
+while authoring the weekly brief. Chart titles/captions count toward 450 words.
+Return the finalized image embed with the Markdown; the X draft stays text-only.
 
 Check the underlying evidence rather than copying a sample narrative. Keep a
 bill's proposed text, an opposition report, a schedule and an enacted instrument

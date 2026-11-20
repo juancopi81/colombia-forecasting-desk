@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 from .plain_language import record_check_label, validate_plain_text, word_count
 from .schemas.reader_brief import validate as validate_schema
+from .brief_charts import chart_html, chart_markdown, selected_chart, validate_chart_decision
 
 
 def _text(value: str) -> str:
@@ -33,7 +34,7 @@ def _separate_open_forecasts(brief: dict[str, Any]) -> list[dict[str, Any]]:
     return [row for row in brief["open_forecasts"] if row["forecast_id"] not in upcoming_ids]
 
 
-def _markdown(brief: dict[str, Any]) -> str:
+def _markdown(brief: dict[str, Any], chart_data: dict | None = None, chart_image_path: str = "brief_chart.png") -> str:
     if _quiet(brief):
         return "Nothing needs you today.\n"
     needs = brief["needs_you"]
@@ -43,12 +44,14 @@ def _markdown(brief: dict[str, Any]) -> str:
     else:
         lines = ["**Nothing needs you today.**"]
     lines.extend(["", _md(brief["headline"])])
-    for item in brief["changes"]:
+    for index, item in enumerate(brief["changes"]):
         url = quote(item["source_url"], safe=":/?#[]@!$&'*+,;=%")
         confidence = "" if item["confidence"] == "confirmed" else f" ({item['confidence']})"
         lines.extend(["", f"- **{_md(item['title'])}{confidence}:** {_md(item['what_happened'])} "
                       f"{_md(item['why_it_matters'])} Affected: {_md(item['who_is_affected'])} "
                       f"[Source]({url})."])
+        if selected_chart(brief) and selected_chart(brief)["story_index"] == index:
+            lines.extend(["", chart_markdown(brief, chart_data, chart_image_path)])
     if brief["coming_up"]:
         lines.extend(["", "**Coming up**"])
         for item in brief["coming_up"]:
@@ -74,6 +77,7 @@ def validate_reader_brief(
     run_date: str | None = None,
     forecast_rows: Iterable[dict[str, Any]] | None = None,
     source_urls: set[str] | None = None,
+    chart_data: dict | None = None,
 ) -> list[str]:
     """Validate the shared shape, complete rendered text and optional provenance.
 
@@ -83,9 +87,14 @@ def validate_reader_brief(
     issues = validate_schema(brief)
     if issues:
         return issues
+    issues.extend(validate_chart_decision(brief, chart_data=chart_data))
+    if selected_chart(brief) and chart_data is None:
+        return [*issues, "selected chart needs validated prepared data"]
     if run_date is not None and brief["run_date"] != run_date:
         issues.append("reader brief run_date does not match the run folder")
     fields = [brief["headline"], *brief["data_problems"]]
+    if selected_chart(brief):
+        fields.append(selected_chart(brief)["why_it_matters"])
     if brief["needs_you"]["required"]:
         fields.append(brief["needs_you"]["action"])
     for item in brief["changes"]:
@@ -108,7 +117,7 @@ def validate_reader_brief(
         issues.append("reader fields must be plain text, without HTML tags")
     for field in fields:
         issues.extend(validate_plain_text(field))
-    rendered = _markdown(brief)
+    rendered = _markdown(brief, chart_data)
     count = word_count(rendered)
     if count > 250:
         issues.append(f"rendered reader brief has {count} words; maximum is 250")
@@ -138,16 +147,16 @@ def validate_reader_brief(
     return list(dict.fromkeys(issues))
 
 
-def render_reader_brief(brief: dict[str, Any]) -> str:
-    issues = validate_reader_brief(brief)
+def render_reader_brief(brief: dict[str, Any], *, chart_data: dict | None = None, chart_image_path: str = "brief_chart.png") -> str:
+    issues = validate_reader_brief(brief, chart_data=chart_data)
     if issues:
         raise ValueError("; ".join(issues))
-    return _markdown(brief)
+    return _markdown(brief, chart_data, chart_image_path)
 
 
-def render_reader_brief_html(brief: dict[str, Any]) -> str:
+def render_reader_brief_html(brief: dict[str, Any], *, chart_data: dict | None = None) -> str:
     """Render the same content as Markdown without interpreting authored markup."""
-    issues = validate_reader_brief(brief)
+    issues = validate_reader_brief(brief, chart_data=chart_data)
     if issues:
         raise ValueError("; ".join(issues))
     esc = lambda value: html.escape(_text(str(value)), quote=True)
@@ -163,12 +172,14 @@ def render_reader_brief_html(brief: dict[str, Any]) -> str:
              f'<h1>{esc(brief["headline"])}</h1>']
     if brief["changes"]:
         parts.append('<ul class="reader-brief__changes">')
-        for item in brief["changes"]:
+        for index, item in enumerate(brief["changes"]):
             confidence = "" if item["confidence"] == "confirmed" else f" ({esc(item['confidence'])})"
             parts.append(f'<li><strong>{esc(item["title"])}{confidence}:</strong> '
                          f'{esc(item["what_happened"])} {esc(item["why_it_matters"])} '
                          f'Affected: {esc(item["who_is_affected"])} '
                          f'<a href="{esc(item["source_url"])}">Source</a>.</li>')
+            if selected_chart(brief) and selected_chart(brief)["story_index"] == index:
+                parts[-1] = parts[-1][:-5] + chart_html(brief, chart_data) + '</li>'
         parts.append("</ul>")
     if brief["coming_up"]:
         parts.append("<h2>Coming up</h2><ul>")

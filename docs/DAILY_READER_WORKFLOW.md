@@ -144,7 +144,13 @@ state. Then run the offline matcher:
 ```
 
 Write `reader_brief.json` using `prompts/reader_brief.md` and the current analysis,
-family calls, scoreboard, case updates and watchlist hits. Explain at most three
+family calls, scoreboard, case updates and watchlist hits. New briefs use
+`reader_brief.v2` and must record `chart_decision`: one source-checked chart
+attached to a changed story, or a specific written skip. Follow
+[the chart contract](BRIEF_CHART_CONTRACT.md). When a trend or historical
+comparison carries the story, prepare captured official JSON/XLSX observations
+with `prepare_brief_chart.py` before finalization. Use the existing bounded
+follow-up for any necessary intake; no extra collection allowance. Explain at most three
 changes, affected people and upcoming calls in plain words. Include waiting
 official records and material data problems. Keep the complete rendered brief
 at or below 250 words. A genuinely quiet day is one line.
@@ -164,6 +170,12 @@ The final weekday message is `reader_brief.md` verbatim. Counts, validation logs
 and the old pilot retrospective stay in supporting artifacts. Avoid appending
 another process report after the reader brief.
 
+Preserve the finalized chart image embed in that Markdown. The finalizer supplies
+its absolute local PNG path and an accessible SVG in the HTML; do not replace
+the image with a link or a prose description. At most one chart, no chart quota,
+and title/caption text stays within the word limit. Existing historical v1
+briefs may only be rebuilt with the finalizer CLI's `--allow-legacy` option.
+
 After the brief (on Fridays, after the weekly brief), write the Spanish X draft
 with `prompts/x_post_es.md` and add it below the brief. It is the only addition
 to the final message; Juan reviews it and posts it by hand.
@@ -172,6 +184,11 @@ to the final message; Juan reviews it and posts it by hand.
 
 On Fridays, capture the current timezone-aware timestamp and build that ISO
 week's facts with that timestamp as `--cutoff-at`:
+
+Prepare any chosen structured chart evidence in today's run before taking that
+cutoff. The builder freezes validated datasets in `weekly_facts.json.chart_data`.
+Author `weekly_brief.v2` with a chart decision selecting only those frozen values
+or a written skip. Later source files or revisions cannot supply weekly charts.
 
 ```bash
 ./.venv/bin/python scripts/build_weekly_facts.py --week YYYY-Www --cutoff-at ISO_TIMESTAMP

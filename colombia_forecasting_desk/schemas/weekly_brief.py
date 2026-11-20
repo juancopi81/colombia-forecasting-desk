@@ -3,12 +3,15 @@ import re
 from typing import Any
 from ._common import base, reader_fields, objects, upcoming, https, iso_date, strings, text
 from ..plain_language import validate_plain_text
+from ..brief_charts import validate_chart_decision
 
 
 def validate(payload: Any) -> list[str]:
-    issues = base(payload, "weekly_brief", ("week", "as_of", "big_picture", "top_stories", "our_calls", "next_week", "patterns", "data_problems", "question"), dated=False)
+    version = 2 if isinstance(payload, dict) and payload.get("schema_version") == "weekly_brief.v2" else 1
+    issues = base(payload, "weekly_brief", ("week", "as_of", "big_picture", "top_stories", "our_calls", "next_week", "patterns", "data_problems", "question"), dated=False, version=version)
     if not isinstance(payload, dict):
         return issues
+    issues.extend(validate_chart_decision(payload))
     if not re.fullmatch(r"\d{4}-W\d{2}", str(payload.get("week", ""))) or not iso_date(payload.get("as_of")):
         issues.append("week and as_of must identify the ISO week and cutoff date")
     reader_fields(payload, ("big_picture", "our_calls", "question"), issues)

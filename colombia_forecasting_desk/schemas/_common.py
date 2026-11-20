@@ -35,12 +35,12 @@ def https(value: Any) -> bool:
         return False
 
 
-def base(payload: Any, name: str, fields: tuple[str, ...], *, dated: bool = True) -> list[str]:
+def base(payload: Any, name: str, fields: tuple[str, ...], *, dated: bool = True, version: int = 1) -> list[str]:
     if not isinstance(payload, dict):
         return ["artifact must be an object"]
     issues = []
-    if payload.get("schema_version") != f"{name}.v1":
-        issues.append(f"schema_version must be {name}.v1")
+    if payload.get("schema_version") != f"{name}.v{version}":
+        issues.append(f"schema_version must be {name}.v{version}")
     issues.extend(f"{field} is required" for field in fields if field not in payload)
     if dated and not iso_date(payload.get("run_date")):
         issues.append("run_date must be an ISO date")

@@ -1,7 +1,7 @@
 # Daily reader brief
 
-The LLM authors `runs/YYYY-MM-DD/reader_brief.json` under the frozen
-`reader_brief.v1` schema. `reader_brief.py` imports the shared schema and
+The LLM authors `runs/YYYY-MM-DD/reader_brief.json` under `reader_brief.v2`.
+Historical v1 inputs remain readable. `reader_brief.py` imports the shared schema and
 plain-language rules, validates the complete rendered brief, and renders Markdown
 and escaped HTML without network access or LLM calls.
 
@@ -24,7 +24,13 @@ retained for audit; later rendering of technical detail does not rewrite the
 reader message that was validated and sent.
 
 The schema defines needs_you, headline, changes, coming_up, open_forecasts and
-data_problems. Changes are capped at three, upcoming events at five, and material
+data_problems. V2 additionally requires `chart_decision`, with a reason and one
+chart or null; see [the chart contract](BRIEF_CHART_CONTRACT.md). A selected chart
+is checked against captured source values before the finalizer generates SVG
+and PNG, embeds the absolute PNG path in Markdown beneath its story, and hashes
+both images plus the prepared dataset in the validation receipt. New finalizer
+CLI calls require v2; `--allow-legacy` is for existing historical v1 artifacts.
+Changes are capped at three, upcoming events at five, and material
 data problems at two. A call requires a recorded forecast ID and its exact
 probability; otherwise the upcoming item has a one-sentence no_call_reason.
 The complete rendered Markdown, including labels and headings, is capped at

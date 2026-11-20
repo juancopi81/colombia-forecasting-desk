@@ -45,6 +45,13 @@ at most 450 words. Start with [the daily procedure](docs/DAILY_READER_WORKFLOW.m
 The personal watchlist ships with two labeled demonstration organizations;
 replace them in `config/watchlist.yaml`.
 
+New reader and weekly briefs record a chart decision: at most one source-checked
+historical chart or a written skip. The existing finalizers validate its captured
+JSON/XLSX observations and embed a PNG in the brief plus accessible SVG in HTML.
+See [the chart contract](docs/BRIEF_CHART_CONTRACT.md). PNG rendering uses the
+existing Playwright dependency and installed Chromium or Chrome; install a
+Playwright browser during setup with `uv run playwright install chromium` if needed.
+
 Requires Python 3.12 and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash

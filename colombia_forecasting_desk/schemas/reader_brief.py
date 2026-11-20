@@ -2,12 +2,15 @@ from __future__ import annotations
 from typing import Any
 from ._common import base, objects, reader_fields, upcoming, https, iso_date, probability, strings, text
 from ..plain_language import validate_plain_text
+from ..brief_charts import validate_chart_decision
 
 
 def validate(payload: Any) -> list[str]:
-    issues = base(payload, "reader_brief", ("needs_you", "headline", "changes", "coming_up", "open_forecasts", "data_problems"))
+    version = 2 if isinstance(payload, dict) and payload.get("schema_version") == "reader_brief.v2" else 1
+    issues = base(payload, "reader_brief", ("needs_you", "headline", "changes", "coming_up", "open_forecasts", "data_problems"), version=version)
     if not isinstance(payload, dict):
         return issues
+    issues.extend(validate_chart_decision(payload))
     needs = payload.get("needs_you")
     if not isinstance(needs, dict) or not isinstance(needs.get("required"), bool):
         issues.append("needs_you requires a boolean required")

@@ -11,6 +11,9 @@ The [daily reader procedure](DAILY_READER_WORKFLOW.md) adds these opt-in artifac
 
 - `reader_brief.json` / `.md` — authored, validated reader output, capped at 250 rendered words
 - `reader_brief_receipt.json` — successful contextual validation and output hashes; required by the ten-run counter
+- `brief_chart_request.json` — selected official source, exact cell/JSON locators and bounded historical window; no authored numeric values
+- `brief_chart_data.json` — immutable extracted observations, source/receipt hashes, units, series and capture/extraction clocks
+- `brief_chart.svg` / `.png` — deterministic chart embedded under the selected story in HTML/Markdown and covered by the daily receipt; no chart when the authored decision is a written skip
 - `family_evidence_capture.json` — history/release and due PL012 minutes capture results with actionable source notices
 - `due_shadow_evidence_capture.json` — bounded due PL012 record checks, unchanged resolver criteria, query bounds and review notices; no outcome decision
 - `sources/camara-minutes-due-<forecast_id>/attempt-NNNN/` — preserved minutes index/PDF bodies, detailed `capture.json` and weekly-compatible `receipts.json`; complete same-day captures are reused and failed attempts retained
@@ -28,6 +31,8 @@ The [daily reader procedure](DAILY_READER_WORKFLOW.md) adds these opt-in artifac
 Other new durable or refreshable outputs are `cases/*.yaml`,
 `forecasts/family_skips.jsonl`, `data/entity_history/`, and
 `weekly/<ISO-week>/{weekly_facts.json,weekly_brief.json,weekly_brief.md,weekly.html}`.
+V2 weekly finalization also writes `weekly_brief_receipt.json`, hashing those
+frozen inputs and rendered outputs plus any `brief_chart.svg` / `.png`.
 Explicit feedback goes to `reviews/usefulness_log.md`; the qualitative ten-run
 review goes to `reviews/usefulness_review.md`. Generated weekly/history outputs
 stay ignored. Forecast prediction fields stay immutable; only declared resolver

@@ -12,7 +12,8 @@ SCHEMAS = (
 
 def validate_artifact(payload: Any, schema_version: str | None = None) -> list[str]:
     version = schema_version or (payload.get("schema_version") if isinstance(payload, dict) else None)
-    if not isinstance(version, str) or version not in {f"{name}.v1" for name in SCHEMAS}:
+    supported = {f"{name}.v1" for name in SCHEMAS} | {"reader_brief.v2", "weekly_brief.v2"}
+    if not isinstance(version, str) or version not in supported:
         return [f"unsupported schema_version: {version}"]
     return import_module(f"{__name__}.{version.split('.')[0]}").validate(payload)
 

@@ -1,7 +1,8 @@
 # Write the daily reader brief
 
-Author `runs/<date>/reader_brief.json` using the frozen `reader_brief.v1`
-contract and `tests/fixtures/shared_interfaces/reader_brief.valid.json`. Finalize
+Author `runs/<date>/reader_brief.json` using `reader_brief.v2` and the
+chart contract in `docs/BRIEF_CHART_CONTRACT.md`. Preserve the existing reader
+fields shown in `tests/fixtures/brief_charts/reader_brief.v2.json`. Finalize
 it with `scripts/finalize_reader_brief.py --date YYYY-MM-DD`.
 
 Read the validated daily analysis and its evidence first. Then read the family
@@ -14,6 +15,17 @@ upcoming events and two material data problems. The complete rendered Markdown,
 including headings, source labels and forecasts, must contain at most 250 words.
 Do not narrate the workflow or use internal codes. Use plain text in all fields;
 the renderer supplies formatting and source links.
+
+Assess a chart on every run. Make consequential changes clear through the prior
+value, current value, historical scale and why they matter. Select at most one
+chart when the trend or comparison materially improves a changed story; otherwise
+record a specific skip in `chart_decision`. No chart quota or invented materiality
+threshold. Prepare source-checked structured data with `prepare_brief_chart.py`
+and select its `data_id` and zero-based story index. Never hand-copy plotted
+values, mix series or revisions, or add research beyond the bounded follow-up.
+The finalizer embeds the chart under that story. Its title and caption count
+toward the narrative limit. Keep the lead and why-it-matters sentence strong
+even when no valid structured chart source is available.
 
 Lead with whether Juan needs to do something and the date, if applicable. An
 otherwise quiet day is exactly "Nothing needs you today." A quiet day still

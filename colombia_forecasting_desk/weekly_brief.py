@@ -21,6 +21,7 @@ from .schemas._common import iso_date, probability, text as nonempty_text
 from .schemas.scoreboard import validate as validate_scoreboard
 from .schemas.watchlist_hits import validate as validate_watchlist
 from .schemas.weekly_brief import validate as validate_brief_schema
+from .brief_charts import DATA_FILE, chart_html, chart_markdown, day_cutoff, load_chart_data, selected_chart, validate_chart_decision
 from .schemas.weekly_facts import validate as validate_facts_schema
 
 BOGOTA = ZoneInfo("America/Bogota")
@@ -308,7 +309,7 @@ def build_weekly_facts(
     facts: dict[str, Any] = {"schema_version": "weekly_facts.v1", "week": week, "as_of": last.name,
                              "cutoff_at": cutoff.isoformat(), "run_dates": [run.name for run in dirs],
                              "coverage_gaps": gaps, "indicator_changes": [], "agent_signals": [],
-                             "official_followups": [], "watchlist_hits": [], "patterns": [], "events": [], "data_problems": []}
+                             "official_followups": [], "watchlist_hits": [], "patterns": [], "events": [], "data_problems": [], "chart_data": []}
     indicator_index: dict[str, dict[str, Any]] = {}
     signals_seen, hits_seen, patterns_seen = set(), set(), set()
     problems: dict[tuple[str, str], dict[str, Any]] = {}
@@ -338,6 +339,12 @@ def build_weekly_facts(
                        "source_url": calendar_url or url, "artifact_ref": _ref(artifact, locator), "details": event}
 
     for run in dirs:
+        if (run / DATA_FILE).is_file():
+            try:
+                data = load_chart_data(run, cutoff=cutoff)
+                facts["chart_data"].append(data)
+            except (OSError, ValueError, TypeError, KeyError, IndexError) as exc:
+                gaps.append(f"Invalid or post-cutoff chart evidence excluded: {run / DATA_FILE}: {exc}")
         metadata_path = run / "sources" / "followup" / "metadata.json"
         receipts_path = run / "sources" / "followup" / "receipts.json"
         metadata = _json(metadata_path if metadata_path.exists() else receipts_path, gaps)
@@ -448,13 +455,15 @@ def _md(value: str) -> str:
     return re.sub(r"([\\`*_{}\[\]()#+!<>])", r"\\\1", " ".join(value.split()))
 
 
-def _markdown(brief: dict[str, Any]) -> str:
+def _markdown(brief: dict[str, Any], chart_data: dict | None = None, chart_image_path: str = "brief_chart.png") -> str:
     start, friday = week_bounds(brief["week"])
     lines = [f"# The week in Colombia — {start:%b %d}–{friday:%d}, {start.year}", "", f"**Big picture:** {_md(brief['big_picture'])}"]
     for number, story in enumerate(brief["top_stories"], 1):
         url = quote(story["source_url"], safe=":/?#[]@!$&'*+,;=%")
         lines.extend(["", f"**{number}. {_md(story['title'])}.** {_md(story['what_happened'])} "
                       f"{_md(story['why_it_matters'])} Affected: {_md(story['who_is_affected'])} [Source]({url})."])
+        if selected_chart(brief) and selected_chart(brief)["story_index"] == number - 1:
+            lines.extend(["", chart_markdown(brief, chart_data, chart_image_path)])
     lines.extend(["", f"**Our calls:** {_md(brief['our_calls'])}"])
     if brief.get("open_forecasts"):
         lines.extend(["", "**Open forecasts**"])
@@ -485,10 +494,33 @@ def _urls(value: Any) -> set[str]:
     return {value} if isinstance(value, str) and value.startswith("https://") else set()
 
 
-def validate_weekly_brief(brief: Any, *, facts: dict[str, Any] | None = None) -> list[str]:
+def weekly_chart_data(brief: dict, facts: dict | None) -> dict | None:
+    chart = selected_chart(brief)
+    if not chart or facts is None:
+        return None
+    matches = [data for data in facts.get("chart_data", []) if data.get("data_id") == chart["data_id"]]
+    if len(matches) != 1:
+        raise ValueError("weekly chart must match exactly one frozen dataset")
+    data = matches[0]
+    if _timestamp(data.get("generated_at")) is None or _timestamp(data["generated_at"]) > _timestamp(facts["cutoff_at"]):
+        raise ValueError("weekly chart data postdates the exact cutoff")
+    return data
+
+
+def validate_weekly_brief(brief: Any, *, facts: dict[str, Any] | None = None, chart_data: dict | None = None) -> list[str]:
     issues = validate_brief_schema(brief)
     if issues:
         return issues
+    if facts is not None and validate_facts_schema(facts):
+        return ["weekly facts are invalid"]
+    if selected_chart(brief) and facts is not None:
+        try:
+            chart_data = weekly_chart_data(brief, facts)
+        except (ValueError, TypeError, KeyError) as exc:
+            return [str(exc)]
+    issues.extend(validate_chart_decision(brief, chart_data=chart_data))
+    if selected_chart(brief) and chart_data is None:
+        return [*issues, "selected chart needs frozen prepared data"]
     try:
         start, friday = week_bounds(brief["week"])
         if not start.isoformat() <= brief["as_of"] <= friday.isoformat():
@@ -496,6 +528,8 @@ def validate_weekly_brief(brief: Any, *, facts: dict[str, Any] | None = None) ->
     except ValueError as exc:
         issues.append(str(exc))
     texts = [brief["big_picture"], brief["our_calls"], brief["question"], *brief["data_problems"]]
+    if selected_chart(brief):
+        texts.append(selected_chart(brief)["why_it_matters"])
     for story in brief["top_stories"]:
         texts.extend(story[key] for key in ("title", "what_happened", "why_it_matters", "who_is_affected"))
         if any(char.isspace() for char in story["source_url"]) or any(char in story["source_url"] for char in '<>"'):
@@ -525,12 +559,9 @@ def validate_weekly_brief(brief: Any, *, facts: dict[str, Any] | None = None) ->
         issues.extend(validate_plain_text(text))
         if re.search(r"<[^>]+>", text):
             issues.append("reader fields must be plain text without HTML tags")
-    if not issues and word_count(_markdown(brief)) > 450:
+    if not issues and word_count(_markdown(brief, chart_data)) > 450:
         issues.append("rendered weekly brief exceeds 450 words")
     if facts is not None:
-        if validate_facts_schema(facts):
-            issues.append("weekly facts are invalid")
-            return issues
         if brief["week"] != facts["week"] or brief["as_of"] != facts["as_of"]:
             issues.append("brief week and as_of must match the frozen facts")
         known_urls = _urls(facts)
@@ -566,15 +597,15 @@ def validate_weekly_brief(brief: Any, *, facts: dict[str, Any] | None = None) ->
     return list(dict.fromkeys(issues))
 
 
-def render_weekly_brief(brief: dict[str, Any]) -> str:
-    issues = validate_weekly_brief(brief)
+def render_weekly_brief(brief: dict[str, Any], *, chart_data: dict | None = None, chart_image_path: str = "brief_chart.png") -> str:
+    issues = validate_weekly_brief(brief, chart_data=chart_data)
     if issues:
         raise ValueError("; ".join(issues))
-    return _markdown(brief)
+    return _markdown(brief, chart_data, chart_image_path)
 
 
-def render_weekly_html(brief: dict[str, Any]) -> str:
-    issues = validate_weekly_brief(brief)
+def render_weekly_html(brief: dict[str, Any], *, chart_data: dict | None = None) -> str:
+    issues = validate_weekly_brief(brief, chart_data=chart_data)
     if issues:
         raise ValueError("; ".join(issues))
     esc = lambda value: html.escape(" ".join(str(value).split()), quote=True)
@@ -585,6 +616,8 @@ def render_weekly_html(brief: dict[str, Any]) -> str:
         parts.append(f'<section><h2>{number}. {esc(story["title"])}</h2><p>{esc(story["what_happened"])} '
                      f'{esc(story["why_it_matters"])} Affected: {esc(story["who_is_affected"])} '
                      f'<a href="{esc(story["source_url"])}">Source</a>.</p></section>')
+        if selected_chart(brief) and selected_chart(brief)["story_index"] == number - 1:
+            parts[-1] = parts[-1][:-10] + chart_html(brief, chart_data) + '</section>'
     parts.append(f'<section><h2>Our calls</h2><p>{esc(brief["our_calls"])}</p></section>')
     if brief.get("open_forecasts"):
         parts.append("<section><h2>Open forecasts</h2><ul>")

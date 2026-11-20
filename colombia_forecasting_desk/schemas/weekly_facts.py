@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 from typing import Any
 from ._common import base, iso_date, strings
+from ..brief_charts import _stamp, validate_frozen_chart_data
 
 
 def validate(payload: Any) -> list[str]:
@@ -19,4 +20,17 @@ def validate(payload: Any) -> list[str]:
         issues.append("run_dates may not contain future knowledge")
     if not strings(payload.get("coverage_gaps")):
         issues.append("coverage_gaps must be a list of text")
+    if "chart_data" in payload:
+        if not isinstance(payload["chart_data"], list):
+            issues.append("chart_data must be a list of frozen datasets")
+        elif payload["chart_data"]:
+            try:
+                cutoff = _stamp(payload.get("cutoff_at"))
+                for data in payload["chart_data"]:
+                    issues.extend(validate_frozen_chart_data(data, cutoff=cutoff))
+                ids = [data.get("data_id") for data in payload["chart_data"] if isinstance(data, dict)]
+                if len(ids) != len(set(ids)):
+                    issues.append("frozen chart ids must be unique")
+            except (ValueError, TypeError, KeyError):
+                issues.append("frozen charts require a timezone-aware cutoff_at")
     return issues
