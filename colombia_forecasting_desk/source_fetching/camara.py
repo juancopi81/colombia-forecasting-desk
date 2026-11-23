@@ -138,6 +138,9 @@ def _camara_project_label(match: re.Match[str]) -> str:
 
 def _camara_agenda_action(context: str) -> str:
     folded = fold_accents(normalize_whitespace(context).lower())
+    # An explicit hearing heading can describe the bill's debate stage below it.
+    if re.match(r"^(?:tema\s*:\s*)?audiencia\b", folded):
+        return "audiencia"
     if "reunion" in folded and "votacion" not in folded:
         return "reunion"
     if re.search(r"\bestudio\s+en\s+(?:primer|segundo|tercer|cuarto)\s+debate", folded):

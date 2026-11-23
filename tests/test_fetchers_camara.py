@@ -362,6 +362,68 @@ def test_extract_camara_agenda_october_12_saved_sections(make_raw) -> None:
     assert "PRIMER DEBATE" not in coordinators.raw_text
 
 
+def test_extract_camara_agenda_hearing_heading_overrides_bill_stage(make_raw) -> None:
+    agenda_title = "AGENDA LEGISLATIVA SEMANA DEL 23 AL 27 DE NOVIEMBRE DE 2026."
+    item = make_raw(
+        title=agenda_title,
+        published_at="2026-11-23T00:00:00Z",
+        metadata={"agenda_title": agenda_title},
+    )
+    # Exact hearing and next-day first-debate sections from the saved official PDF.
+    text = (
+        FIXTURE_DIR
+        / "camara_agenda_consolidada"
+        / "2026-11-23_hearing_and_debate_excerpt.txt"
+    ).read_text(encoding="utf-8")
+
+    hearing, debate = _extract_camara_agenda_entries_from_text(item, text)
+
+    assert hearing.metadata["agenda_action_type"] == "audiencia"
+    assert hearing.title.startswith("Cámara agenda 2026-11-23 — audiencia:")
+    assert hearing.metadata["scheduled_date"] == "2026-11-23T00:00:00Z"
+    assert hearing.published_at == "2026-11-23T00:00:00Z"
+    assert hearing.metadata["project_records"] == [
+        {"kind": "Ley", "number": "477", "year": "2026", "chamber": "Cámara"},
+        {"kind": "Ley", "number": "328", "year": "2026", "chamber": "Senado"},
+    ]
+    assert "estudio y discusión, en primer debate del Proyecto" in hearing.raw_text
+    assert "LEY DE RESCATE ECONÓMICO" in hearing.metadata["document_title"]
+    assert "499 de 2026" not in hearing.raw_text
+    assert debate.metadata["agenda_action_type"] == "primer debate"
+    assert debate.metadata["scheduled_date"] == "2026-11-24T00:00:00Z"
+    assert debate.published_at == "2026-11-24T00:00:00Z"
+    assert debate.metadata["project_records"] == [
+        {"kind": "Ley", "number": "288", "year": "2026", "chamber": "Senado"},
+        {"kind": "Ley", "number": "499", "year": "2026", "chamber": "Cámara"},
+    ]
+    assert "control fiscal" in debate.metadata["document_title"]
+    assert "AUDIENCIA" not in debate.raw_text
+
+
+@pytest.mark.parametrize(
+    "heading, expected_action",
+    [
+        ("DISCUSIÓN Y VOTACIÓN EN SEGUNDO DEBATE", "segundo debate"),
+        ("DISCUSIÓN Y VOTACIÓN EN TERCER DEBATE", "tercer debate"),
+        ("DISCUSIÓN Y VOTACIÓN EN CUARTO DEBATE", "cuarto debate"),
+        ("VOTACIÓN", "votacion"),
+        ("REUNIÓN DE COORDINADORES Y PONENTES", "reunion"),
+    ],
+)
+def test_extract_camara_agenda_hearing_reference_is_not_hearing_heading(
+    make_raw, heading, expected_action
+) -> None:
+    text = (
+        f"Tema: {heading}, tras la audiencia pública del "
+        "Proyecto de Ley No. 301 de 2026 Cámara "
+        '"Por la cual se establece un nuevo programa de educación pública".'
+    )
+
+    entry = _extract_camara_agenda_entries_from_text(make_raw(), text)[0]
+
+    assert entry.metadata["agenda_action_type"] == expected_action
+
+
 @pytest.mark.parametrize("day_heading", ["", "MARTES 14"])
 def test_extract_camara_agenda_does_not_invent_missing_or_invalid_day(
     make_raw, day_heading
