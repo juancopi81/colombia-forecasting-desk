@@ -7,9 +7,12 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
 import pytest
 
 from colombia_forecasting_desk.indicator_watch import (
+    DIAN_TAX_REVENUE_PAGE_URL,
+    _fetch_dian_tax_observation,
     banrep_tes_curve_component_from_rows,
     build_indicator_watch,
     cement_component_from_html,
@@ -1266,6 +1269,54 @@ def test_fiscal_tax_observation_from_dian_xlsx() -> None:
     by_id = {component.component_id: component for component in observation.components}
     assert by_id["tax_collection"].status == "observed"
     assert by_id["tes_auction"].status == "pending_source"
+
+
+def test_dian_fetch_uses_listed_monthly_archive_and_named_period_columns() -> None:
+    page = """
+        <a href="/annual.zip">Estadísticas de Recaudo anual por tipo de Impuesto</a>
+        <a href="/current.zip">Estadísticas de Recaudo mensual por tipo de Impuesto 2000 - 2026</a>
+        <a href="/regional.zip">Recaudo Bruto por Seccionales y Tipo de Impuesto</a>
+    """
+    workbook = _minimal_xlsx([
+        {"A": "Actualizado a septiembre de 2026 (Fecha de corte: 23 de octubre de 2026)."},
+        {"A": "Año", "B": "Mes", "AF": "Total (A+B+C)"},
+        {"A": "2025", "B": "Septiembre", "AF": "100"},
+        {"A": "2026", "B": "Septiembre", "AF": "110"},
+        {"A": "TOTAL", "B": "2026(p)", "AF": "985"},
+    ])
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w") as archive:
+        archive.writestr("monthly.xlsx", workbook)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == DIAN_TAX_REVENUE_PAGE_URL:
+            return httpx.Response(200, text=page)
+        assert str(request.url) == "https://www.dian.gov.co/current.zip"
+        return httpx.Response(200, content=zipped.getvalue())
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        observation = _fetch_dian_tax_observation(client)
+    assert observation.period == "2026-09"
+    assert observation.release_date == "2026-10-23T00:00:00Z"
+    assert observation.values["gross_tax_revenue_cop_millions"] == 110
+    assert observation.values["gross_tax_revenue_annual_variation_pct"] == 10
+
+
+def test_dian_fetch_reports_ambiguous_archive_without_reusing_old_url() -> None:
+    page = """
+        <a href="/one.zip">Recaudo mensual por tipo de Impuesto</a>
+        <a href="/two.zip">Recaudo mensual por tipo de Impuesto</a>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == DIAN_TAX_REVENUE_PAGE_URL
+        return httpx.Response(200, text=page)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        observation = _fetch_dian_tax_observation(client)
+    tax = next(c for c in observation.components if c.component_id == "tax_collection")
+    assert tax.status == "failed"
+    assert "2 distinct monthly tax archives" in tax.headline
 
 
 def test_indicator_watch_extracts_minhacienda_tes_auction(make_raw) -> None:

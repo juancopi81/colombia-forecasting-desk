@@ -489,6 +489,32 @@ def test_extract_irc_tes_reports_pairs_titles_with_download_links(sample_source)
     assert items[0].published_at == "2026-05-13T00:00:00Z"
 
 
+def test_irc_download_action_matches_the_document_before_menus_render(sample_source) -> None:
+    base = "https://www.irc.gov.co"
+    title = "Subasta 19 COP Noviembre 11 de 2026"
+    download = "/documents/d/guest/report-19?download=true"
+    action = {
+        "icon": "download",
+        "href": download,
+        "data": {"analytics-file-entry-id": "3670627", "analytics-file-entry-title": title},
+    }
+    props = {"actionsDropdown": True, "items": [{"items": [action]}]}
+    html = f"""
+        <a href="/424/-/document_library/sinf/view_file/3670627">{title}</a>
+        <a href="/424/-/document_library/sinf/view_file/3629855">Subasta 18 COP Octubre 28 de 2026</a>
+        <script>render(componentModule, propsTransformer({json.dumps(props)}), 'menu');</script>
+        <a href="/documents/d/guest/subasta-17-cop-octubre-14-de-2026?download=true">Descargar</a>
+    """
+    items = fetchers._extract_irc_tes_reports(
+        html, f"{base}/424", sample_source, "2026-11-24T00:00:00Z",
+    )
+
+    assert [item.url for item in items] == [
+        base + download,
+        base + "/424/-/document_library/sinf/view_file/3629855",
+    ]
+
+
 def test_fetch_minhacienda_tes_reports_uses_browser_on_bot_block(
     sample_source,
     monkeypatch,

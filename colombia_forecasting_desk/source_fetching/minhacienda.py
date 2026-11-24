@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 
 from .common import *
@@ -895,6 +896,53 @@ def _extract_minhacienda_tes_reports(
     return items
 
 
+def _irc_tes_download_url(href: str, base_url: str) -> str | None:
+    url = urljoin(base_url, href)
+    parts = urlsplit(url)
+    if (
+        parts.scheme == "https"
+        and parts.hostname == urlsplit(base_url).hostname
+        and parts.path.startswith("/documents/d/guest/")
+    ):
+        return url
+    return None
+
+
+def _irc_tes_action_downloads(
+    soup: BeautifulSoup, base_url: str,
+) -> dict[tuple[str, str], str]:
+    """Read file-specific download actions even when the menu links are not rendered."""
+    downloads = {}
+    decoder = json.JSONDecoder()
+    for script in soup.find_all("script"):
+        body = script.get_text()
+        if "analytics-file-entry-id" not in body:
+            continue
+        for match in re.finditer(r"propsTransformer\(\s*(?=\{)", body):
+            try:
+                props, _ = decoder.raw_decode(body, match.end())
+            except ValueError:
+                continue
+            if props.get("actionsDropdown") is not True:
+                continue
+            for group in props.get("items") or []:
+                for action in group.get("items") or []:
+                    if action.get("icon") != "download":
+                        continue
+                    data = action.get("data") or {}
+                    file_id = str(data.get("analytics-file-entry-id") or "")
+                    title = normalize_whitespace(data.get("analytics-file-entry-title") or "")
+                    url = _irc_tes_download_url(action.get("href") or "", base_url)
+                    if file_id.isdigit() and title and url:
+                        downloads[file_id, title] = url
+    return downloads
+
+
+def _irc_tes_slug(text: str) -> str:
+    words = re.findall(r"[a-z]+|\d+", fold_accents(text.lower()))
+    return "-".join(str(int(word)) if word.isdigit() else word for word in words)
+
+
 def _extract_irc_tes_reports(
     html_text: str,
     base_url: str,
@@ -911,15 +959,30 @@ def _extract_irc_tes_reports(
         row_text = normalize_whitespace(row.get_text(" ", strip=True))
         title_links.append((title, urljoin(base_url, link["href"].strip()), row_text))
 
-    download_links = [
-        urljoin(base_url, link["href"].strip())
-        for link in soup.find_all("a", href=True)
-        if "/documents/d/guest/" in link["href"] and "download=true" in link["href"]
-    ]
+    action_downloads = _irc_tes_action_downloads(soup, base_url)
+    anchor_downloads = set()
+    for link in soup.find_all("a", href=True):
+        href = link["href"].strip()
+        if "download=true" not in href:
+            continue
+        url = _irc_tes_download_url(href, base_url)
+        if url:
+            slug = _irc_tes_slug(urlsplit(url).path.rsplit("/", 1)[-1])
+            anchor_downloads.add((slug, url))
     items: list[RawItem] = []
     seen: set[str] = set()
-    for index, (title, detail_url, row_text) in enumerate(title_links):
-        url = download_links[index] if index < len(download_links) else detail_url
+    for title, detail_url, row_text in title_links:
+        file_id = urlsplit(detail_url).path.rstrip("/").rsplit("/", 1)[-1]
+        url = action_downloads.get((file_id, title))
+        if not url:
+            # Older pages put all download anchors outside the rows. A missing
+            # anchor must never shift the next auction's amounts onto this one.
+            slug = _irc_tes_slug(title)
+            matching = {
+                download_url for download_slug, download_url in anchor_downloads
+                if re.fullmatch(rf"{slug}(?:-\d+)?", download_slug)
+            }
+            url = matching.pop() if len(matching) == 1 else detail_url
         canon = canonicalize_url(url)
         if canon in seen:
             continue

@@ -159,10 +159,6 @@ ANH_COMPLETENESS_RATIO = 0.75
 DIAN_TAX_REVENUE_PAGE_URL = (
     "https://www.dian.gov.co/dian/cifras/Paginas/EstadisticasRecaudo.aspx"
 )
-DIAN_MONTHLY_TAX_ZIP_URL = (
-    "https://www.dian.gov.co/dian/cifras/EstadisticasRecaudo/"
-    "Estadisticas-de-recaudo-mensual-por-tipo-de-impuesto-2000-2026.zip"
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -2562,13 +2558,15 @@ def fiscal_tax_observation_from_dian_xlsx(xlsx_bytes: bytes) -> IndicatorObserva
     )
     if header_index is None:
         return None
-    headers = rows[header_index]
+    headers = [header.strip() for header in rows[header_index]]
+    year_col = headers.index("Año")
+    month_col = headers.index("Mes")
     data: list[tuple[int, int, list[str]]] = []
     for row in rows[header_index + 1 :]:
-        if len(row) < 2:
+        if len(row) <= max(year_col, month_col):
             continue
-        year = _to_float(row[1])
-        month = _month_number_from_text(row[2]) if len(row) > 2 else None
+        year = _to_float(row[year_col])
+        month = _month_number_from_text(row[month_col])
         if year is None or month is None:
             continue
         data.append((int(year), month, row))
@@ -3110,14 +3108,33 @@ def _fetch_anh_component(
 
 def _fetch_dian_tax_observation(client: httpx.Client) -> IndicatorObservation:
     try:
-        response = client.get(DIAN_MONTHLY_TAX_ZIP_URL, follow_redirects=True)
+        index = client.get(DIAN_TAX_REVENUE_PAGE_URL, follow_redirects=True)
+        index.raise_for_status()
+        archive_urls = set()
+        for link in BeautifulSoup(index.text, "html.parser").find_all("a", href=True):
+            label = normalize_whitespace(link.get_text(" ", strip=True)).lower()
+            if "recaudo mensual por tipo de impuesto" not in label:
+                continue
+            url = urljoin(str(index.url), link["href"])
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme == "https"
+                and parsed.hostname in {"www.dian.gov.co", "dian.gov.co"}
+                and parsed.path.lower().endswith(".zip")
+            ):
+                archive_urls.add(url)
+        if len(archive_urls) != 1:
+            return _failed_tax_collection_observation(
+                f"DIAN statistics page listed {len(archive_urls)} distinct monthly tax archives; expected one."
+            )
+        response = client.get(archive_urls.pop(), follow_redirects=True)
         response.raise_for_status()
         archive = zipfile.ZipFile(io.BytesIO(response.content))
         xlsx_name = next(
             name for name in archive.namelist() if name.lower().endswith(".xlsx")
         )
         observation = fiscal_tax_observation_from_dian_xlsx(archive.read(xlsx_name))
-    except (httpx.HTTPError, ValueError, KeyError, StopIteration, zipfile.BadZipFile) as exc:
+    except (httpx.HTTPError, ValueError, KeyError, StopIteration, zipfile.BadZipFile, ElementTree.ParseError) as exc:
         return _failed_tax_collection_observation(
             f"DIAN tax collection fetch failed: {exc.__class__.__name__}: {exc}"
         )
