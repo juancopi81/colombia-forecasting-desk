@@ -1,13 +1,17 @@
 schema_version: case_file.v1
 case_id: budget-spending
 plain_title: The spending cut and next year’s budget
-plain_summary: Existing decrees reduced 2026 appropriations and issued the 2027 budget. A published committee-approved supplementary 2026 bill adds and reallocates appropriations; final enactment and execution remain unverified.
+plain_summary: Budget decrees and distinct fiscal proposals change or could change public spending and
+  household taxes. The economic-rescue bill proposes income-based VAT refunds; its adoption remains unverified,
+  separately from the supplementary 2026 budget.
 why_it_matters: Budget authority can change public services and project funding.
 who_is_affected: Public bodies, contractors and users of public services.
 identifiers:
   bills:
   - PL 401/2026 Cámara
   - PL 280/2026 Senado
+  - PL 477/2026 Cámara
+  - PL 328/2026 Senado
   decrees:
   - Decreto 1585/2026
   - Decreto 1599/2026
@@ -17,28 +21,66 @@ identifiers:
   keywords:
   - presupuesto general
 current_view:
-  date: '2026-11-12'
-  text: Committee-approved supplementary 2026 text adds COP 3.857426 trillion and reallocates COP 1.466290 trillion; its conditional unclaimed-pension clause is not verified law. Separately, the November 11 government-bond auction reports about COP 2.4 trillion issued and COP 8.09 trillion demand. Issuance does not establish budget execution or funding for that bill. The earlier COP 13.8 trillion cut and COP 634.95 trillion 2027 budget remain separate.
+  date: '2026-11-26'
+  text: "The November 25 Treasury auction issued about COP 2.40 trillion, similar to November 11. Submitted demand fell from COP 8.09 trillion to COP 4.40 trillion. The accepted rate on the 2058 bond rose from 13.379% to 13.85%. The supplementary budget’s plenary outcome and amounts remain unverified after the November 25 agenda. The separate economic-rescue proposal remains in committee. The auction establishes financing terms for those securities."
   confidence: confirmed
 next_trigger:
   date: null
-  event: Final plenary or reconciled text and promulgated law establish whether the supplementary 2026 additions, reallocations and pension clause become law; committee publication alone does not establish enactment or execution.
+  event: Certified adopted texts and final enactment establish the supplementary budget and economic-rescue
+    provisions separately; a rapporteurs meeting, filed text or silence establishes neither outcome.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-26'
+  change: "The official November 25 peso bond auction shows higher cutoffs across four maturities and lower submitted demand than November 11, with equal headline issuance. The published 3.7x coverage measure has its own source basis. No verified link to the supplementary budget’s votes, appropriations or spending."
+  source_url: https://www.irc.gov.co/documents/d/guest/subasta-20-cop-noviembre-25-de-2026?download=true
+- date: '2026-11-25'
+  change: "The Wednesday agenda relists PL 401/2026 Cámara / 280/2026 Senado first for second debate at 11:00 Bogotá in Salón Elíptico. The September supplementary-budget file indexes the approved first-debate text and distinct reports for second debate. The reason for relisting, current proposed amounts and any certified chamber outcome remain unverified. Recovered September DIAN receipts and the November 11 auction reflect restored collection of earlier observations."
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/AGENDA-LEGISLATIVA-SEMANA-DEL-23-AL-27-DE-NOVIEMBRE-DE-2026.-MIERCOLES.pdf
+- date: '2026-11-24'
+  change: "The revised House agenda places PL 401/2026 Cámara / 280/2026 Senado first under second debate at 14:00, confirmed as a plenary session by its dedicated notice. The Senate agenda lists an announcement at 15:00 and cites separate majority and alternative reports. The earlier committee version proposed COP 3.857 trillion in additions and COP 1.466 trillion in reallocations. Current reports, certified outcomes, final enacted allocations and spending remain unverified."
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/AGENDA-LEGISLATIVA-SEMANA-DEL-23-AL-27-DE-NOVIEMBRE-DE-2026.-2.pdf
+- date: '2026-11-24'
+  change: "The revised Senate agenda separates November 24–25 meetings of report writers from public hearings on PL 477/2026 Cámara / 328/2026 Senado. The bill-specific block lists Cali November 26 and Barranquilla November 27 at 09:00 with venues to be confirmed. A separate schedule mentions a Friday Cali hearing without a bill identity, leaving Cali timing unverified. Neither the House's separate Cali earthquake hearing nor these notices establish rescue-bill adoption or public sign-up."
+  source_url: https://www.senado.gov.co/index.php/documentos/senado-prensa/agenda-legislativa-actual/9783-agenda-legislativa-del-23-al-27-de-noviembre-de-2026/file
+- date: '2026-11-23'
+  change: "The full weekly agenda and linked Cámara notice verify a public hearing on PL 477/2026 Cámara /328/2026 Senado at 14:00 Bogotá in Salón Elíptico. Its automatic first-debate label overstates the action. Hearing invitations are linked but unread; no general signup verified. Keep separate from supplementary PL 401/2026 Cámara /280/2026 Senado, whose November 24 Senate excerpt appears under project announcements, and Decreto 1791/2026 cooperation funding, whose transient full-PDF link returned 404. Neither the hearing nor mixed-column budget excerpts proves adoption, execution or current EfectIVA benefits."
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/AGENDA-LEGISLATIVA-SEMANA-DEL-23-AL-27-DE-NOVIEMBRE-DE-2026.pdf
+- date: '2026-11-20'
+  change: Verified filed Ley de Rescate Económico PL477/2026 Cámara /328/2026 Senado, Articles 38–40,
+    complete pages 241–247. EfectIVA is proposed from January 1, 2028 for individually identified poor/vulnerable
+    residents. Refund shares of 100/50/40/30% depend on income; monthly ceiling up to 5.5 UVT, annual
+    parameter-setting, extreme-poverty minimum and household transition floor qualify the headline. Electronic-invoice
+    identification and cash alternatives are specified; point-of-sale noncollection is conditional. Both
+    registries support proposal processing, not a certified approval. This selective section review does
+    not establish whole-package fiscal effects or final implementation dates.
+  source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/proyectos-ley/publicaciones/proyecto-36548/P.L.477-2026C-Rescate-Economico.pdf
 - date: '2026-11-12'
-  change: The November 11 TES COP auction reports about COP 2.4 trillion issued across 2030, 2035, 2040 and 2058 maturities, with COP 8.09 trillion demand. This is observed financing, not evidence that appropriations were spent or that the supplementary bill was enacted. The source-published 6.7x cover uses an unspecified denominator and is not reconstructed from final issuance.
+  change: The November 11 TES COP auction reports about COP 2.4 trillion issued across 2030, 2035, 2040
+    and 2058 maturities, with COP 8.09 trillion demand. This is observed financing, not evidence that
+    appropriations were spent or that the supplementary bill was enacted. The source-published 6.7x cover
+    uses an unspecified denominator and is not reconstructed from final issuance.
   source_url: https://www.irc.gov.co/documents/d/guest/subasta-19-cop-noviembre-11-de-2026?download=true
 - date: '2026-11-11'
-  change: Verified the complete supplementary-budget text on pages 1–2 of November 10 Gaceta 1755, identifying PL 401/2026 Cámara and 280/2026 Senado as approved in joint economic committees. It adds COP 3,857,426,000,000 and reallocates COP 1,466,289,786,310. The new pension clause requires specified absent heirs, three years without a qualifying claim and indexed return if claims arise. Final enactment, the exact committee vote date and execution remain unverified.
+  change: Verified the complete supplementary-budget text on pages 1–2 of November 10 Gaceta 1755, identifying
+    PL 401/2026 Cámara and 280/2026 Senado as approved in joint economic committees. It adds COP 3,857,426,000,000
+    and reallocates COP 1,466,289,786,310. The new pension clause requires specified absent heirs, three
+    years without a qualifying claim and indexed return if claims arise. Final enactment, the exact committee
+    vote date and execution remain unverified.
   source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1755
 - date: '2026-11-02'
-  change: The new weekly agenda schedules the supplementary 2026 budget bill for November 3 at 07:00 in joint economic commissions. Keep this separate from the existing decrees, royalties budget and economic-rescue proposal.
+  change: The new weekly agenda schedules the supplementary 2026 budget bill for November 3 at 07:00 in
+    joint economic commissions. Keep this separate from the existing decrees, royalties budget and economic-rescue
+    proposal.
   source_url: https://www.camara.gov.co/wp-content/uploads/2026/11/AGENDA-LEGISLATIVA-SEMANA-DEL-2-AL-6-DE-NOVIEMBRE-DE-2026.pdf
 - date: '2026-10-29'
-  change: October 28 Gacetas 1663 and 1664 publish positive first-debate reports with modifications for the supplementary 2026 budget bill. The captured excerpts establish a report, not adoption, exact allocations or cash execution.
+  change: October 28 Gacetas 1663 and 1664 publish positive first-debate reports with modifications for
+    the supplementary 2026 budget bill. The captured excerpts establish a report, not adoption, exact
+    allocations or cash execution.
   source_url: https://svrpubindc.imprenta.gov.co/gacetas/index.xhtml?gaceta=1664
 - date: '2026-10-27'
-  change: The complete official edition checked on October 23 records a COP 13.8 trillion 2026 reduction and a COP 634.95 trillion 2027 budget. The decree states its basis for issuance; execution and legal validity need separate evidence.
+  change: The complete official edition checked on October 23 records a COP 13.8 trillion 2026 reduction
+    and a COP 634.95 trillion 2027 budget. The decree states its basis for issuance; execution and legal
+    validity need separate evidence.
   source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.666

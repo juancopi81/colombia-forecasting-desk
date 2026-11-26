@@ -16,24 +16,41 @@ identifiers:
   - Banco de la República
   - inflación
 current_view:
-  date: '2026-11-19'
-  text: November’s official analyst survey, conducted November 10–12, puts mean annual December inflation
-    at 6.79%, versus 6.83% in October’s survey, with 35 versus 41 respondents. This is an expectation,
-    with different panels and unknown exact publication day. November and December month-end policy medians
-    are 12.25%; neither establishes a December 18 hike probability. Observed October annual IPC remains
-    6.30%, policy 12.25%, and November 19 TRM COP 3,326.96 per dollar.
+  date: '2026-11-26'
+  text: "The certified dollar rate rose from COP 3,592.03 to COP 3,630.89 on November 26. It is up 9.14% in seven days and 14.98% in 30 days. A fixed dollar payment requires more pesos at the reference rate. Consumer price effects remain unverified. The policy rate remains 12.25%, and the official calendar again lists a December 18 decision."
   confidence: confirmed
 next_trigger:
   date: '2026-12-07'
-  event: DANE schedules November headline IPC for December 7 at 18:00 Bogotá; its family window opens
-    November 30. BanRep’s December 18 decision window opens December 11. Require exact first-release outcomes;
-    survey month-end columns do not establish board timing.
+  event: DANE schedules November headline inflation for December 7 at 18:00 Bogotá. BanRep again lists
+    its December 18 policy meeting. The December family windows open November 30 and December 11 respectively.
 forecast_ids:
 - family_banrep_rate_decision_2026-10-30
 - family_ipc_annual_up_2026-11-09
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-26'
+  change: "The certified dollar rate rose COP 38.86, or 1.08%, and the seven-day comparison widened to 9.14%. The 30-day comparison rose to 14.98%. Overnight IBR remained 11.411% on November 25 alongside the 12.25% policy rate. These observations do not establish a currency driver or pass-through."
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
+- date: '2026-11-26'
+  change: "Today’s official calendar restores the December 18 Board meeting entry after a January-only capture. It lists 08:30 Bogotá as the meeting time. The official decision publication time and outcome need their own evidence."
+  source_url: https://www.banrep.gov.co/es/noticias/calendario-actividades-junta-directiva/reunion-diciembre-2026
+- date: '2026-11-25'
+  change: "The certified USD/COP rate rose COP 86.11 in a day, and the rolling seven-day rise widened from 5.71% to 8.54%. Separate rolling anchors give the present 30-day comparison of 13.73%. The November 24 overnight IBR and 12.25% policy rate are steady. Risk drivers, consumer-price pass-through and the prior December calendar observation require separate confirmation."
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
+- date: '2026-11-24'
+  change: "The certified USD/COP rate rose COP 44.00 from November 21 to November 24. The seven-day and 30-day comparisons use their own effective-date reference points. November 23 IBR was 11.411%, versus November 20's 11.412%, and the policy rate stayed 12.25%. Dollar payments require more pesos at the new rate. Pass-through, causes and the next board outcome remain unverified."
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
+- date: '2026-11-23'
+  change: "Official TRM effective November 21 advances to COP 3,461.92/USD from November 20 COP 3,415.10/USD, +46.82 pesos/+1.37%; rolling seven-day +4.38%. Preserve the effective date and distinct rolling anchor. The latest IBR observation is November 20 at 11.412%, with policy 12.25% unchanged. No verified cause, retail-price pass-through, rate-decision implication or new event probability follows mechanically from these observations."
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
+- date: '2026-11-20'
+  change: Official daily TRM advances from November 19 COP 3,326.96/USD to November 20 COP 3,415.10/USD,
+    +88.14 pesos/+2.65%; rolling seven-day increase 3.43%. November 19 IBR is 11.412% while policy remains
+    12.25%. Sharp depreciation changes peso costs of dollar transactions, but neither cause, future persistence
+    nor consumer-price pass-through is demonstrated. The unchanged survey and already resolved calls retain
+    their original periods and probabilities.
+  source_url: https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3
 - date: '2026-11-19'
   change: 'Verified the complete relevant November EME workbook sheets: fieldwork November 10–12; annual
     December mean 6.792571428571428% and 35 participants, compared with October same-horizon mean 6.83%

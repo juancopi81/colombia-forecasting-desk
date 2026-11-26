@@ -22,24 +22,28 @@ identifiers:
   - comercio minorista
   - licencias de construcción
 current_view:
-  date: '2026-11-19'
-  text: DANE’s September goods deficit is USD 2,268.2 million FOB, versus USD 1,135.1 million a year earlier.
-    Newly captured, this November 18 release fills yesterday’s gap; it is not CIF imports minus FOB exports.
-    Nominal trade does not establish volume or investment. Q3 GDP +0.5% annually/-0.8% adjusted quarterly,
-    real housing finance -12.7% annually and September original ISE +1.44% remain uneven. Recorded calls
-    stay immutable.
+  date: '2026-11-26'
+  text: "The November 25 CREA EMPLEO amendment counts added jobs against June payroll, initially June 2025. Employers with over 50 dependent workers in the reference month must certify sales growth against prior-year inflation. Davivienda lists December 2 at 16:00 as its client deadline. The ministry sets the national calendar. Our November 30 call is 55% that October national unemployment falls below October 2025’s 8.2%."
   confidence: confirmed
 next_trigger:
   date: '2026-11-30'
-  event: DANE schedules national October jobs at 10:00 Bogotá; its family window opens November 23. Later
-    comparable monthly activity and trade details will test breadth. No new call after published imports,
-    housing financing or ISE.
+  event: DANE schedules October national jobs at 10:00 Bogotá; resolve the recorded 55% call only against the first comparable official national original release below 8.2%. Missing or conflicting records stay unknown.
 forecast_ids:
 - family_unemployment_down_yoy_2026-10-30
 - family_ise_annual_up_2026-11-17
+- family_unemployment_down_yoy_2026-11-30
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-26'
+  change: "After the morning scan, Davivienda’s Cycle I notice confirmed its application window for employer clients runs from November 26 at 08:00 through December 2 at 16:00. The bank speaks for its own intake. The national operating calendar and actual payments are still unverified."
+  source_url: https://comunicaciones.davivienda.com/subsidios-empresas/
+- date: '2026-11-26'
+  change: "Resolution 4185 Articles 2, 3 and 5 specify the payroll benchmark, six months of contribution evidence, dates governed by a binding operating manual and a sales certification for larger employers. Article 6 makes the amendment effective at publication on November 25. The statute already includes the sales condition and retains the national unemployment comparison. Application cycles and transfers remain unverified."
+  source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.701
+- date: '2026-11-23'
+  change: "Recorded the internal October unemployment call prospectively at 55%, before the November 30 10:00 Bogotá event. The current official national original history verifies October 2025 unemployment at the published 8.2% precision. Baseline: 178 YES outcomes in 297 comparable observations, approximately 59.93%, from revised/backcast history through September 2026; not a first-release outcome record. September unemployment 8.0% versus 8.2%, flat occupation, weaker city labor, retail employment +1.2% and factory employment -1.4% support only a modest subjective lean. Resolve only on the exact first October national original release; an 8.2% tie is NO, missing evidence stays unknown."
+  source_url: https://www.dane.gov.co/index.php/calendario/icalrepeat.detail/2026/11/30/10263/-/mercado-laboral-geih
 - date: '2026-11-19'
   change: 'Captured the separate official monthly FOB goods balance released November 18: September deficit
     USD 2,268.2 million, versus USD 1,135.1 million in September 2025. This supersedes the prior coverage

@@ -16,12 +16,8 @@ identifiers:
   - abastecimiento de gas
   - embalses
 current_view:
-  date: '2026-11-19'
-  text: XM’s November 16 wholesale spot price is COP 648.30/kWh, above November 15’s COP 473.77/kWh. Useful
-    reservoir volume is 77.14% on November 18 versus 77.48% on November 17. Saturday November 14 demand
-    is 241.26 GWh, compared with Friday’s 258.98 GWh. Different observation dates and weekend effects
-    prevent a normalized demand-growth conclusion. These observations do not establish shortages or household
-    tariff changes.
+  date: '2026-11-26'
+  text: "XM’s wholesale spot price rose from COP 564.34/kWh on November 22 to COP 858.47/kWh on November 23. Useful reservoir volume slipped from 76.07% to 75.98% on November 24–25. Demand fell from 257.79 GWh on November 20 to 244.32 GWh on November 21. The measures have separate clocks, and household tariff changes and supply risk remain unverified."
   confidence: confirmed
 next_trigger:
   date: null
@@ -30,6 +26,24 @@ forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-26'
+  change: "The national weighted spot price rose COP 294.13/kWh after the prior day’s decline. The reservoir comparison fell 0.09 percentage points and Friday-to-Saturday demand fell 13.47 GWh over distinct periods. Hydrocarbon production evidence still refers to March. Supply, household tariffs and normalized demand changes require separate evidence."
+  source_url: https://portalxm-cal.xm.com.co/
+- date: '2026-11-25'
+  change: "The November 22 national weighted spot price fell COP 87.50/kWh from November 21. The later useful reservoir reading is 0.29 percentage points lower, and the November 20 demand observation is 2.59 GWh above November 19. These separate dates and measures do not establish shortage, rationing, tariff changes or normalized demand growth. Current oil and gas production remain unverified because the observed March data are stale."
+  source_url: https://portalxm-cal.xm.com.co/
+- date: '2026-11-24'
+  change: "The November 21 national weighted spot price fell COP 43.88/kWh from November 20. The later reservoir observation is 0.17 percentage points lower, while comparable multi-day demand normalization is unavailable. None of these separately dated readings establishes a new supply measure or retail tariff."
+  source_url: https://portalxm-cal.xm.com.co/
+- date: '2026-11-23'
+  change: "XM advances spot price to November 20, reservoirs to November 22 and electricity demand to November 18. The spot-price comparison is with November 17, the reservoir comparison with November 19 and demand with a Sunday; these are not synchronized daily changes. Retain weather/calendar caveats and withhold shortage, rationing, household-tariff and normalized output claims. Gas production remains stale March and the crude component is unavailable today."
+  source_url: https://portalxm-cal.xm.com.co/
+- date: '2026-11-20'
+  change: New XM observations advance spot price to November 17, reservoirs to November 19 and demand
+    to Sunday November 15. Higher wholesale price and lower reservoir share have different dates; weekend
+    demand changes do not measure normalized economic growth. No shortage, rationing or household tariff
+    effect is established; current oil/gas output remains unknown because ANH observations are still March.
+  source_url: https://portalxm-cal.xm.com.co/
 - date: '2026-11-19'
   change: New XM clocks advance wholesale spot price to November 16, reservoirs to November 18 and demand
     to Saturday November 14. Price rises and reservoir percentage falls on separate dates; Saturday demand
