@@ -16,7 +16,10 @@ def _text(value: str) -> str:
 
 
 def _md(value: str) -> str:
-    return re.sub(r"([\\`*_{}\[\]()#+!<>])", r"\\\1", _text(value))
+    escaped = re.sub(r"([\\`*_{}\[\]#!<>])", r"\\\1", _text(value))
+    # Parentheses and plus signs are ordinary prose except in leading list markers.
+    escaped = re.sub(r"^\+(?=\s|$)", r"\\+", escaped)
+    return re.sub(r"^(\d{1,9})\)(?=\s|$)", r"\1\\)", escaped)
 
 
 def _percent(value: float) -> str:

@@ -42,7 +42,9 @@ Include, in this order and only when present:
    probability of the stated outcome.
 3. Public actions with an official date and link: comment periods, voter or
    program registrations, application windows and filing deadlines. Say who
-   can act and where. For consultations, say that the issuing agency takes
+   can act and where. If the event page links to the service, the draft may use
+   that verified destination. If linking to instructions, describe them as a guide.
+   For consultations, say that the issuing agency takes
    comments from anyone, so readers don't mistake it for replying on X.
 4. Official news, only when items 1–3 leave nothing new: one post for each
    confirmed change item in the brief that cites an official source, at most

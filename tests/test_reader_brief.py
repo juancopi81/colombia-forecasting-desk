@@ -103,6 +103,24 @@ def test_html_is_escaped_and_authored_html_is_rejected(brief):
     assert validate_reader_brief(brief)
 
 
+@pytest.mark.parametrize("headline, expected", [
+    (
+        "Dollar costs (+1.37%); [details](https://example.gov.co), *unverified*.",
+        r"Dollar costs (+1.37%); \[details\](https://example.gov.co), \*unverified\*.",
+    ),
+    ("+ Dollar costs (+1.37%).", r"\+ Dollar costs (+1.37%)."),
+    ("1) Dollar costs (+1.37%).", r"1\) Dollar costs (+1.37%)."),
+    ("+", r"\+"),
+    ("1)", r"1\)"),
+])
+def test_markdown_keeps_numeric_prose_without_allowing_authored_markup(
+    brief, headline, expected
+):
+    brief["headline"] = headline
+
+    assert f"\n\n{expected}\n" in render_reader_brief(brief)
+
+
 def test_unsafe_url_cannot_be_interpreted_as_markup(brief):
     brief["changes"][0]["source_url"] = 'https://example.gov.co/" onmouseover="alert(1)'
     assert validate_reader_brief(brief)

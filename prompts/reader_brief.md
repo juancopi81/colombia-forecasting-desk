@@ -36,6 +36,9 @@ the actual supporting excerpt before summarizing it. Describe a document as a
 proposal, report, schedule or decision according to what the evidence establishes.
 Do not promote a vote schedule into an approval or a truncated excerpt into an
 unread finding. Use confirmed, likely or uncertain confidence accurately.
+When reporting an application or comment period, use the issuing body's written
+dates. A participating institution can confirm its own intake window. Name the
+institution and who can use that window.
 
 Every upcoming event has either our_call or a one-sentence no_call_reason. A call
 must use the exact recorded forecast ID and probability. Never invent a call,
