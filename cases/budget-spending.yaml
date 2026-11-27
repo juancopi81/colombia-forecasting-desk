@@ -15,23 +15,30 @@ identifiers:
   decrees:
   - Decreto 1585/2026
   - Decreto 1599/2026
+  - Decreto 1815/2026
   indicator_ids:
   - fiscal_tax_pulse
   nits: []
   keywords:
   - presupuesto general
 current_view:
-  date: '2026-11-26'
-  text: "The November 25 Treasury auction issued about COP 2.40 trillion, similar to November 11. Submitted demand fell from COP 8.09 trillion to COP 4.40 trillion. The accepted rate on the 2058 bond rose from 13.379% to 13.85%. The supplementary budget’s plenary outcome and amounts remain unverified after the November 25 agenda. The separate economic-rescue proposal remains in committee. The auction establishes financing terms for those securities."
+  date: '2026-11-27'
+  text: "Congress approved the 2026 supplementary budget. It adds about COP 3.8 trillion and reallocates COP 1.47 trillion. Presidential sanction and disbursements await verification. The November 27 pension-annuity rule provides two ways to cover actuarial shortfalls. Actual transfers and costs remain unknown. November 25 bond demand fell to COP 4.40 trillion from COP 8.09 trillion on November 11, with COP 2.40 trillion issued each time. The separate economic-rescue bill remains in committee."
   confidence: confirmed
 next_trigger:
   date: null
-  event: Certified adopted texts and final enactment establish the supplementary budget and economic-rescue
-    provisions separately; a rapporteurs meeting, filed text or silence establishes neither outcome.
+  event: Check for presidential sanction and publication of the supplementary budget, implementation or transfers,
+    the separate economic-rescue bill’s next committee step, and any annuity-reserve commitments.
 forecast_ids: []
 status: active
 park_after_days: 21
 updates:
+- date: '2026-11-27'
+  change: "After the weekly cutoff, the desk verified Prosperidad Social’s November 25 notice confirming Senate approval on November 24 and House approval on November 25 for PL 401/2026 Cámara / 280/2026 Senado. The notice reports COP 3.8 trillion in added funding and COP 1.47 trillion in reallocations. About COP 1.1 trillion is earmarked for Colombia Mayor. The agency still identified presidential sanction and budget procedures as steps before payment."
+  source_url: https://prosperidadsocial.gov.co/Noticias/congreso-aprueba-11-billones-de-pesos-en-transferencias-monetarias-para-el-programa-colombia-mayor-de-prosperidad-social/
+- date: '2026-11-27'
+  change: "Decree 1815 takes effect today. It restores a productivity-only pricing parameter and allows two fiscal payment routes for covered life annuities, depending on budget availability. The rule establishes neither actual transfers nor an enacted appropriation for the separate supplementary budget."
+  source_url: https://svrpubindc.imprenta.gov.co/diario?edicion=53.703
 - date: '2026-11-26'
   change: "The official November 25 peso bond auction shows higher cutoffs across four maturities and lower submitted demand than November 11, with equal headline issuance. The published 3.7x coverage measure has its own source basis. No verified link to the supplementary budget’s votes, appropriations or spending."
   source_url: https://www.irc.gov.co/documents/d/guest/subasta-20-cop-noviembre-25-de-2026?download=true
